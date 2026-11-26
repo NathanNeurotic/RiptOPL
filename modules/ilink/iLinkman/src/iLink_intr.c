@@ -138,19 +138,15 @@ static void ResponseHandler(unsigned int header, volatile unsigned int *buffer, 
     int state;
 
     headerQuads = code == IEEE1394_TCODE_WRITE_RESPONSE ? 3 : 4;
-    if (nQuads < headerQuads) {
-        NoResponseHandler(header, buffer, nQuads);
-        return;
-    }
+    /* RiptOPL: read the packet by its own length, as the SDK does. nQuads is the receive FIFO level
+     * sampled before the handler runs, not the packet's length: a packet still arriving reads as
+     * short, and dropping it then made its remaining quadlets look like a new packet. */
+    (void)nQuads;
     response.header = header;
     for (i = 1; i < headerQuads; i++)
         ((unsigned int *)&response)[i] = *buffer;
     length = code == IEEE1394_TCODE_READB_RESPONSE ? response.LastField >> 16 : 0;
     payloadQuads = (length + 3) / 4;
-    if (payloadQuads > nQuads - headerQuads) {
-        NoResponseHandler(header, buffer, nQuads - (headerQuads - 1));
-        return;
-    }
 
     /* A timeout can precede a late response. Match the active request before
      * touching caller memory or waking it. Copy/retirement cannot preempt one
@@ -202,20 +198,16 @@ static void WriteRequestHandler(unsigned int header, volatile unsigned int *buff
     unsigned char rCode = 0;
 
     headerQuads = (((header >> 4) & 0xF) == IEEE1394_TCODE_WRITEQ) ? 3 : 4;
-    if (nQuads < headerQuads) {
-        NoResponseHandler(header, buffer, nQuads);
-        return;
-    }
+    /* RiptOPL: read the packet by its own length, as the SDK does. nQuads is the receive FIFO level
+     * sampled before the handler runs, not the packet's length: a packet still arriving reads as
+     * short, and dropping it then made its remaining quadlets look like a new packet. */
+    (void)nQuads;
     req.header = header;
     req.misc = 4 << 16;
     for (i = 1; i < headerQuads; i++)
         ((unsigned int *)&req)[i] = *buffer;
     req.misc >>= 16;
     payloadQuads = (req.misc + 3) / 4;
-    if (payloadQuads > nQuads - headerQuads) {
-        NoResponseHandler(header, buffer, nQuads - (headerQuads - 1));
-        return;
-    }
 
 #ifdef REQ_CHECK_MEM_BOUNDARIES
     if ((req.offset_high & 0xFFFF) != 0 || req.offset_low == 0 ||
@@ -290,10 +282,6 @@ static void ReadRequestHandler(unsigned int header, volatile unsigned int *buffe
         DEBUG_PRINTF("Block");
     }
 
-    if (nQuads < QuadsToRead - 1) {
-        NoResponseHandler(header, buffer, nQuads);
-        return;
-    }
     for (i = 1; i < QuadsToRead; i++) {
         ReadReqHeader[i] = *buffer;
     }

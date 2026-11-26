@@ -890,8 +890,9 @@ extern int smb_TreeConnectAndX(int UID, char *ShareName, char *Password, int Pas
 extern int smb_TreeDisconnect(int UID, int TID);
 extern int smb_NetShareEnum(int UID, int TID, ShareEntry_t *shareEntries, int index, int maxEntries);
 extern int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInformationDisk);
-extern int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path);
-extern int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info);
+extern int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path, int basicOnly);
+extern int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info, u8 *batch, int batchSize, int *count);
+extern int smb_FindEntry(const u8 *entry, SearchInfo_t *info);
 extern int smb_FindClose2(int UID, int TID, int SID);
 extern int smb_LogOffAndX(int UID);
 extern int smb_Echo(void *echo, int len);
@@ -908,5 +909,8 @@ extern int smb_Rename(int UID, int TID, char *oldPath, char *newPath);
 
 #define MAX_SMB_BUF     4096 // must fit on u16 !!!
 #define MAX_SMB_BUF_HDR 128  // Must be at least as large as the largest header structure.
+// A batched directory search asks for up to this many entries, in at most this many bytes of reply.
+#define SMB_FIND_BATCH_COUNT 64
+#define SMB_FIND_BATCH_SIZE  2048
 
 #endif

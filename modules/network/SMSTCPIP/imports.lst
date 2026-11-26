@@ -25,6 +25,7 @@ I_SysClock2USec
 I_GetThreadId
 I_GetSystemTime
 I_SetAlarm
+I_iSetAlarm
 I_CancelAlarm
 thbase_IMPORTS_end
 

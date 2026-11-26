@@ -8,6 +8,7 @@
 #include "include/lang.h"
 #include "include/texcache.h"
 #include "include/psbbnflow.h"
+#include "include/coverglide.h"
 
 #include <stdio.h>
 
@@ -153,31 +154,52 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
     if (image == NULL || isHiddenArtworkCache(image->cache))
         return;
     GSTEXTURE *texture = getGameImageTexture(image->cache, thmGetItemSource(menu, item), &item->item);
+    GSTEXTURE *art = texture != NULL && texture->Mem != NULL ? texture : NULL; // Cover Shape crops art only
     if (texture == NULL || texture->Mem == NULL)
         texture = image->defaultTexture ? &image->defaultTexture->source : thmGetTexture(COVER_DEFAULT);
     if (texture == NULL || texture->Mem == NULL || texture->Width <= 0 || texture->Height <= 0)
         return;
 
     u64 color = GS_SETREG_RGBA(card.shade, card.shade, card.shade, card.alpha);
+    // The card flat, at its size: how a framed cover is drawn, and where a layout switch flies a cover to.
+    int w = (card.xr - card.xl) * 1000 / rmWideScale(1000), h = card.hl > card.hr ? card.hl : card.hr;
+    int x = (card.xl + card.xr) / 2, y = card.yc;
+    if (position > -1000 && position < 1000 * (PSBBN_FLOW_TAIL + 1)) { // the cards in the row, not the one leaving
+        glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
+        int a = coverGlide(item->item.text, item->item.id, (position < 0 ? -position : position) / 1000, &box);
+        if (box.x != x || box.y != y || box.w != w || box.h != h || a < 0x80) { // on its way: flat until it lands
+            x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
+            color = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
+            if (!image->overlayTexture) { // a framed cover keeps its frame below
+                thmCoverCropBegin(menu, item, art, h > 0 ? (float)w / (float)h : 0.0f);
+                rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                thmCoverCropEnd();
+                return;
+            }
+        }
+    }
     if (image->overlayTexture) {
         // Framed covers keep their frame: drawn flat at the card's size, without the perspective.
         image_texture_t *ov = image->overlayTexture;
-        int w = (card.xr - card.xl) * 1000 / rmWideScale(1000), h = card.hl > card.hr ? card.hl : card.hr;
-        int x = (card.xl + card.xr) / 2, y = card.yc;
         int cw = coverElem->width > 0 ? coverElem->width : 1;
         int ch = coverElem->height > 0 ? coverElem->height : 1;
+        thmCoverCropBegin(menu, item, art, h > 0 ? thmCoverAspect(coverElem) * w * ch / ((float)h * cw) : 0.0f); // the window as drawn
         rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color,
                             texture, ov->upperLeft_x * w / cw, ov->upperLeft_y * h / ch,
                             ov->upperRight_x * w / cw, ov->upperRight_y * h / ch,
                             ov->lowerLeft_x * w / cw, ov->lowerLeft_y * h / ch,
                             ov->lowerRight_x * w / cw, ov->lowerRight_y * h / ch, 0);
+        thmCoverCropEnd();
         if (image->overlayTexture2)
             rmDrawPixmap(&image->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
         return;
     }
 
-    float uv[4];
-    psbbnFlowCrop(texture->Width, texture->Height, uv); // PSBBN shows square tiles
+    float uv[4] = {0.0f, 0.0f, (float)texture->Width, (float)texture->Height};
+    thmCoverCropBegin(menu, item, art, 1.0f); // Cover Shape: its logo trim, then the square
+    if (!rmCoverCropUV(texture, uv))
+        psbbnFlowCrop(texture->Width, texture->Height, uv); // PSBBN shows square tiles
+    thmCoverCropEnd();
     if (position <= 0)
         drawTile(texture, &card, uv, color, rim);
     else

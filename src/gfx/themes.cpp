@@ -1417,6 +1417,7 @@ static int thmLoad(const char *themePath)
     newT->parsingFavKindFamily = 0;
     newT->gameCacheCount = 0;
     newT->artGeneration = ++thmLoadCount;
+    cacheNewGeneration(); // the old theme's loaded covers move to this load's caches when it is freed
     newT->wallpaperWanted = gThemeWallpaper != 0;
     newT->wallpaper = NULL;
     newT->itemsList = NULL;
@@ -1796,6 +1797,9 @@ static int thmLoad(const char *themePath)
         if (configGetInt(themeConfig, "hints_spacing", &k) && k >= 12 && k <= 96)
             newT->hintsSpacing = k;
         newT->badgeSet = configGetStr(themeConfig, "badge_set", &v) && v != NULL && !strcasecmp(v, "ripps2");
+        // Cover Shape's logo trims (percent, 0 to 40): cover_ps1_spine=13 cover_ps2_band=11
+        newT->coverSpine = configGetInt(themeConfig, "cover_ps1_spine", &k) && k >= 0 && k <= 40 ? k : 13;
+        newT->coverBand = configGetInt(themeConfig, "cover_ps2_band", &k) && k >= 0 && k <= 40 ? k : 11;
     }
 
     // Embedded attribute glyphs (#Format/#Media/Aspect/Rating/Scan/Vmode values): BUILT-IN theme

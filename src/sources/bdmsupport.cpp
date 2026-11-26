@@ -1018,6 +1018,14 @@ unsigned int bdmGetGeneration(void)
     return BdmGeneration;
 }
 
+// 1 when the pass just run on this BDM page was only the PS1 retry (see BdmSource::needsUpdate):
+// it cannot have changed APPS, so menuDeferredUpdate skips the APPS rescan of every device.
+int bdmLastPassWasPs1Retry(const item_list_t *itemList)
+{
+    const bdm_device_data_t *pDeviceData = itemList != NULL ? (const bdm_device_data_t *)itemList->priv : NULL;
+    return pDeviceData != NULL && pDeviceData->ps1RetryPass;
+}
+
 // Runs UNDER the caller's menu lock: pure value copies, no I/O, no allocation. Everything the
 // reporting calls below need must be taken here, because once the lock is released the item_list_t
 // and config_set_t may be freed. Cheap enough to run unconditionally; the reporting is what costs.
@@ -1240,6 +1248,14 @@ int bdmModeIsUSB(int mode)
         return 0;
     bdm_device_data_t *data = (bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
     return data != NULL && data->bdmDeviceType == BDM_TYPE_USB;
+}
+
+int bdmModeIsATA(int mode)
+{
+    if (mode < BDM_MODE || mode > BDM_MODE_LAST)
+        return 0;
+    bdm_device_data_t *data = (bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
+    return data != NULL && data->bdmDeviceType == BDM_TYPE_ATA;
 }
 
 static void bdmLoadPccfModule(void)
@@ -1711,6 +1727,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
     bdmReportUnsupportedDrives();
 
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
+    pDeviceData->ps1RetryPass = 0;
 
     // Check for forced refresh from deleting or renaming a game.
     if (pDeviceData->ForceRefresh != 0) {
@@ -1770,6 +1787,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
                pDeviceData->bdmMissCount == 0 &&
                (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         pDeviceData->ps1ScanRetries++;
+        pDeviceData->ps1RetryPass = 1 + host::library().listViewActive(itemList); // the view it was meant for
         return 1;
     }
     if (pDeviceData->bdmDeviceTick >= 0 && (unsigned int)pDeviceData->bdmDeviceTick == BdmGeneration && pDeviceData->bdmULSizePrev != -2) {
@@ -1883,6 +1901,10 @@ int BdmSource::update(item_list_t *itemList)
     int view = host::library().listViewActive(itemList);
     int result = 0;
 
+    // An L3 committed between needsUpdate and here changed the view: this is a full pass for that view.
+    if (pDeviceData->ps1RetryPass != 0 && pDeviceData->ps1RetryPass != 1 + view)
+        pDeviceData->ps1RetryPass = 0;
+
     // #120: each view scans into its OWN array (see bdm_device_data_t). Previously both shared
     // bdmGames, so a VCD scan reporting failure (r < 0) left the ISO list published under the VCD
     // view -- the L3 toggle then "never changed the list" (Nathan, HW, ATA/HDD_BD), and a device with
@@ -1905,8 +1927,12 @@ int BdmSource::update(item_list_t *itemList)
             pDeviceData->ps1ScanRetries = 0;
         result += pDeviceData->bdmPs1GameCount;
     }
-    if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
+    // A PS1 retry pass re-reads only the PS1 folders. Nothing told us the PS2 folders changed, and
+    // rescanning them on every retry (up to BDM_PS1_SCAN_RETRY_MAX, one every ~2 s of idle) kept the
+    // I/O worker busy long enough to stall covers, music and the settings save.
+    if ((view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) && !pDeviceData->ps1RetryPass) {
         const char *sub = folderGetSub(itemList->mode);
+        sbListCacheFirstRead(itemList->mode, pDeviceData->bdmDeviceType);
         sbListCacheReadOnly = (itemList->flags & MODE_FLAG_READ_ONLY) != 0;
         sbReadList(&pDeviceData->bdmGames, pDeviceData->bdmPrefix, sub, &pDeviceData->bdmULSizePrev, &pDeviceData->bdmGameCount);
         sbListCacheReadOnly = 0;
@@ -1916,6 +1942,8 @@ int BdmSource::update(item_list_t *itemList)
         if (pDeviceData->bdmULSizePrev == -2 && sub[0] == '\0' && pDeviceData->bdmPrefix[0] != '\0')
             host::app().setErrorPath(_STR_BDM_PS2_FOLDERS_UNREADABLE, pDeviceData->bdmPrefix, sbGetReadListError());
         result += pDeviceData->bdmGameCount;
+    } else if (view == LIB_VIEW_MIXED) {
+        result += pDeviceData->bdmGameCount; // retry pass: the PS2 rows already held still count
     }
     return result;
 }

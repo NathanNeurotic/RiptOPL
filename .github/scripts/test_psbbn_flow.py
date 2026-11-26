@@ -200,7 +200,11 @@ typedef struct {int Width,Height;void *Mem;} GSTEXTURE;
 typedef struct {GSTEXTURE source;int upperLeft_x,upperLeft_y,upperRight_x,upperRight_y,lowerLeft_x,lowerLeft_y,lowerRight_x,lowerRight_y;} image_texture_t;
 typedef struct {int *cache;image_texture_t *defaultTexture,*overlayTexture,*overlayTexture2;} mutable_image_t;
 typedef struct theme_element {int width,height,posX,posY;void *extended;} theme_element_t;
-struct submenu_list {int item;};
+typedef struct {const char *text;int id;} submenu_item_t;
+struct submenu_list {submenu_item_t item;};
+// The hold L3 layout switch (coverglide.h): no switch running, so every card draws where it is.
+typedef struct {float x,y,w,h;} glide_box_t;
+static int coverGlide(const char *,int,int,glide_box_t *) {return 0x80;}
 static int gThmScreenWidth=640,gThmScreenHeight=480,hidden,overlays,batches,tris,textured,wDraw,hDraw;
 static float uMin,uMax,vMin,vMax;
 static GSTEXTURE *loaded,*drawn;
@@ -215,7 +219,11 @@ static int rmWideScale(int x) {return x;}
 static int isHiddenArtworkCache(int *) {return hidden;}
 static theme_element_t *thmGetElemForItem(struct menu_list *,struct submenu_list *,theme_element_t *e) {return redirect?redirect:e;}
 static void *thmGetItemSource(struct menu_list *,struct submenu_list *) {return NULL;}
-static GSTEXTURE *getGameImageTexture(int *,void *,int *) {return loaded;}
+static float thmCoverAspect(const theme_element_t *) {return 0.0f;}
+static void thmCoverCropBegin(struct menu_list *,struct submenu_list *,GSTEXTURE *,float) {} // Cover Shape Mixed: no crop
+static void thmCoverCropEnd(void) {}
+static int rmCoverCropUV(GSTEXTURE *,float *) {return 0;}
+static GSTEXTURE *getGameImageTexture(int *,void *,submenu_item_t *) {return loaded;}
 static void rmDrawBlendedTriangles(GSTEXTURE *t,int count,const float *,const float *uv,const u64 *) {
  batches++;tris+=count;
  if(!t) {assert(uv==NULL);return;}
@@ -233,7 +241,7 @@ static void rmDrawOverlayPixmap(GSTEXTURE *,int,int,int,int w,int h,int,u64,GSTE
 @DRAWS@
 static void reset(void) {batches=tris=textured=0;drawn=NULL;uMin=vMin=1e9f;uMax=vMax=-1e9f;}
 int main(void) {
- struct menu_list *menu=NULL;struct submenu_list row={0};int cache=0;
+ struct menu_list *menu=NULL;struct submenu_list row={{NULL,0}};int cache=0;
  mutable_image_t image={&cache,NULL,NULL,NULL};theme_element_t elem={204,204,454,240,&image};
  GSTEXTURE portrait={128,256,(void *)1},square={256,256,(void *)1},empty={256,256,NULL};
  // Settled selection: rim ring, rounded fan cropped to the centre square, inner rim.

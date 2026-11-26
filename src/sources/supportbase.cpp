@@ -224,6 +224,19 @@ static void freeISOGameListCache(struct game_cache_list *cache)
 // drop it and every refresh would write it again (belomaxorka / YAOPL afe59be2).
 int sbListCacheReadOnly;
 
+// Cache Game List: set by sbListCacheFirstRead for the next sbReadList only. glcUsedModes holds the
+// pages that have had their one saved list this session, so Refresh, a replug or a delete reads the folders.
+static int sbListCacheTrust;
+static unsigned int glcUsedModes;
+
+void sbListCacheFirstRead(int mode, int bit)
+{
+    unsigned int m = 1u << mode;
+    // A BDM device whose driver is not classified (BDM_TYPE_UNKNOWN, -1) has no row: it reads its folders.
+    sbListCacheTrust = bit >= 0 && bit < 32 && ((gGameListCache >> bit) & 1) && !(glcUsedModes & m);
+    glcUsedModes |= m;
+}
+
 static int updateISOGameList(const char *path, const struct game_cache_list *cache, const struct game_list_t *head, int count)
 {
     char filename[256];
@@ -255,7 +268,7 @@ static int updateISOGameList(const char *path, const struct game_cache_list *cac
                 }
             }
         } else {
-            modified = 0;
+            modified = 1; // the folder was read and is empty now: drop the saved list below
         }
     } else {
         modified = ((head != NULL) && (count > 0)) ? 1 : 0;
@@ -369,6 +382,25 @@ static int scanForISO(char *path, char type, struct game_list_t **glist, struct 
 
     int cacheLoaded = loadISOGameListCache(path, &cache) == 0;
     int cacheHint = -1; // index of the last cache hit (queryISOGameListCache)
+
+    // Cache Game List: the saved rows, in the order a scan of the unchanged folder gives, without
+    // reading the folder. games.bin never holds folder rows, so folder browsing always reads it.
+    if (cacheLoaded && sbListCacheTrust && folderlist == NULL) {
+        for (int i = (int)cache.count - 1; i >= 0; i--) {
+            struct game_list_t *next = static_cast<game_list_t *>(malloc(sizeof(struct game_list_t)));
+            if (!next)
+                break; // Out of memory
+            memcpy(&next->gameinfo, &cache.games[i], sizeof(base_game_info_t));
+            next->gameinfo.name[ISO_GAME_NAME_MAX] = '\0';
+            next->gameinfo.startup[GAME_STARTUP_MAX] = '\0';
+            next->gameinfo.extension[ISO_GAME_EXTENSION_MAX] = '\0';
+            next->next = *glist;
+            *glist = next;
+            count++;
+        }
+        freeISOGameListCache(&cache);
+        return count;
+    }
 
     errno = 0; // so the failure branch reads THIS opendir's errno
     if ((dir = opendir(path)) != NULL) {
@@ -577,6 +609,7 @@ int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int
     else
         snprintf(path, sizeof(path), "%sDVD/%s", prefix, sub);
     dvdRet = scanForISO(path, SCECdPS2DVD, &dlist_head, folderlist);
+    sbListCacheTrust = 0; // one list only; see sbListCacheFirstRead
     if (dvdRet >= 0) {
         count = count < 0 ? dvdRet : count + dvdRet;
     }
@@ -792,7 +825,7 @@ u32 sbGetISO9660MaxLBA(const char *path)
     return maxLBA;
 }
 
-int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
+int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset, u64 imageBytes)
 {
     int result = -1, fd;
     char buffer[6];
@@ -805,7 +838,7 @@ int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
                     ((IOBuffer[0x00] == 1) && (!strncmp((char *)(&IOBuffer[0x01]), "CD001", 5)))) {
                     result = 0;
                 }
-            } else {
+            } else if (imageBytes == 0 || (u64)layer1_offset * 2048 + sizeof(buffer) <= imageBytes) {
                 if (lseek64(fd, (u64)layer1_offset * 2048, SEEK_SET) == (u64)layer1_offset * 2048) {
                     if ((read(fd, buffer, sizeof(buffer)) == sizeof(buffer)) &&
                         ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5)))) {
@@ -1488,8 +1521,8 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
             configSetStr(config, CONFIG_ITEM_FORMAT, "ISO");
         else if (!strcmp(game->extension, ".zso"))
             configSetStr(config, CONFIG_ITEM_FORMAT, "ZSO");
-        else if (isVcd)
-            configSetStr(config, CONFIG_ITEM_FORMAT, "VCD"); // VCD listing -> the VCD format glyph
+        else if (isVcd) // a UDPFS POPS/*.cue is listed as a VCD row: badge the file it is
+            configSetStr(config, CONFIG_ITEM_FORMAT, game->media == CUE_IMAGE_CUE ? "CUE" : "VCD");
         else if (cueImageFormat(game) != NULL)
             configSetStr(config, CONFIG_ITEM_FORMAT, cueImageFormat(game)); // Ember: the image it boots, not "ELF"
     } else if (game->format == GAME_FORMAT_USBLD)
@@ -2536,6 +2569,8 @@ static const char *sbProbeNeutrinoMc(void)
         "mc1:/neutrino/NEUTRINO.ELF",
         "mc0:NEUTRINO/NEUTRINO.ELF",
         "mc1:/NEUTRINO/NEUTRINO.ELF",
+        "mc0:/APPS/neutrino/neutrino.elf", // NHDDL's first memory-card spot
+        "mc1:/APPS/neutrino/neutrino.elf",
     };
     for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0])); i++) {
         if (sbFileExists(candidates[i]) && sbNeutrinoInstallComplete(candidates[i]))
@@ -2566,7 +2601,8 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
     // One deterministic policy for every launch:
     //   1) user-entered full path,
     //   2) the active game's device,
-    //   3) mc0:/mc1:.
+    //   3) mc0:/mc1:,
+    //   4) any other mounted BDM device, then mmce0:/mmce1: (not for an MX4SIO game).
     // A Memory Card or HDD (APA) choice from the retired picker was migrated into gNeutrinoPath at
     // config load; while that path is untouched, tier 1 also repeats the old picker's case variants.
     if (gNeutrinoPath[0] != '\0' &&
@@ -2592,7 +2628,33 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
             return mcHit;
     }
 
-    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1)\n");
+    // 4) Any other mounted BDM device, as NHDDL does (massX:/neutrino/neutrino.elf). Without it a game
+    // on MX4SIO with Neutrino only on the USB stick fell back to the OPL core. Mounted roots only: no
+    // device is started here. The handoff keeps this device's mount too (deinitEx's second mode).
+    for (int mode = BDM_MODE; mode <= BDM_MODE_LAST; mode++) {
+        const char *root = bdmModeMountedRoot(mode);
+        if (root == NULL || (activePrefix != NULL && !strncmp(activePrefix, root, strlen(root))))
+            continue; // not mounted, or the game's own device (tier 2 already looked there)
+        char rootDir[BDM_DEVICE_ROOT_MAX + 2]; // "massN:/", the form NHDDL probes
+        snprintf(rootDir, sizeof(rootDir), "%s/", root);
+        const char *otherHit = sbNeutrinoProbeGameDevice(rootDir);
+        if (otherHit != NULL)
+            return otherHit;
+    }
+    // ...and an MMCE card's own file system, as NHDDL does, except for a game on MX4SIO: NHDDL and NULD
+    // never use MMCE alongside MX4SIO (both on SIO2).
+    if (!bdmModeIsSIO2(host::app().pathToMode(activePrefix))) {
+        static const char *mmceRoots[] = {"mmce0:/", "mmce1:/"};
+        for (int i = 0; i < 2; i++) {
+            if (activePrefix != NULL && !strncmp(activePrefix, mmceRoots[i], 5))
+                continue; // the game's own card: tier 2 already looked there
+            const char *mmceHit = sbNeutrinoProbeGameDevice(mmceRoots[i]);
+            if (mmceHit != NULL)
+                return mmceHit;
+        }
+    }
+
+    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1 -> other devices)\n");
     return NULL;
 }
 

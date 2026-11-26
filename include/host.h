@@ -71,6 +71,7 @@ public:
     virtual void applyConfig(int themeID, int langID, int skipDeviceRefresh) = 0;
     virtual void initSupport(item_list_t *itemList, int mode, int forceReinit) = 0;
     virtual void moduleUpdateMenu(int mode, int themeChanged, int langChanged) = 0;
+    virtual void bootPageArrived(int mode) = 0; // a massN: page became visible (oplBootPageArrived)
     virtual int pathToMode(const char *path) = 0;
 
     virtual void setError(int strId, int error) = 0;
@@ -95,6 +96,7 @@ public:
     virtual int viewActive(int mode) = 0;
     virtual int consumeDirty(int mode) = 0;
     virtual void markDirty(int mode) = 0;
+    virtual int viewPending(int mode) = 0;
     virtual int listRowView(item_list_t *itemList, int id) = 0;
     virtual int listSourceId(item_list_t *itemList, int id) = 0;
     // Borrowed presentation text; caller holds the GUI frame lock. Never reads CFG files.

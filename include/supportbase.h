@@ -52,6 +52,13 @@ int sbCreateSemaphore(void);
 // Pass fsize=NULL for ISO-only scanning, without probing or updating UL-size state.
 int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int *fsize, int *gamecount);
 extern int sbListCacheReadOnly; // set around sbReadList() for a read-only device: its games.bin is not written
+// Cache Game List (game_list_cache, all off): a BDM device uses its BDM_TYPE_* number as its bit.
+#define GLC_MMCE  6
+#define GLC_ETH   7
+#define GLC_UDPFS 8
+// Call just before sbReadList(). When the device's bit is on, the first list of this page in a session
+// comes from the saved games.bin alone, without reading the CD/DVD folders. Later lists read them.
+void sbListCacheFirstRead(int mode, int bit);
 // errno of the last CD/DVD folder the latest sbReadList could not open (0 = both opened).
 int sbGetReadListError(void);
 // Folder browsing: set the active subpath the path composers inject (see sbBrowseSub in supportbase.c).
@@ -93,7 +100,10 @@ u32 sbGetISO9660MaxLBA(const char *path);
 // Real sector count of an image (upstream OPL #1763): the ZSO header's block count, else totalBytes / 2048.
 // 0 = unknown (unopenable, an unreadable ZSO header, or totalBytes 0), which keeps CDVDMAN on the PVD.
 u32 sbGetMediaLsnCount(const char *path, u64 totalBytes);
-int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset);
+// imageBytes: the plain image's size when known (0 = unknown). A layer-1 offset past it cannot hold a
+// descriptor, so the probe returns without the seek, which on FAT/exFAT walks the whole cluster chain.
+// A compressed (ZSO) image is recognised by its header and always probed.
+int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset, u64 imageBytes);
 
 int sbLoadCheats(const char *path, const char *file, config_set_t *configSet);
 // The cheats of a Neutrino launch whose leg skips the native preparation (BDM, APA): this game's cheat

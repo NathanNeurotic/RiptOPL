@@ -45,6 +45,7 @@
 #include "include/vcdsupport.h" // POPStarter pages: BDMA equip, list options, POPS net config
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/pggsm.h"
+#include "include/supportbase.h"
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/guigame.h"
@@ -1645,8 +1646,13 @@ static void guiSaveParentalLockValue(struct UIItem *ui)
     menuSetParentalLockCheckState(1);
 }
 
+// Cache Game List rows CFG_GLC_BDMHDD.. in order, and the game_list_cache bit each one sets.
+static const unsigned char glcRowBits[] = {BDM_TYPE_ATA, BDM_TYPE_USB, BDM_TYPE_SDC, BDM_TYPE_PCCF, BDM_TYPE_ILINK, BDM_TYPE_UDPBD, GLC_MMCE, GLC_ETH, GLC_UDPFS};
+
 static void guiSetAdvancedSettings(struct UIItem *ui)
 {
+    for (int i = 0; i < (int)sizeof(glcRowBits); i++)
+        diaSetInt(ui, CFG_GLC_BDMHDD + i, (gGameListCache >> glcRowBits[i]) & 1);
     diaSetString(ui, CFG_BDMPREFIX, gBDMPrefix);
     diaSetString(ui, CFG_ETHPREFIX, gETHPrefix);
     diaSetInt(ui, CFG_HDDSPINDOWN, gHDDSpindown);
@@ -1664,6 +1670,11 @@ static void guiSaveAdvancedSettings(struct UIItem *ui)
     sanitizePrefix(gETHPrefix);
     diaGetInt(ui, CFG_HDDSPINDOWN, &gHDDSpindown);
     diaGetInt(ui, CFG_HDDGAMELISTCACHE, &gHDDGameListCache);
+    for (int i = 0; i < (int)sizeof(glcRowBits); i++) {
+        int on;
+        if (diaGetInt(ui, CFG_GLC_BDMHDD + i, &on)) // a row a RiptOPLite build leaves out keeps its bit
+            gGameListCache = on ? gGameListCache | (1 << glcRowBits[i]) : gGameListCache & ~(1 << glcRowBits[i]);
+    }
     diaGetInt(ui, CFG_BDMCACHE, &bdmCacheSize);
     diaGetInt(ui, CFG_HDDCACHE, &hddCacheSize);
     diaGetInt(ui, CFG_SMBCACHE, &smbCacheSize);
@@ -2929,6 +2940,9 @@ static int guiSettingsShowTheme(void)
     diaSetInt(ui, UICFG_THEME, previousTheme);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_COVERART, gEnableArt);
+    static const char *coverShapeNames[] = {"Mixed", "PS2", "PS1", "APP", NULL};
+    diaSetEnum(ui, UICFG_COVER_SHAPE, coverShapeNames);
+    diaSetInt(ui, UICFG_COVER_SHAPE, gCoverShape);
     diaSetInt(ui, UICFG_ENABLE_DISCART, gEnableDiscArt);
     diaSetInt(ui, UICFG_ENABLE_LOGOART, gEnableLogoArt);
     diaSetInt(ui, UICFG_ENABLE_BGART, gEnableBGArt);
@@ -2964,6 +2978,7 @@ static int guiSettingsShowTheme(void)
         int themeID = previousTheme;
         diaGetInt(ui, UICFG_THEME, &themeID);
         diaGetInt(ui, UICFG_COVERART, &gEnableArt);
+        diaGetInt(ui, UICFG_COVER_SHAPE, &gCoverShape); // read as each cover draws: nothing to rebuild
         diaGetInt(ui, UICFG_ENABLE_DISCART, &gEnableDiscArt);
         diaGetInt(ui, UICFG_ENABLE_LOGOART, &gEnableLogoArt);
         diaGetInt(ui, UICFG_ENABLE_BGART, &gEnableBGArt);

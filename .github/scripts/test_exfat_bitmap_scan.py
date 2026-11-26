@@ -1,4 +1,4 @@
-"""The exFAT free-cluster scan steps over fully used bitmap bytes and still finds what the plain scan finds."""
+"""The exFAT free-cluster scan steps over fully used bitmap bytes and sectors and still finds what the plain scan finds."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -8,6 +8,8 @@ ff = (root / 'modules/bdm/bdmfs_fatfs/fatfs/ff.c').read_text()
 start = ff.index('static DWORD find_bitmap (')
 function = ff[start:ff.index('\n}\n', start) + 3]
 assert 'fs->win[i] == 0xFF' in function, 'the scan must step over a fully used byte'
+assert 'disk_read(fs->pdrv, (BYTE*)bulk' in function, 'the scan must read ahead and step over fully used sectors'
+assert 'sync_window(fs)' in function, 'a changed window must reach the drive before the scan reads around it'
 assert 'find_bitmap' in (root / 'modules/bdm/bdmfs_fatfs/ORIGIN.txt').read_text(), 'ORIGIN.txt must list the local change'
 
 HARNESS = r'''
@@ -20,15 +22,40 @@ typedef unsigned int UINT;
 typedef uint32_t DWORD;
 typedef uint32_t LBA_t;
 typedef int FRESULT;
+typedef int DRESULT;
 #define FR_OK 0
+#define RES_OK 0
+#define RES_ERROR 1
+#define FF_MAX_SS 512
 #define SS(fs) 512U
-typedef struct { DWORD n_fatent; LBA_t bitbase; BYTE win[512]; } FATFS;
-#define MAXCL 12000
+typedef struct { BYTE pdrv; BYTE wflag; DWORD n_fatent; LBA_t bitbase; LBA_t winsect; BYTE win[512]; } FATFS;
+#define MAXCL 400000
+#define SMALLCL 12000
+/* What is on the drive. The window may hold one sector that is newer than the drive (wflag). */
 static BYTE bitmap[MAXCL / 8 + 1024];
-static unsigned long windows;
+static unsigned long requests;
+static int fail_bulk;
+static FRESULT sync_window(FATFS *fs) {
+    if (fs->wflag) {
+        memcpy(bitmap + (size_t)(fs->winsect - fs->bitbase) * 512, fs->win, 512);
+        fs->wflag = 0;
+    }
+    return FR_OK;
+}
+static DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sect, UINT count) {
+    (void)pdrv;
+    requests++;
+    if (count > 1 && fail_bulk) return RES_ERROR;
+    if ((size_t)(sect - 7) * 512 + (size_t)count * 512 > sizeof(bitmap)) { printf("read past the bitmap\n"); exit(1); }
+    memcpy(buff, bitmap + (size_t)(sect - 7) * 512, (size_t)count * 512);
+    return RES_OK;
+}
 static FRESULT move_window(FATFS *fs, LBA_t sect) {
-    windows++;
-    memcpy(fs->win, bitmap + (size_t)(sect - fs->bitbase) * 512, 512);
+    if (sect != fs->winsect) {
+        sync_window(fs);
+        if (disk_read(fs->pdrv, fs->win, sect, 1) != RES_OK) return 1;
+        fs->winsect = sect;
+    }
     return FR_OK;
 }
 FIND_BITMAP
@@ -59,7 +86,11 @@ int main(void) {
     static FATFS fs;
     int t;
     for (t = 0; t < 60000; t++) {
-        DWORD n = 1 + rnd() % (t % 7 ? 300 : MAXCL - 1); /* clusters on the volume */
+        DWORD n = 1 + rnd() % (t % 97 == 0 ? MAXCL - 1 : t % 7 ? 300 : SMALLCL - 1); /* clusters on the volume */
+        unsigned long fast, slow;
+        DWORD dirty_at;
+        if (t % 97 == 0 && t % 2) n = 4096 * (1 + rnd() % 97); /* the volume ends exactly on a bitmap sector */
+        if (t % 97 == 1) n = 4096 * (1 + rnd() % 8) + (rnd() % 3) - 1;
         unsigned free_per_1024 = (t % 5 == 0) ? 0 : (t % 5 == 1) ? 2 : (t % 5 == 2) ? 40 : (t % 5 == 3) ? 500 : 1000;
         DWORD c, clst, ncl, a, b;
         memset(bitmap, 0xFF, sizeof(bitmap));
@@ -70,12 +101,40 @@ int main(void) {
             DWORD at = rnd() % (n - 40), len = 1 + rnd() % 40;
             for (c = at; c < at + len; c++) bitmap[c / 8] &= (BYTE)~(1u << (c % 8));
         }
+        if (t & 1) { /* what lies past the last cluster is not the scan's to read: make it look free */
+            for (c = n; c < n + 8 - n % 8 && c % 8; c++) bitmap[c / 8] &= (BYTE)~(1u << (c % 8));
+            memset(bitmap + (n + 7) / 8, 0, sizeof(bitmap) - (n + 7) / 8);
+        }
         fs.n_fatent = n + 2;
         fs.bitbase = 7;
         clst = (t % 11 == 0) ? 0xFFFFFFFF : (t % 11 == 1) ? 1 : 2 + rnd() % (n + 3);
         ncl = (t % 4) ? 1 : 1 + rnd() % 64;
+        if (t % 13 == 0 && n > 8) { /* a byte or sector boundary right where the scan starts and ends */
+            clst = 2 + ((rnd() % n) & ~7u);
+            if (t % 26 == 0) clst = 2 + ((rnd() % n) & ~4095u);
+        }
+        fail_bulk = (t % 17 == 0); /* a read-ahead that fails leaves the plain scan to do the work */
+        /* A cluster freed a moment ago is in the window only, as after remove_chain: the drive still says "in use". */
+        dirty_at = rnd() % n;
+        fs.winsect = fs.bitbase + dirty_at / 8 / 512;
+        memcpy(fs.win, bitmap + (size_t)(dirty_at / 8 / 512) * 512, 512);
+        fs.wflag = 0;
+        if (t % 4 == 1) {
+            bitmap[dirty_at / 8] |= (BYTE)(1u << (dirty_at % 8));
+            fs.win[dirty_at / 8 % 512] &= (BYTE)~(1u << (dirty_at % 8));
+            fs.wflag = 1;
+        }
+        requests = 0;
         a = find_bitmap(&fs, clst, ncl);
+        fast = requests;
+        sync_window(&fs);
+        requests = 0;
         b = plain(&fs, clst, ncl);
+        slow = requests;
+        if (fast > 2 * slow + 4) {
+            printf("too many reads: t=%d n=%u clst=%u ncl=%u fast=%lu plain=%lu\n", t, n, clst, ncl, fast, slow);
+            return 1;
+        }
         if (a != b) {
             printf("mismatch: n=%u clst=%u ncl=%u got=%u want=%u\n", n, clst, ncl, a, b);
             return 1;
@@ -97,6 +156,18 @@ int main(void) {
             }
         }
     }
+    /* The case the read-ahead is for: a full volume with its only free cluster at the end. */
+    {
+        DWORD n = MAXCL - 1, a;
+        memset(bitmap, 0xFF, sizeof(bitmap));
+        bitmap[(n - 1) / 8] &= (BYTE)~(1u << ((n - 1) % 8));
+        fs.n_fatent = n + 2; fs.bitbase = 7; fs.winsect = 0xFFFFFFFF; fs.wflag = 0; fail_bulk = 0;
+        requests = 0;
+        a = find_bitmap(&fs, 0xFFFFFFFF, 1);
+        if (a != n - 1 + 2) { printf("full volume: got %u\n", a); return 1; }
+        printf("full volume of %u clusters: %lu read requests, one per sector is %u\n", n, requests, n / 4096 + 1);
+        if (requests > n / 4096 / 8) { printf("the read-ahead did not cut the requests\n"); return 1; }
+    }
     return 0;
 }
 '''
@@ -106,5 +177,5 @@ with tempfile.TemporaryDirectory() as tmp:
     src.write_text(HARNESS.replace('FIND_BITMAP', function))
     exe = Path(tmp) / 'scan'
     subprocess.run(['cc', '-O1', '-Wall', '-Werror', '-o', str(exe), str(src)], check=True)
-    subprocess.run([str(exe)], check=True, timeout=120)
-print('exFAT bitmap scan: fast path matches the plain scan; every run found is real and inside the volume')
+    subprocess.run([str(exe)], check=True, timeout=300)
+print('exFAT bitmap scan: byte and sector steps match the plain scan; every run found is real and inside the volume')

@@ -1603,18 +1603,112 @@ static int ata_bd_read(struct block_device *bd, u64 sector, void *buffer, u16 co
    partition entry, a misparsed boot sector or a bug, and on a 512e drive LBA 0-7 is one physical
    sector: losing it makes the whole disk read as unformatted. So a write below the first APA user
    partition is refused when LBA 0 carries the APA magic, or when LBA 0 cannot be read to prove it
-   does not. See docs/APA-SAFETY.md. */
+   does not. See docs/APA-SAFETY.md.
+
+   One exception, a disk that was PS2 formatted once and then given an MBR and a FAT/exFAT volume by a
+   PC tool that kept the first bytes of sector 0: the APA magic is still there, but the disk is no
+   longer APA. wOPL, which has no fence, writes to such a volume normally. The write is let through
+   only when every one of these holds, and refused otherwise:
+   - the APA header in LBA 0-1 fails its own checksum (the tool's MBR overwrote part of it), so ps2hdd
+     would not read this disk as APA either; a valid header (a real APA disk, or APA-Jail) is refused
+   - LBA 0 has the MBR signature and exactly one FAT/exFAT entry holds the whole write, starting at
+     LBA 8 or later (outside the physical sector holding LBA 0-7), overlapping no other entry
+   - that entry's first sector is a FAT/exFAT boot sector of 512-byte sectors whose volume fits in the
+     entry, and the write lies inside the volume as well */
 #define ATA_BD_APA_RESERVED_SECTORS (1024 * 256)
+#define ATA_BD_TABLE_SECTORS        8
+
+static u32 ata_bd_le32(const u8 *p)
+{
+    return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
+}
+
+// The APA header's own check (apaCheckSum): the sum of words 1-255 equals word 0.
+static int ata_bd_apa_checksum_ok(const u8 *header)
+{
+    u32 sum = 0;
+    unsigned int i;
+
+    for (i = 1; i < 256; i++)
+        sum += ata_bd_le32(header + i * 4);
+    return sum == ata_bd_le32(header);
+}
+
+// Sectors of the FAT/exFAT volume whose boot sector is bs, 0 if bs is not one (or not 512-byte sectors).
+static u64 ata_bd_fat_volume_sectors(const u8 *bs)
+{
+    if (bs[510] != 0x55 || bs[511] != 0xAA)
+        return 0;
+    if (memcmp(bs + 3, "EXFAT   ", 8) == 0)
+        return (bs[108] == 9 && bs[105] == 1 && (bs[110] == 1 || bs[110] == 2)) ? // 512-byte sectors, revision 1.x, 1 or 2 FATs
+                   ((u64)ata_bd_le32(bs + 72) | ((u64)ata_bd_le32(bs + 76) << 32)) :
+                   0;
+    if ((bs[0] == 0xEB || bs[0] == 0xE9) && bs[11] == 0x00 && bs[12] == 0x02 &&
+        (memcmp(bs + 54, "FAT", 3) == 0 || memcmp(bs + 82, "FAT32   ", 8) == 0)) {
+        u32 total = (u32)bs[19] | ((u32)bs[20] << 8);
+        return total != 0 ? total : ata_bd_le32(bs + 32);
+    }
+    return 0;
+}
+
+static int ata_bd_mbr_type_is_fat(u8 type)
+{
+    return type == 0x01 || type == 0x04 || type == 0x06 || type == 0x07 || type == 0x0B || type == 0x0C || type == 0x0E;
+}
+
+// 1 when [sector, sector + count) is inside a FAT/exFAT volume of a disk that only looks APA (above).
+static int ata_bd_write_in_stale_apa_fat_volume(int device, const u8 *table, u64 sector, u16 count)
+{
+    static u8 bs[512] __attribute__((aligned(4)));
+    const u8 *hit = NULL;
+    u64 hit_start = 0, hit_end = 0, end = sector + count, volume;
+    unsigned int i, j;
+
+    if (ata_bd_apa_checksum_ok(table) || table[510] != 0x55 || table[511] != 0xAA)
+        return 0;
+    for (i = 0; i < 4; i++) {
+        const u8 *e = table + 446 + i * 16;
+        u64 start = ata_bd_le32(e + 8), size = ata_bd_le32(e + 12);
+
+        if (e[4] == 0 || size == 0)
+            continue;
+        for (j = i + 1; j < 4; j++) {
+            const u8 *o = table + 446 + j * 16;
+            u64 ostart = ata_bd_le32(o + 8), osize = ata_bd_le32(o + 12);
+
+            if (o[4] != 0 && osize != 0 && ostart < start + size && start < ostart + osize)
+                return 0; // overlapping entries: the table cannot be trusted
+        }
+        if (sector >= start && end <= start + size) {
+            if (hit != NULL)
+                return 0;
+            hit = e;
+            hit_start = start;
+            hit_end = start + size;
+        }
+    }
+    if (hit == NULL || (hit[0] != 0x00 && hit[0] != 0x80) || !ata_bd_mbr_type_is_fat(hit[4]) ||
+        hit_start < ATA_BD_TABLE_SECTORS)
+        return 0;
+    if (ata_device_sector_io64(device, bs, hit_start, 1, ATA_DIR_READ) != 0)
+        return 0;
+    volume = ata_bd_fat_volume_sectors(bs);
+    if (volume == 0 || volume > hit_end - hit_start)
+        return 0;
+    return end <= hit_start + volume;
+}
 
 static int ata_bd_write_hits_apa_reserved(int device, u64 sector, u16 count)
 {
-    static u8 lba0[512] __attribute__((aligned(4))); // a DMA target, like every other buffer here
+    static u8 table[1024] __attribute__((aligned(4))); // LBA 0-1, a DMA target like every other buffer here
 
     if (count == 0 || sector >= ATA_BD_APA_RESERVED_SECTORS)
         return 0;
-    if (ata_device_sector_io64(device, lba0, 0, 1, ATA_DIR_READ) != 0)
+    if (ata_device_sector_io64(device, table, 0, 2, ATA_DIR_READ) != 0)
         return 1;
-    return lba0[4] == 'A' && lba0[5] == 'P' && lba0[6] == 'A' && lba0[7] == 0;
+    if (!(table[4] == 'A' && table[5] == 'P' && table[6] == 'A' && table[7] == 0))
+        return 0;
+    return !ata_bd_write_in_stale_apa_fat_volume(device, table, sector, count);
 }
 
 static int ata_bd_write(struct block_device *bd, u64 sector, const void *buffer, u16 count)

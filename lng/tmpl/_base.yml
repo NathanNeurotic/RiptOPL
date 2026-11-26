@@ -2818,3 +2818,25 @@ gui_strings:
   string: RetroAchievements Off
 - label: HINT_RA_GAME_OFF
   string: Launch this game without RetroAchievements. The game starts as it does with RetroAchievements switched off. Other games keep it.
+- comment: Advanced page heading. The device rows below it (Internal HDD (exFAT), USB, MMCE and the rest) each turn it on for that device.
+  label: CACHE_GAME_LIST
+  string: Cache Game List
+- label: HINT_GAMELISTCACHE
+  string: "Off by default. On: at start-up this device shows the game list it saved last time without reading its game folders. SELECT reads them again. Not used while folder browsing is on, except on the network."
+- comment: Advanced page row indented under Cache Game List. Keep the six leading spaces.
+  label: GLC_UDPBD
+  string: "      UDPBD"
+- comment: Advanced page row indented under Cache Game List. Keep the six leading spaces.
+  label: GLC_MMCE
+  string: "      MMCE"
+- comment: "Advanced page row indented under Cache Game List, the SMB or NFS game share. Keep the six leading spaces."
+  label: GLC_NETWORK
+  string: "      Network (SMB/NFS)"
+- comment: Advanced page row indented under Cache Game List. Keep the six leading spaces.
+  label: GLC_UDPFS
+  string: "      UDPFS"
+- comment: Theme Settings row. Its choices are Mixed, PS2, PS1 and APP (not translated).
+  label: COVER_SHAPE
+  string: Cover Shape
+- label: HINT_COVER_SHAPE
+  string: "Mixed draws each cover in its own box. PS2, PS1 or APP draws every cover in that box, the art cropped to fit: in PS2, PS1 art loses its logo strip on the left; in PS1, PS2 art loses its logo band on top."

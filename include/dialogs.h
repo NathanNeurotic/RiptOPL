@@ -352,6 +352,7 @@ enum UI_ITEMS {
     UICFG_SHOW_LEGEND,
     UICFG_WALLPAPER,
     UICFG_AMBIENT_EFFECTS,
+    UICFG_COVER_SHAPE,
     UICFG_SEL_COLOR, // Selection: Colored, Cursor, Highlight -- kept in SEL_STYLE_* bit order
     UICFG_SEL_CURSOR,
     UICFG_SEL_HIGHLIGHT,
@@ -413,6 +414,18 @@ enum UI_ITEMS {
 #endif
     COMPAT_ILINK_ID = 280, // Reserved beyond the compatibility-mode rows; preserve existing IDs.
     COMPAT_RA_DISABLE,     // 281, RA builds: RetroAchievements off for this game ($RADisable)
+
+    // Advanced page, Cache Game List rows (one per device; game_list_cache bits). Appended last so no
+    // earlier id moves.
+    CFG_GLC_BDMHDD,
+    CFG_GLC_USB,
+    CFG_GLC_MX4SIO,
+    CFG_GLC_PCCF,
+    CFG_GLC_ILINK,
+    CFG_GLC_UDPBD,
+    CFG_GLC_MMCE,
+    CFG_GLC_ETH,
+    CFG_GLC_UDPFS,
 };
 
 constexpr int COMPAT_NOEXIT = 0x70000000;

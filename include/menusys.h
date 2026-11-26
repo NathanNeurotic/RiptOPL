@@ -85,6 +85,9 @@ typedef struct menu_item
 
     short remindLast;
 
+    /// the theme load (theme_t::artGeneration) this page was last filled for (menuRenderMain)
+    unsigned int page_gen;
+
     void (*refresh)(struct menu_item *curMenu);
 
     void (*execCross)(struct menu_item *curMenu);
@@ -152,6 +155,9 @@ void menuSaveSettingsAndRestart(void);
 void menuRequestInfoSize(void);
 
 void menuRenderMain();
+// The game launch animation: the selected game's cover in the middle of the screen with its name under it, `in`
+// of the way in (0..1). Draws nothing and returns 0 when its cover is not in memory; never asks for a load.
+int menuRenderLaunchCover(float in);
 void menuRenderMenu();
 void menuRenderInfo();
 void menuRenderGameMenu();

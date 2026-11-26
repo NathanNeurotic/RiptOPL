@@ -227,6 +227,8 @@ DEFERRED_HARNESS = r'''
 #define APP_MODE 10
 #define FAV_MODE 11
 #define MODE_COUNT 12
+#define BDM_MODE 2
+#define BDM_MODE_LAST 9
 
 typedef struct item_list item_list_t;
 struct item_list { short mode; int enabled; };
@@ -241,6 +243,8 @@ static int needs, pendingView, appsQueued, favLoads, rebuilds;
 static int needsUpdate(item_list_t *l) { (void)l; return needs; }
 static void updateMenuFromGameList(opl_io_module_t *m) { (void)m; rebuilds++; pendingView = 0; }
 static int libViewPending(int mode) { (void)mode; return pendingView; }
+static int ps1RetryPass; /* the BDM pass that just ran was only the PS1 retry */
+static int bdmLastPassWasPs1Retry(const item_list_t *l) { (void)l; return ps1RetryPass; }
 static int ioPutRequestUnlessWaiting(int type, void *data) { if (type == IO_MENU_UPDATE_DEFFERED && data == &list_support[APP_MODE].support->mode) appsQueued++; return 0; }
 #define ioPutRequest ioPutRequestUnlessWaiting /* either spelling counts as queuing (--baseline runs) */
 static void loadFavourites(void) { favLoads++; }
@@ -280,6 +284,11 @@ int main(void)
         printf("FAIL L3 flip: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
         failed = 1;
     }
+    ps1RetryPass = 1; run(&bdm, 1, 0); ps1RetryPass = 0; /* a BDM PS1 retry pass: PS1 folders only */
+    if (rebuilds != 1 || appsQueued != 0 || gShouldAppsUpdate || favLoads != 1) {
+        printf("FAIL PS1 retry: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
+        failed = 1;
+    }
     run(&apps, 1, 0); /* APPS itself never re-queues APPS */
     if (appsQueued != 0) { printf("FAIL APPS rebuild queued another APPS rebuild\n"); failed = 1; }
     run(&fav, 1, 0);  /* FAV never re-syncs itself */
@@ -291,7 +300,7 @@ int main(void)
     }
     if (deferredUnlocked || guiLocks) { printf("FAIL deferred ops ran without the GUI lock (%d) or left it held (%d)\n", deferredUnlocked, guiLocks); failed = 1; }
     if (!failed)
-        printf("io queue: an L3 flip skips the APPS rebuild, keeps the Favourites re-sync\n");
+        printf("io queue: an L3 flip and a BDM PS1 retry skip the APPS rebuild, keep the Favourites re-sync\n");
     return failed;
 }
 '''

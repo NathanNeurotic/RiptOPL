@@ -14,6 +14,7 @@
 #include "include/pad.h"
 #include "include/sound.h"
 #include "include/texcache.h"
+#include "include/coverglide.h"
 #include "include/favsupport.h"
 #include "include/gamesource.h"
 #include "include/grid.h"
@@ -1203,6 +1204,24 @@ static GSTEXTURE *getGameImageCached(image_cache_t *cache, struct submenu_item *
     return cacheLookupTexture(cache, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()]);
 }
 
+GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row)
+{
+    struct submenu_item *item = &row->item;
+    for (theme_element_t *elem = family->first; elem != NULL; elem = elem->next) {
+        const mutable_image_t *image = NULL;
+        if (elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_COVERFLOW || elem->type == ELEM_TYPE_PSBBN_FLOW || elem->type == ELEM_TYPE_GRID)
+            image = (const mutable_image_t *)thmGetElemForItem(menu, row, elem)->extended; // the row's own cover, as drawn
+        else if (elem->type == ELEM_TYPE_ITEMS_LIST && elem->extended != NULL)
+            image = ((const items_list_t *)elem->extended)->decoratorImage;
+        if (image == NULL || image->cache == NULL || image->cache->suffix() == NULL || strcmp(image->cache->suffix(), "COV") != 0)
+            continue;
+        GSTEXTURE *cover = getGameImageCached(image->cache, item);
+        if (cover != NULL && cover->Mem != NULL)
+            return cover;
+    }
+    return NULL;
+}
+
 // Frames past the art delay that a Background keeps showing the previous game's art while the selected one has not
 // been requested yet (the Coverflow gate above can hold the BG request back until the cover settles).
 #define BG_HOLD_GRACE_FRAMES 30
@@ -1450,6 +1469,9 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
 
         if (isBackground)
             texture = holdLastBackground(gameImage, menu, &item->item, texture, !coverflowCoverSettled);
+        // Cover Shape crops a game's cover art (COV), not its placeholder and not its other pictures.
+        int isCover = !isBackground && texture != NULL && texture->Mem != NULL && gameImage->cache->suffix() != NULL &&
+                      !strcmp(gameImage->cache->suffix(), "COV");
 
         if (!texture || !texture->Mem) {
             // Keep the configured/default cover visible when art is absent. This is also the
@@ -1465,6 +1487,39 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
             }
         }
 
+        if (isCover)
+            thmCoverCropBegin(menu, item, texture, thmCoverAspect(drawElem));
+
+        // The game's cover picture (a list layout's) takes part in a hold L3 layout switch (coverglide.h): while it is on
+        // its way it is drawn at its box, centred, the case frame's corners scaled with it.
+        if (!isBackground && drawElem->type == ELEM_TYPE_GAME_IMAGE && gameImage->cache->suffix() != NULL &&
+            !strcmp(gameImage->cache->suffix(), "COV") && drawElem->width > 0 && drawElem->height > 0) {
+            int ratio = drawElem->scaled & SCALING_RATIO, dw = ratio ? rmWideScale(drawElem->width) : drawElem->width, dh = drawElem->height;
+            float cx = drawElem->posX, cy = drawElem->posY;
+            if (!(drawElem->aligned & ALIGN_HCENTER))
+                cx += (drawElem->aligned & ALIGN_RIGHT) ? -dw / 2 : dw / 2;
+            if (!(drawElem->aligned & ALIGN_VCENTER))
+                cy += (drawElem->aligned & ALIGN_BOTTOM) ? -dh / 2 : dh / 2;
+            glide_box_t at = {cx, cy, ratio ? (float)drawElem->width : (float)drawElem->width * 1000 / rmWideScale(1000), (float)dh};
+            glide_box_t to = at;
+            int alpha = coverGlide(item->item.text, item->item.id, 0, &at);
+            if (alpha < 0x80 || at.x != to.x || at.y != to.y || at.w != to.w || at.h != to.h) {
+                int x = (int)at.x, y = (int)at.y, w = (int)at.w, h = (int)at.h, ew = drawElem->width, eh = drawElem->height;
+                u64 color = (gDefaultCol & ~(0xffULL << 24)) | ((u64)alpha << 24);
+                image_texture_t *ov = gameImage->overlayTexture;
+                if (ov) {
+                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, ov->upperLeft_x * w / ew,
+                                        ov->upperLeft_y * h / eh, ov->upperRight_x * w / ew, ov->upperRight_y * h / eh, ov->lowerLeft_x * w / ew,
+                                        ov->lowerLeft_y * h / eh, ov->lowerRight_x * w / ew, ov->lowerRight_y * h / eh, 0);
+                    if (gameImage->overlayTexture2)
+                        rmDrawPixmap(&gameImage->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                } else
+                    rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                thmCoverCropEnd();
+                return;
+            }
+        }
+
         if (gameImage->overlayTexture) {
             rmDrawOverlayPixmap(&gameImage->overlayTexture->source, drawElem->posX, drawElem->posY, drawElem->aligned, drawElem->width, drawElem->height, drawElem->scaled, gDefaultCol,
                                 texture, gameImage->overlayTexture->upperLeft_x, gameImage->overlayTexture->upperLeft_y, gameImage->overlayTexture->upperRight_x, gameImage->overlayTexture->upperRight_y,
@@ -1473,6 +1528,7 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
                 rmDrawPixmap(&gameImage->overlayTexture2->source, drawElem->posX, drawElem->posY, drawElem->aligned, drawElem->width, drawElem->height, drawElem->scaled, gDefaultCol, 0);
         } else
             rmDrawPixmap(texture, drawElem->posX, drawElem->posY, drawElem->aligned, drawElem->width, drawElem->height, drawElem->scaled, gDefaultCol, 0);
+        thmCoverCropEnd();
 
 #ifdef RETROACHIEVEMENTS
         /* The RA mark over the cover of a tracked game. Only elements whose pattern is
@@ -1611,6 +1667,47 @@ static theme_elems_t *thmFavKindFamily(theme_element_t *elem, int isApp)
     return family->first != NULL ? family : NULL;
 }
 
+// The art a row's cover is: ART_PS2, ART_PS1 or ART_APP, or -1 for a folder or no list.
+enum { ART_PS2 = 0,
+       ART_PS1,
+       ART_APP };
+static int thmRowArt(struct menu_list *menu, struct submenu_list *item)
+{
+    if (item == NULL || item->item.isFolder)
+        return -1;
+    item_list_t *menuList = (item_list_t *)menu->item->userdata;
+    if (menuList == NULL)
+        return -1;
+    // Favourites also consults the record's SOURCE device: an app favourite stored before the ELF
+    // shelf existed still resolves to the apps box, exactly as it did when this hook was apps-only.
+    int rowView = libListRowView(menuList, item->item.id);
+    if (rowView == LIB_VIEW_ELF || rowView == LIB_VIEW_PS1_ELF || (menuList->mode == FAV_MODE && favGetItemSourceMode(item->item.id) == APP_MODE))
+        return ART_APP;
+    return rowView == LIB_VIEW_PS1 ? ART_PS1 : ART_PS2;
+}
+
+// The box every cover takes under Cover Shape (ART_*), or -1 for Mixed: each cover its own kind's.
+static int thmShapeArt(void)
+{
+    return gCoverShape >= COVER_SHAPE_PS2 && gCoverShape <= COVER_SHAPE_APP ? gCoverShape - COVER_SHAPE_PS2 : -1;
+}
+
+// The PS2 family on the same screen half for an element of a PS1 or app family, or NULL when the element is in a
+// PS2 one already (Cover Shape PS2 then has nothing to redirect).
+static theme_elems_t *thmPs2Family(theme_element_t *elem)
+{
+    theme_elems_t *f = elem->family;
+    if (f == &gTheme->vcdMainElems || f == &gTheme->appsMainElems)
+        return &gTheme->mainElems;
+    if (f == &gTheme->vcdInfoElems || f == &gTheme->appsInfoElems)
+        return &gTheme->infoElems;
+    if (f == &gTheme->favsVcdMainElems || f == &gTheme->favsAppsMainElems)
+        return &gTheme->favsMainElems;
+    if (f == &gTheme->favsVcdInfoElems || f == &gTheme->favsAppsInfoElems)
+        return &gTheme->favsInfoElems;
+    return NULL;
+}
+
 // Element to DRAW a submenu item's COVER with. A page as a whole renders with one family
 // (menuRenderMain / menuGetInfoElems switch the element set per mode), which is right for the
 // background, the texts and the items list -- they belong to the page, not to any one row. The
@@ -1626,25 +1723,35 @@ static theme_elems_t *thmFavKindFamily(theme_element_t *elem, int isApp)
 // are unchanged. Matching is by cover-cache suffix, so a family that defines no counterpart element
 // (or a theme using a different pattern) falls through to the caller's element as before.
 //
+// Cover Shape other than Mixed puts every row in that one kind's box instead, its art cropped to the box at draw
+// time (thmCoverCropBegin): PS2 sends PS1 and app rows to the PS2 family, PS1 or APP sends every row to that family.
+//
 // Single chokepoint for the selected-cover panel (drawGameImage), the coverflow carousel and the
 // items-list cover warming. Only the ELEMENT is redirected -- geometry, case overlay, placeholder
 // and cover cache; the texture lookup stays on the page's own list, so art resolution, the
 // Favourites index proxying and per-row art gating are all untouched.
 theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem)
 {
-    if (item == NULL || elem == NULL || item->item.isFolder)
+    if (elem == NULL)
+        return elem;
+    int art = thmRowArt(menu, item), shape = thmShapeArt();
+    if (art < 0)
         return elem;
     item_list_t *menuList = (item_list_t *)menu->item->userdata;
-    if (menuList == NULL)
-        return elem;
-
-    // Favourites also consults the record's SOURCE device: an app favourite stored before the ELF
-    // shelf existed still resolves to the apps box, exactly as it did when this hook was apps-only.
-    int rowView = libListRowView(menuList, item->item.id);
-    int isApp = rowView == LIB_VIEW_ELF || rowView == LIB_VIEW_PS1_ELF ||
-                (menuList->mode == FAV_MODE && favGetItemSourceMode(item->item.id) == APP_MODE);
-    if (!isApp && rowView != LIB_VIEW_PS1)
-        return elem;
+    mutable_image_t *cimg = (mutable_image_t *)elem->extended;
+    if (cimg == NULL || cimg->cache == NULL || cimg->cache->suffix() == NULL || strcmp(cimg->cache->suffix(), "COV") != 0)
+        shape = -1; // Cover Shape moves covers only: a disc icon, logo or screenshot keeps its row kind's element
+    if (shape >= 0)
+        art = shape;
+    if (art == ART_PS2) {
+        theme_elems_t *ps2 = shape >= 0 ? thmPs2Family(elem) : NULL; // Mixed: a PS2 row keeps the page's element
+        mutable_image_t *pimg = (mutable_image_t *)elem->extended;
+        if (ps2 == NULL || pimg == NULL || pimg->cache == NULL)
+            return elem;
+        theme_element_t *ps2Elem = thmFindElemBySuffix(ps2, pimg->cache->suffix(), elem);
+        return ps2Elem != NULL ? ps2Elem : elem;
+    }
+    int isApp = art == ART_APP;
 
     mutable_image_t *img = (mutable_image_t *)elem->extended;
 
@@ -1676,6 +1783,42 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
         return elem;
     theme_element_t *kindElem = thmFindElemBySuffix(family, img->cache->suffix(), elem);
     return (kindElem != NULL) ? kindElem : elem;
+}
+
+// The box's width / height an element draws a cover in: its case overlay's cover window, else the element; 0 unknown.
+float thmCoverAspect(const theme_element_t *coverElem)
+{
+    const mutable_image_t *image = (const mutable_image_t *)coverElem->extended;
+    const image_texture_t *ov = image != NULL ? image->overlayTexture : NULL;
+    int w = coverElem->width, h = coverElem->height;
+    if (ov != NULL) {
+        int l = ov->upperLeft_x < ov->lowerLeft_x ? ov->upperLeft_x : ov->lowerLeft_x;
+        int r = ov->upperRight_x > ov->lowerRight_x ? ov->upperRight_x : ov->lowerRight_x;
+        int t = ov->upperLeft_y < ov->upperRight_y ? ov->upperLeft_y : ov->upperRight_y;
+        int b = ov->lowerLeft_y > ov->lowerRight_y ? ov->lowerLeft_y : ov->lowerRight_y;
+        w = r - l, h = b - t;
+    }
+    return w > 0 && h > 0 ? (float)w / (float)h : 0.0f;
+}
+
+// Cover Shape's crop for one row: in PS2, PS1 art loses the logo strip on its left; in PS1, PS2 art the logo band on
+// its top; then the art is centre-cropped to the box. A cover already of the shape's kind is drawn as under Mixed.
+void thmCoverCropBegin(struct menu_list *menu, struct submenu_list *item, GSTEXTURE *art, float aspect)
+{
+    int shape = thmShapeArt(), kind = thmRowArt(menu, item);
+    if (shape < 0 || kind < 0 || kind == shape || art == NULL)
+        return;
+    float trim[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    if (shape == ART_PS2 && kind == ART_PS1)
+        trim[0] = gTheme->coverSpine / 100.0f;
+    else if (shape == ART_PS1 && kind == ART_PS2)
+        trim[1] = gTheme->coverBand / 100.0f;
+    rmSetCoverCrop(art, trim, aspect);
+}
+
+void thmCoverCropEnd(void)
+{
+    rmSetCoverCrop(NULL, NULL, 0.0f);
 }
 
 // AttributeImage ///////////////////////////////////////////////////////////////////////////////////////////////////////////

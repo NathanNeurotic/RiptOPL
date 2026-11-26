@@ -224,7 +224,7 @@ typedef unsigned int u32;
 #define VCD_MAX_ITEMS 2048
 #define ISO_GAME_NAME_MAX 160
 #define LOG(...) ((void)0)
-typedef struct { char name[VCD_NAME_MAX]; u32 sizeMB; } vcd_entry_t;
+typedef struct { char name[VCD_NAME_MAX]; u32 sizeMB; unsigned char cue; } vcd_entry_t;
 struct dirent { char d_name[256]; };
 typedef struct { const char **names; int at; struct dirent de; } DIR;
 static const char **gNames;
@@ -246,9 +246,11 @@ int main() {
     const char *udp[] = {"A.cue", "A.VCD", "B.VCD", "B.CUE", "C.CUE", "C.cue", "D.Cue", "E.vcd", "F.bin", "G.VCD", NULL};
     assert(scan("udpfs:/POPS", udp, &l) == 4);
     assert(!strcmp(l[0].name, "A") && !strcmp(l[1].name, "B") && !strcmp(l[2].name, "C") && !strcmp(l[3].name, "G"));
+    // #Format badge: only a cue sheet with no real .VCD of its name is marked as one.
+    assert(!l[0].cue && !l[1].cue && l[2].cue && !l[3].cue);
     free(l); l = NULL;
     const char *usb[] = {"A.cue", "B.VCD", "C.vcd", NULL};
-    assert(scan("mass0:/POPS", usb, &l) == 2 && !strcmp(l[0].name, "B") && !strcmp(l[1].name, "C"));
+    assert(scan("mass0:/POPS", usb, &l) == 2 && !strcmp(l[0].name, "B") && !strcmp(l[1].name, "C") && !l[0].cue && !l[1].cue);
     free(l);
     return 0;
 }

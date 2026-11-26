@@ -87,6 +87,7 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh);
 int oplIsBootInProgress(void);
 void menuDeferredUpdate(void *data);
 void moduleUpdateMenu(int mode, int themeChanged, int langChanged);
+void oplBootPageArrived(int mode); // a massN: page became visible; boots onto it when the Default Menu was waiting for it
 void handleLwnbdSrv();
 void deinit(int exception, int modeSelected);
 void deinitTerminal(int exception, int modeSelected);
@@ -450,6 +451,7 @@ void screenPosSave(config_set_t *configOPL);
 void screenPosReset(void);
 extern int gSelectButton;
 extern int gHDDGameListCache;
+extern int gGameListCache; // Cache Game List bits for every device but the APA HDD (GLC_* in supportbase.h)
 
 extern int gEnableSFX;
 extern int gEnableRumble;
@@ -578,4 +580,11 @@ BLURT output char blurttext[128];
     delay(10);
 #define BLURT snprintf(blurttext, sizeof(blurttext), "%s(%d)", blurttext, __LINE__);
 */
+// Cover Shape: 0 Mixed (each cover in its own kind's box), else every cover in one box, its art cropped to it.
+#define COVER_SHAPE_MIXED 0
+#define COVER_SHAPE_PS2   1
+#define COVER_SHAPE_PS1   2
+#define COVER_SHAPE_APP   3
+extern int gCoverShape;
+
 #endif

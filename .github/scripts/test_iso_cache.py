@@ -137,7 +137,7 @@ static int oldModified(const struct game_cache_list *cache, const struct game_li
             if ((!modified) && (count != cache->count))
                 modified = 1;
         } else
-            modified = 0;
+            modified = 1; /* intended change: a folder read as empty drops its saved list (upstream kept it) */
     } else
         modified = ((head != NULL) && (count > 0)) ? 1 : 0;
     return modified;

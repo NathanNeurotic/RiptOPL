@@ -53,10 +53,10 @@ static void packet(unsigned int address,unsigned int high,unsigned int bytes,int
     fifo[tail++]=high;fifo[tail++]=address;
     if(!quad) fifo[tail++]=bytes<<16;
     for(unsigned int i=0;i<(bytes+3)/4;i++) fifo[tail++]=0x11223344;
-    if(!truncated) fifo[tail++]=0x20000;
+    fifo[tail++]=0x20000;
     unsigned int available=tail;
     fifo[tail++]=0xdeadbeef; /* next packet must remain untouched */
-    WriteRequestHandler((quad ? IEEE1394_TCODE_WRITEQ : IEEE1394_TCODE_WRITEB)<<4,fifo,available);
+    WriteRequestHandler((quad ? IEEE1394_TCODE_WRITEQ : IEEE1394_TCODE_WRITEB)<<4,fifo,truncated ? 1 : available);
     CHECK(head==available,"consume exactly the declared packet, including rejected payload and trailer");
     CHECK(fifo[head]==0xdeadbeef,"preserve following packet in receive FIFO");
 }
@@ -64,9 +64,9 @@ static void read_packet(unsigned int address,unsigned int high,unsigned int byte
     head=tail=responses=callbacks=rcode=0;
     fifo[tail++]=quad ? high : BSWAP32(high);fifo[tail++]=quad ? address : BSWAP32(address);
     if(!quad) fifo[tail++]=bytes<<16;
-    if(!truncated) fifo[tail++]=0;
+    fifo[tail++]=0;
     unsigned int available=tail;fifo[tail++]=0xdeadbeef;
-    ReadRequestHandler((quad ? IEEE1394_TCODE_READQ : IEEE1394_TCODE_READB)<<4,fifo,available);
+    ReadRequestHandler((quad ? IEEE1394_TCODE_READQ : IEEE1394_TCODE_READB)<<4,fifo,truncated ? 1 : available);
     CHECK(head==available && fifo[head]==0xdeadbeef,"read request preserves the following FIFO packet");
 }
 int main(void) {
@@ -89,7 +89,8 @@ int main(void) {
     packet(0x1000,1,4,0,0);
     CHECK(rcode==6 && !callbacks,"nonzero high physical address is refused");
     packet(0x1000,0,8,0,1);
-    CHECK(!responses && !callbacks && ram[0x1000]==0xcc,"truncated packet drains available input without copying");
+    CHECK(responses==1 && !rcode && callbacks==1 && ram[0x1000]==0x44 && ram[0x1007]==0x11,
+          "a write still arriving when the FIFO level was sampled is read and answered in full");
     read_packet(0xf0000400,0xffff,64,0,0);
     CHECK(responses==1 && !rcode && callbacks==1,"full CROM read stays within its installed size");
     read_packet(0xf000043c,0xffff,8,0,0);
@@ -99,7 +100,7 @@ int main(void) {
     read_packet(0x1000,1,4,1,0);
     CHECK(rcode==6 && !callbacks,"read cannot use a nonzero high physical address");
     read_packet(0x1000,0,4,1,1);
-    CHECK(!responses && !callbacks,"truncated read header is drained without a response");
+    CHECK(responses==1 && !rcode && callbacks==1,"a read request still arriving is read and answered in full");
     return failures ? 1 : 0;
 }
 """
@@ -255,9 +256,9 @@ static void response(unsigned int code,unsigned int label,unsigned int node,unsi
     fifo[tail++]=(node<<16)|(error<<12);fifo[tail++]=0;
     if(code!=IEEE1394_TCODE_WRITE_RESPONSE) fifo[tail++]=code==IEEE1394_TCODE_READQ_RESPONSE ? 0x11223344 : bytes<<16;
     if(code==IEEE1394_TCODE_READB_RESPONSE) for(unsigned int i=0;i<(bytes+3)/4;i++) fifo[tail++]=0x11223344;
-    if(!truncated) fifo[tail++]=0;
+    fifo[tail++]=0;
     unsigned int available=tail;fifo[tail++]=0xdeadbeef;
-    ResponseHandler((label<<10)|(code<<4),fifo,available);
+    ResponseHandler((label<<10)|(code<<4),fifo,truncated ? 1 : available);
     CHECK(head==available && fifo[head]==0xdeadbeef,"responses drain exactly their packet, preserving the next one");
 }
 int main(void) {
@@ -295,7 +296,8 @@ int main(void) {
     CHECK(!flags && data[0]==0xa5a5a5a5,"old-generation response cannot alter caller memory");
     GenerationNumber=1;iLinkPrepareResponse(&context,63,IEEE1394_TCODE_READB_RESPONSE,data,8);
     response(IEEE1394_TCODE_READB_RESPONSE,63,0xffc1,0,8,1);
-    CHECK(!flags && data[0]==0xa5a5a5a5,"truncated response cannot copy a partial payload");
+    CHECK(flags==iLinkEventDataReceived && data[0]==0x11223344 && data[1]==0x11223344,
+          "a response still arriving when the FIFO level was sampled completes its request");
     return failures ? 1 : 0;
 }
 """
@@ -361,7 +363,7 @@ def run(manager):
     intr=(manager/'iLink_intr.c').read_text(encoding='utf-8')
     crom=(manager/'iLink_crom.c').read_text(encoding='utf-8')
     client=(manager/'iLink.c').read_text(encoding='utf-8')
-    packets='\n'.join(function(intr,s) for s in ('static void NoResponseHandler(','static void WriteRequestHandler(','static void ReadRequestHandler('))
+    packets='\n'.join(function(intr,s) for s in ('static void WriteRequestHandler(','static void ReadRequestHandler('))
     packets=packets.replace('data = *buffer;', 'data = read_fifo(buffer);').replace('= *buffer;','= read_fifo(buffer);')
     packets=packets.replace('((unsigned char *)req.offset_low)', '(&ram[req.offset_low])').replace('((unsigned int *)req.offset_low)', '((unsigned int *)&ram[req.offset_low])')
     packets=packets.replace('static void ReadRequestHandler(', intr[intr.index('struct ieee1394_TrCommonRdPktHdr'):intr.index('static void ReadRequestHandler(')]+'static void ReadRequestHandler(',1)
@@ -369,7 +371,7 @@ def run(manager):
         'int iLinkAddCROMUnit(', 'void iLinkDeleteCROMUnit(', 'static void BuildConfigurationROM('))
     client_functions='\n'.join(function(client,s) for s in ('int iLinkTrWrite(','int iLinkTrRead('))
     response_functions='\n'.join(function(intr,x) for x in ('void iLinkPrepareResponse(', 'void iLinkFinishRequest(',
-        'static void NoResponseHandler(', 'static void ResponseHandler('))
+        'static void ResponseHandler('))
     response_functions=response_functions.replace('data = *buffer;', 'data = read_fifo(buffer);').replace('= *buffer;', '= read_fifo(buffer);')
     response_state=intr[intr.index('static unsigned int ResponseLength;'):intr.index('\nvoid iLinkPrepareResponse(')]
     programs={'packet':PACKET.replace('@FUNCTIONS@',packets),'crom':CROM.replace('@FUNCTIONS@',crom_functions),

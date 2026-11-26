@@ -50,6 +50,7 @@ jobs:
           python3 .github/scripts/test_cdvdman_own_stack.py
           python3 .github/scripts/test_mx4sio_host_boot.py
           python3 .github/scripts/test_mx4sio_retry.py
+          python3 .github/scripts/test_mx4sio_detect_unlock.py
           python3 .github/scripts/test_vmc_write_result.py
           python3 .github/scripts/test_mmce_read_recovery.py
           python3 .github/scripts/test_pr894_hardening.py
@@ -107,6 +108,8 @@ jobs:
       - name: Check image cache, menu allocation and queue lifetime failures
         run: |
           python3 .github/scripts/test_cache_allocation.py
+          python3 .github/scripts/test_cache_rehome.py
+          python3 .github/scripts/test_launch_cover.py
           python3 .github/scripts/test_menu_allocation.py
           python3 .github/scripts/test_io_menu_lifetime.py
 
@@ -311,6 +314,8 @@ jobs:
           persist-credentials: false
       - name: Check the games.bin cache answers as before without O(n^2) work per scan
         run: python3 .github/scripts/test_iso_cache.py
+      - name: Check Cache Game List shows the scanned list without reading the folders, once per page
+        run: python3 .github/scripts/test_game_list_cache.py
       - name: Check the BDM block cache never returns stale data on a failed refill
         run: python3 .github/scripts/test_bdm_cache.py
       - name: Check BDM partition I/O bounds and sector-size refusal
@@ -319,10 +324,18 @@ jobs:
         run: |
           python3 .github/scripts/test_vmc_contiguous_create.py
           python3 .github/scripts/test_vmc_past_2tb_ata.py
-      - name: Check the exFAT free-space scan steps over full bitmap bytes with the same result
+      - name: Check the exFAT free-space scan steps over full bitmap bytes and sectors with the same result
         run: python3 .github/scripts/test_exfat_bitmap_scan.py
+      - name: Check Default Menu HDD Games opens an exFAT or FAT32 internal drive's page
+        run: python3 .github/scripts/test_default_page_internal_drive.py
+      - name: Check the IOP module address check reports a pair that points outside its module
+        run: python3 .github/scripts/test_check_irx_addresses.py
+      - name: Check the IOP link step corrects the address halves ld.lld -r gets wrong
+        run: python3 .github/scripts/test_link_iop.py
       - name: Check a free run is never made of the end of a volume joined to its start
         run: python3 .github/scripts/test_fatfs_free_run_wrap.py
+      - name: Check a seek in a one-piece exFAT file lands on the right bytes
+        run: python3 .github/scripts/test_fatfs_contiguous_seek.py
       - name: Check the game-list sort keeps the old order in O(n log n)
         run: python3 .github/scripts/test_menu_sort.py
       - name: Check a failed first PS2 scan runs once and names the folder

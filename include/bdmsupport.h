@@ -56,6 +56,7 @@ typedef struct
     base_game_info_t *bdmPs1Games;
     int ps1ScanFailed;
     int ps1ScanRetries;
+    int ps1RetryPass; // 1 + the view, when this pass is only the PS1 retry for that view; else 0
     char bdmDriver[32];
     int bdmDeviceType;      // Type of BDM device, see BDM_TYPE_* above
     int bdmDeviceTick;      // Used alongside BdmGeneration to tell if device data needs to be refreshed
@@ -135,6 +136,7 @@ int bdmGetLoadedNetProtocol(void);
 int bdmSupportIsUDPBD(const item_list_t *support); // 1 if this support is the UDPBD block device (UDPBD or UDPFS block)
 int bdmModeIsPCCF(int mode);                       // 1 if this BDM mode slot is the PC CARD CF device
 int bdmModeIsUSB(int mode);                        // 1 if this BDM mode slot is a USB mass-storage device
+int bdmModeIsATA(int mode);                        // 1 if this BDM mode slot is the internal drive (exFAT/FAT32)
 int bdmModeIsUDPBD(int mode);                      // 1 if this BDM mode slot is the UDPBD block device
 int bdmModeIsReadOnly(int mode);                   // 1 if this BDM mode slot does not keep what is written (MODE_FLAG_READ_ONLY)
 int bdmIsReadOnlyPath(const char *path);           // 1 if a "massN:..." path is on such a device
@@ -155,6 +157,7 @@ int bdmEffectiveStartMode(void);
 // Current BDM device-change generation (bumped on hotplug / Device-Settings apply). The menu hook
 // reads this to bypass its background SIO2 rescan throttle when a real device change occurs.
 unsigned int bdmGetGeneration(void);
+int bdmLastPassWasPs1Retry(const item_list_t *itemList);
 
 // Diagnostic-only hooks used by the generic game-settings save worker. They are no-ops for
 // non-BDM lists and never change which filesystem path configWrite() consumes.
@@ -225,4 +228,5 @@ int bdmReadDriverName(int dir, char *driverName, int driverNameLength);
  * private bdm_device_data_t, which a background rescan rewrites.
  */
 int bdmModeIsSIO2(int mode);
+const char *bdmModeMountedRoot(int mode); // "massN:" of a mounted, identified BDM slot, else NULL
 #endif

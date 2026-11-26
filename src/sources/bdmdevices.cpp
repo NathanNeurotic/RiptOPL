@@ -56,6 +56,20 @@ static int bdmSlotIdentified(const bdm_device_data_t *pDeviceData)
            pDeviceData->bdmDeviceType != BDM_TYPE_UNKNOWN && pDeviceData->bdmULSizePrev != -2;
 }
 
+// The massN: root of a BDM slot whose device is mounted and identified, or NULL. For the Neutrino
+// lookup's other-device tier (sbResolveNeutrinoPath): NHDDL finds neutrino.elf on any massX device.
+const char *bdmModeMountedRoot(int mode)
+{
+    if (mode < BDM_MODE || mode > BDM_MODE_LAST)
+        return NULL;
+    const bdm_device_data_t *pDeviceData = (const bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
+    // Mounted and identified is enough: a device with no game list (bdmULSizePrev -2) can still hold neutrino.elf.
+    if (pDeviceData == NULL || pDeviceData->bdmDeviceRoot[0] == '\0' || pDeviceData->bdmDriver[0] == '\0' ||
+        pDeviceData->bdmDeviceType == BDM_TYPE_UNKNOWN)
+        return NULL;
+    return pDeviceData->bdmDeviceRoot;
+}
+
 void bdmInitDevicesData()
 {
     // If the device list hasn't been initialized do it now.
@@ -287,6 +301,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
         if (itemList->owner != NULL) {
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
             host::app().moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().bootPageArrived(itemList->mode);
         }
         // All Games dropped this slot's rows when its page hid, and this pass rebuilds nothing, so
         // ask for the one list again (one FAV rebuild, from the rows this slot already holds). Not for a
@@ -406,6 +421,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
             LOG("bdmUpdateDeviceData: setting device %d visible\n", itemList->mode);
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
             host::app().moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().bootPageArrived(itemList->mode);
         }
 
         // Close the device handle.

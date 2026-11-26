@@ -58,6 +58,7 @@ static menu_list pages[3];
 static menu_list *selected_item;
 menu_list *gGridSidebarCursor;
 int gGridSidebarOpen, gCoverflowDeviceBarFocused;
+int gSelectButton = KEY_CROSS; // Controller settings' confirm button
 static int menuPageIsGridResult = 1, coverflowBarAvailable = 1;
 static int itemConfigId = -1, itemConfigGeneration = 0, menuSemaId = 0;
 static int previousCoverMoves, nextCoverMoves;
@@ -142,6 +143,18 @@ int main() {
     keys = KEY_LEFT; menuNavigateLeft();
     CHECK(gGridSidebarOpen == 1 && gGridSidebarCursor == &pages[1]);
     CHECK(itemConfigGeneration == 0 && launches == 0);
+
+    // #534: with Circle as the confirm button, Circle opens the highlight and Cross only goes back
+    gSelectButton = KEY_CIRCLE;
+    resetInput(); selected_item = &pages[0]; gGridSidebarCursor = &pages[1]; gGridSidebarOpen = 1;
+    keys = KEY_CIRCLE; menuGridSidebarInput();
+    CHECK(selected_item == &pages[1]);
+    CHECK(itemConfigGeneration == 1 && launches == 0 && gGridSidebarOpen == 0);
+    resetInput(); selected_item = &pages[1]; gGridSidebarCursor = &pages[0]; gGridSidebarOpen = 1;
+    keys = KEY_CROSS; menuGridSidebarInput();
+    CHECK(selected_item == &pages[1]);
+    CHECK(itemConfigGeneration == 0 && launches == 0 && gGridSidebarOpen == 0);
+    gSelectButton = KEY_CROSS;
 
     resetInput(); selected_item = &pages[1]; gGridSidebarCursor = nullptr;
     keys = KEY_LEFT; menuNavigateLeft();
