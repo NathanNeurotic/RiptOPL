@@ -42,7 +42,8 @@ private:
     const Handler *current_ = nullptr; // lazily the menu screen
     const Handler *target_ = nullptr;
     int transIndex_ = 0;
-    u8 fade_ = 0x80; // contentFade, set only while the screen draws
+    bool contentOnly_ = false; // this switch fades the content over the background (switchTo)
+    u8 fade_ = 0x80;           // contentFade, set only while the screen draws
     float rise_ = 0.0f;
     u8 held_ = 0x80; // holdContentFade
 };
