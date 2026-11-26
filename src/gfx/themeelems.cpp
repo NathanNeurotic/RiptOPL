@@ -2166,6 +2166,9 @@ int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
             !thmSameTexture(ia->overlayTexture2, ib->overlayTexture2) || ia->wallpaper != ib->wallpaper ||
             ia->backdropLayer != ib->backdropLayer || (sa == NULL) != (sb == NULL) || (sa != NULL && strcmp(sa, sb)))
             return 0;
+        // Game art: each page holds the last picture it drew (holdLastBackground), so both must hold the same one.
+        if (ia->cache != NULL && (ia->lastCacheId != ib->lastCacheId || ia->lastUid != ib->lastUid))
+            return 0;
     }
     // a's backdrop has ended (at its content or its end): b's must end here too.
     return eb == NULL || !thmIsBackdropElem(b, eb);
