@@ -219,6 +219,10 @@ static int rmWideScale(int x) {return x;}
 static int isHiddenArtworkCache(int *) {return hidden;}
 static theme_element_t *thmGetElemForItem(struct menu_list *,struct submenu_list *,theme_element_t *e) {return redirect?redirect:e;}
 static void *thmGetItemSource(struct menu_list *,struct submenu_list *) {return NULL;}
+static float thmCoverAspect(const theme_element_t *) {return 0.0f;}
+static void thmCoverCropBegin(struct menu_list *,struct submenu_list *,GSTEXTURE *,float) {} // Cover Shape Mixed: no crop
+static void thmCoverCropEnd(void) {}
+static int rmCoverCropUV(GSTEXTURE *,float *) {return 0;}
 static GSTEXTURE *getGameImageTexture(int *,void *,submenu_item_t *) {return loaded;}
 static void rmDrawBlendedTriangles(GSTEXTURE *t,int count,const float *,const float *uv,const u64 *) {
  batches++;tris+=count;
