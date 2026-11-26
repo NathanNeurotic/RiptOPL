@@ -3046,7 +3046,9 @@ static int guiSettingsShowTheme(void)
             // ask again for the ones that were not there. Normal and Crop read the same pictures: nothing to reload.
             cacheDropCoversOnNextLoad();
             cacheInvalidateFailMemo();
-            thmReload();
+            // An abandoned reload keeps the old theme and its covers: keep the old setting with them.
+            if (!thmReload())
+                gCoverArt = previousCoverArt;
         }
         sfxInit(0);
         if (gEnableBGM && !isBgmPlaying())
