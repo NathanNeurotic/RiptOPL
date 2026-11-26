@@ -325,3 +325,4 @@ int iLinkWritePHTReq(struct TransactionContextData *trContext, unsigned short in
 
 extern void iLinkPrepareResponse(struct TransactionContextData *context, unsigned char label, unsigned char code, void *buffer, unsigned int length);
 extern void iLinkFinishRequest(void);
+extern int iLinkResponsePending(void);

@@ -48,6 +48,12 @@ void iLinkPrepareResponse(struct TransactionContextData *context, unsigned char 
     CpuResumeIntr(state);
 }
 
+/* Whether the request iLinkPrepareResponse armed has not been answered yet. */
+int iLinkResponsePending(void)
+{
+    return ResponseActive;
+}
+
 void iLinkFinishRequest(void)
 {
     int state;

@@ -35,6 +35,12 @@ typedef struct { unsigned int lo,hi; } iop_sys_clock_t;
 struct TransactionContextData { int GenerationNumber; unsigned short NodeID; unsigned char speed; };
 struct ieee1394_TrPacketHdr { unsigned int header,offset_high,offset_low,misc; };
 static unsigned char NextRequestLabel;
+static volatile unsigned char SplitAlarmFired;
+static int responsePending=1,controllerFlag,controllerWakes,clears;
+static void CpuSuspendIntr(int *state) { *state=0; }
+static void CpuResumeIntr(int state) { (void)state; }
+static int iLinkResponsePending(void) { return responsePending; }
+static unsigned int TimeoutCallbackFunction(void *argv);
 enum { IEEE1394_TCODE_READQ=4, IEEE1394_TCODE_READQ_RESPONSE=6, IEEE1394_TCODE_WRITEQ=0, IEEE1394_TCODE_WRITE_RESPONSE=2 };
 static void iLinkPrepareResponse(struct TransactionContextData *ctx,unsigned char label,unsigned char code,void *buffer,unsigned int length) {
     (void)ctx;(void)label;(void)code;(void)buffer;(void)length;
@@ -62,12 +68,18 @@ static int WaitSema(int id) {
 }
 static int SignalSema(int id) { (void)id;signals++;available=1;return 0; }
 static int ClearEventFlag(int id,unsigned int bits) {
-    (void)id;(void)bits;
+    (void)id;(void)bits;clears++;
     if(changeOnClear) GenerationNumber++;
     return 0;
 }
 static int WaitEventFlag(int id,int bits,int mode,u32 *out) {
     (void)id;(void)bits;(void)mode;
+    if(controllerWakes && (bits&iLinkEventRequestError)) {
+        controllerWakes--;LocalCachedIntr0Register|=controllerFlag;
+        *out=iLinkEventRequestError;return 0;
+    }
+    if(earlyError==1) responsePending=0;
+    if(earlyError==2 && (bits&iLinkEventRequestError)) TimeoutCallbackFunction(0);
     if(changeOnResponse && (bits&iLinkEventRequestError)) GenerationNumber++;
     *out=(earlyError && (earlyError==1 || (bits&iLinkEventRequestError))) ? (bits&iLinkEventRequestError ? iLinkEventRequestError : iLinkEventError) : iLinkEventDataSent|iLinkEventDataReceived;
     return 0;
@@ -84,6 +96,7 @@ static unsigned int read_rx(volatile unsigned int *buffer) { rxReads++;return *b
 #define CHECK(c,msg) do { if(!(c)) { printf("FAIL: %s\n",msg);failures++; } } while(0)
 static void reset(void) {
     available=1;waits=signals=blocks=alarms=cancels=earlyError=rxReads=changeOnClear=changeOnResponse=0;
+    responsePending=1;controllerFlag=controllerWakes=clears=0;SplitAlarmFired=0;
     GenerationNumber=1;LocalCachedIntr0Register=0;memset(&regs,0,sizeof(regs));
 }
 static void stale(int headerLength,int payloadLength,int atClear) {
@@ -112,9 +125,21 @@ int main(void) {
     reset();earlyError=1;
     CHECK(iLinkSendData(NULL,data,3,NULL,0)<0 && available,"response TX error unlocks");
     reset();earlyError=1;
-    CHECK(iLinkSync(12)<0,"early response error is reported");
+    CHECK(iLinkSync(&ctx,12)<0,"early response error is reported");
     CHECK(alarms==0 && cancels==1,"early error cancels its alarm before a retry");
-    reset();CHECK(iLinkSync(12)==12 && alarms==0,"successful response cancels alarm");
+    reset();CHECK(iLinkSync(&ctx,12)==12 && alarms==0,"successful response cancels alarm");
+    for(int flag=0;flag<2;flag++) {
+        unsigned int intr0=flag ? iLink_INTR0_UResp : iLink_INTR0_STO;
+        reset();controllerFlag=intr0;controllerWakes=2;
+        CHECK(iLinkSync(&ctx,12)==12,"controller STO/UResp does not end a request whose answer then arrives");
+        CHECK(clears==2 && alarms==0 && cancels==1,"each controller flag is cleared once and the alarm retired");
+        reset();controllerFlag=intr0;controllerWakes=1;earlyError=2;
+        CHECK(iLinkSync(&ctx,12)==-1024,"unanswered request still ends on its own alarm");
+    }
+    reset();controllerFlag=iLink_INTR0_RetEx;controllerWakes=1;
+    CHECK(iLinkSync(&ctx,12)==-1026 && clears==0,"RetEx still ends the request");
+    reset();controllerFlag=iLink_INTR0_STO;controllerWakes=1;responsePending=0;
+    CHECK(iLinkSync(&ctx,12)<0 && clears==0,"a refused answer still ends the request");
     for(int write=0;write<2;write++) {
         reset();earlyError=2;changeOnResponse=1;
         CHECK((write ? iLinkWriteReq(&ctx,0,0,data,4) : iLinkReadReq(&ctx,0,0,data,4))==-1021,

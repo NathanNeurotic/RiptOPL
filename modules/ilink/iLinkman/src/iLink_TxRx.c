@@ -27,6 +27,7 @@ extern unsigned int LocalCachedIntr0Register;
 extern int UBUFTxSema;
 
 static unsigned char NextRequestLabel;
+static volatile unsigned char SplitAlarmFired;
 
 static int iLinkSendData(struct TransactionContextData *trContext, unsigned int *header, unsigned int HeaderLength, unsigned int *payload, unsigned int PayloadLength);
 
@@ -114,23 +115,46 @@ static unsigned int TimeoutCallbackFunction(void *argv)
 {
     (void)argv;
 
+    SplitAlarmFired = 1;
     LocalCachedIntr0Register |= iLink_INTR0_STO;
     iSetEventFlag(IntrEventFlag, iLinkEventRequestError);
     return 0;
 }
 
-static int iLinkSync(unsigned int PayloadLength)
+static int iLinkSync(struct TransactionContextData *trContext, unsigned int PayloadLength)
 {
     u32 FlagBits;
+    int state, keepWaiting;
 
     DEBUG_PRINTF("Payload transmitted. Now awaiting response...\n");
 
+    SplitAlarmFired = 0;
     SetAlarm(&Timeout, &TimeoutCallbackFunction, NULL);
-    WaitEventFlag(IntrEventFlag, iLinkEventDataReceived | iLinkEventRequestError, WEF_OR, &FlagBits);
+    /* RiptOPL: the controller's own STO and UResp interrupts do not end a request. The SDK never
+     * acted on them: its interrupt handler leaves LocalCachedIntr0Register at 0 on exit, so a request
+     * failed only when this function's alarm ran out, and a late answer was still taken. Ending the
+     * request on those flags threw away answers that were still on their way. Wait for this request's
+     * own answer (good or refused, see ResponseHandler), the alarm, a bus reset, or RetEx. */
+    do {
+        WaitEventFlag(IntrEventFlag, iLinkEventDataReceived | iLinkEventRequestError, WEF_OR, &FlagBits);
+        keepWaiting = 0;
+        if (!(FlagBits & iLinkEventDataReceived)) {
+            CpuSuspendIntr(&state);
+            if (!SplitAlarmFired && trContext->GenerationNumber == GenerationNumber && iLinkResponsePending() &&
+                !(LocalCachedIntr0Register & (iLink_INTR0_InvAck | iLink_INTR0_AckMiss | iLink_INTR0_RetEx))) {
+                LocalCachedIntr0Register &= ~(iLink_INTR0_STO | iLink_INTR0_UResp);
+                ClearEventFlag(IntrEventFlag, ~iLinkEventRequestError);
+                keepWaiting = 1;
+            }
+            CpuResumeIntr(state);
+        }
+    } while (keepWaiting);
 
     // An IRQ error can beat the alarm; retire it before another transaction
     // reuses the event flag. A callback that already fired needs no cancellation.
     CancelAlarm(&TimeoutCallbackFunction, NULL);
+    if (FlagBits & iLinkEventDataReceived)
+        return (int)PayloadLength; /* ResponseHandler accepted this request's answer. */
     if (FlagBits & iLinkEventRequestError) {
         DEBUG_PRINTF("iLinkman: Split timeout.\n");
         if (!(LocalCachedIntr0Register & (iLink_INTR0_InvAck | iLink_INTR0_STO | iLink_INTR0_AckMiss | iLink_INTR0_RetEx | iLink_INTR0_UResp)))
@@ -174,7 +198,7 @@ int iLinkReadReq(struct TransactionContextData *trContext, unsigned short int of
     nBytesToTransfer = sizeof(struct ieee1394_TrPacketHdr) - 4; /* Quadlet reads do not have the data length field. */
 
     if ((result = iLinkSendData(trContext, (unsigned int *)&TxHeader, nBytesToTransfer >> 2, NULL, 0)) >= 0) {
-        result = iLinkSync(nBytesToTransfer);
+        result = iLinkSync(trContext, nBytesToTransfer);
         if (result < 0 && trContext->GenerationNumber != GenerationNumber)
             result = -1021;
     }
@@ -202,7 +226,7 @@ int iLinkWriteReq(struct TransactionContextData *trContext, unsigned short int o
     nBytesToTransfer = sizeof(struct ieee1394_TrPacketHdr) - 4; /* Quadlet writes do not have the data length field. */
 
     if ((result = iLinkSendData(trContext, (unsigned int *)&TxHeader, nBytesToTransfer >> 2, buffer, nBytes >> 2)) >= 0) {
-        result = iLinkSync(nBytesToTransfer);
+        result = iLinkSync(trContext, nBytesToTransfer);
         if (result < 0 && trContext->GenerationNumber != GenerationNumber)
             result = -1021;
     }
