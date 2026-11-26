@@ -618,6 +618,9 @@ static int bdmLoadOptionalModuleArgs(const char *name, void *module, int moduleS
  * below are the ones that stay long enough to read. 1 means not tried (iLink off or already loaded). */
 static int bdmDiagIlinkManResult = 1;
 static int bdmDiagIlinkBdResult = 1;
+#ifdef __OPLDIAG
+static int bdmDiagIlinkFailShown = 0;
+#endif
 
 /* OPEN EVERY massN: ROOT ONCE, AND SAY WHAT WAS THERE.
  *
@@ -1515,13 +1518,26 @@ void bdmLoadBlockDeviceModules(void)
         {
             char status[64];
 
-            snprintf(status, sizeof(status), "ILINK man=%d bd=%d drive %s after %d ms", bdmDiagIlinkManResult,
+            // waitedMs counts the 250 ms sleeps only, not the root checks between them.
+            snprintf(status, sizeof(status), "ILINK man=%d bd=%d drive %s, slept %d ms", bdmDiagIlinkManResult,
                      bdmDiagIlinkBdResult, waitedMs < 3000 ? "found" : "NOT found", waitedMs);
             host::ui().bootStatusStickyCopy(status);
         }
 #endif
         bdmForceDeviceRefresh(); // publish either a newly ready root or the final absent result
     }
+#ifdef __OPLDIAG
+    else if (!iLinkModLoaded && !bdmDiagIlinkFailShown) {
+        // A driver that failed to load skips the wait above; the MASS line needs USB. Say it here,
+        // once, without touching ilinkProbeDone, so a later successful load still gets its wait.
+        char status[64];
+
+        bdmDiagIlinkFailShown = 1;
+        snprintf(status, sizeof(status), "ILINK man=%d bd=%d drivers did NOT load", bdmDiagIlinkManResult,
+                 bdmDiagIlinkBdResult);
+        host::ui().bootStatusStickyCopy(status);
+    }
+#endif
 }
 
 // Auto Loading retries its own mass device. The menu discovery settles above must not delay its IO
