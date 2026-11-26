@@ -313,8 +313,9 @@ static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item,
 }
 
 // One cover. turn: the case flip (0 its front; past pi/2 its back, drawn plain); w/h the cover's size before
-// the turn narrows it.
-static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, u64 color, int scale,
+// the turn narrows it. x/y may be fractional while it moves (a page turn, a layout switch): the cover is then drawn
+// on the display pixel it has reached, not on the last whole design unit (rmDrawPixmap).
+static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, float x, float y, u64 color, int scale,
                      float turn, GSTEXTURE *back, int vignette, int steps)
 {
     theme_element_t *coverElem = thmGetElemForItem(menu, item, elem);
@@ -341,7 +342,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
         int a = coverGlide(item->item.text, item->item.id, steps, &box);
         float kw = box.w / ow, kh = box.h / oh;
         w = (int)(w * kw + 0.5f), h = (int)(h * kh + 0.5f);
-        x = (int)box.x - rmWideScale((int)(dx * kw)), y = (int)box.y - (int)(dy * kh);
+        x = box.x - rmWideScale((int)(dx * kw)), y = box.y - (int)(dy * kh);
         color = (color & ~(0xffULL << 24)) | ((((color >> 24) & 0xff) * a >> 7) << 24);
     }
     float squash = fabsf(cosf(turn));
@@ -357,7 +358,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     GSTEXTURE *art = texture != NULL && texture->Mem != NULL ? texture : NULL; // Cover Shape crops art only
     if (texture == NULL || texture->Mem == NULL) {
         if (gTheme->gridCoverless) {
-            drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
+            drawCoverlessTile(menu, item, elem, (int)x, (int)y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
             if (fabsf(turn) < 0.2f)
                 thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
             return;
@@ -382,7 +383,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
         int left, top, right, bottom, ow, oh, dx, dy;
         gridCoverWindow(coverElem, &left, &top, &right, &bottom);
         gridCaseRect(tw, h, cw, ch, left, top, right, bottom, &ow, &oh, &dx, &dy);
-        int ox = x + rmWideScale(dx), oy = y + dy;
+        float ox = x + rmWideScale(dx), oy = y + dy;
         rmDrawOverlayPixmap(&ov->source, ox, oy, ALIGN_CENTER, ow, oh, SCALING_RATIO, color,
                             texture, ov->upperLeft_x * ow / cw, ov->upperLeft_y * oh / ch,
                             ov->upperRight_x * ow / cw, ov->upperRight_y * oh / ch,
@@ -395,7 +396,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     }
     thmCoverCropEnd();
     if (vignette)
-        drawVignette(x, y, rmWideScale(tw), h, vignette);
+        drawVignette((int)x, (int)y, rmWideScale(tw), h, vignette);
     if (fabsf(turn) < 0.2f)
         thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
 }
@@ -627,7 +628,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     // Whole pages, stacked vertically; turning to another one glides vertically and crossfades smoothly.
     float slide = gridSlideUpdate(menu, first);
     int slideH = stepY / 3;
-    int shiftY = gridSlideFrom >= 0 ? (int)(gridSlideDir * slideH * (1.0f - slide)) : 0;
+    float shiftY = gridSlideFrom >= 0 ? gridSlideDir * slideH * (1.0f - slide) : 0.0f;
 
     u64 dim = GS_SETREG_RGBA(vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, 0x80); // the others a step back
     if (gridSlideFrom >= 0) {                                                                               // the old page gliding out vertically
@@ -638,7 +639,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
             struct submenu_list *old = menu->item->submenu;
             for (int i = 0; i < gridSlideFrom && old != NULL; i++)
                 old = old->next;
-            int oshiftY = shiftY - gridSlideDir * slideH;
+            float oshiftY = shiftY - gridSlideDir * slideH;
             for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
                 float turn = gridFlipTurn(old);
                 drawCell(menu, old, elem, x0 + (slot % columns) * stepX, y0 + (slot / columns) * stepY + oshiftY, outDim, 100, turn,
@@ -655,9 +656,10 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     struct submenu_list *cell = menu->item->submenu;
     for (int i = 0; i < first && cell != NULL; i++)
         cell = cell->next;
-    int selX = 0, selY = 0, shown = 0;
+    float selX = 0.0f, selY = 0.0f;
+    int shown = 0;
     for (int slot = 0; slot < perPage && cell != NULL; slot++, cell = cell->next) {
-        int x = x0 + (slot % columns) * stepX, y = y0 + (slot / columns) * stepY + shiftY;
+        float x = x0 + (slot % columns) * stepX, y = y0 + (slot / columns) * stepY + shiftY;
         if (cell == item) {
             selX = x;
             selY = y;
@@ -681,10 +683,10 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         // The selection frame waits for a layout switch's covers to land.
         int frame = focused && gridSlideFrom < 0 && !coverGlideActive();
         if (frame)
-            drawFrameGlow(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
+            drawFrameGlow((int)selX, (int)selY, drawnSelW, coverH, gTheme->selTextColor);
         drawCell(menu, item, elem, selX, selY, inSel, GRID_SELECTED_SCALE, turn, selBack, 0, 0);
         if (frame)
-            drawFrameBorder(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
+            drawFrameBorder((int)selX, (int)selY, drawnSelW, coverH, gTheme->selTextColor);
     }
 
     // Under the grid, clear of the selected cover's growth on the bottom row.

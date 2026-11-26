@@ -51,6 +51,13 @@ void ScreenManager::switchTo(int screen)
     sfxPlay(SFX_TRANSITION);
     transIndex_ = 0;
     target_ = &screenHandlers[screen];
+    // The game list and its Info page are both theme pages over the same background: only what is in front of it
+    // fades, and quicker, instead of the whole screen going to black and back (the screens' own content fade,
+    // menuRenderElements). Only when the two really draw the same background (a theme may give its Info page its own,
+    // and User Wallpaper is a game list's alone); otherwise, like the other screens, the dip through black.
+    const Handler *mainPage = &screenHandlers[GUI_SCREEN_MAIN], *infoPage = &screenHandlers[GUI_SCREEN_INFO];
+    contentOnly_ = ((current() == mainPage && target_ == infoPage) || (current() == infoPage && target_ == mainPage)) &&
+                   menuMainInfoShareBackdrop();
 }
 
 // renders the screen and handles inputs. Also handles screen transitions between numerous
@@ -59,7 +66,21 @@ void ScreenManager::show(const PlasmaBackground &plasma)
 {
     // is there a transmission effect going on or are
     // we in a normal rendering state?
-    if (target_) {
+    if (target_ && contentOnly_) {
+        // 8 frames out, 8 in (about a quarter of a second), the content alone; the background stays.
+        const int half = 8;
+        float t = transIndex_ < half ? (float)(transIndex_ + 1) / half : (float)(2 * half - transIndex_) / half;
+        fade_ = (u8)((1.0f - plasma.ease(t)) * 0x80);
+        if (held_ < fade_)
+            fade_ = held_;
+        rise_ = 0.0f;
+        (transIndex_ < half ? current() : target_)->renderScreen();
+        fade_ = 0x80;
+        if (++transIndex_ >= 2 * half) {
+            current_ = target_;
+            target_ = nullptr;
+        }
+    } else if (target_) {
         u8 alpha;
         const u8 transition_frames = 26;
         if (transIndex_ < (transition_frames / 2)) {

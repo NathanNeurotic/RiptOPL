@@ -397,6 +397,9 @@ float thmCoverAspect(const theme_element_t *coverElem);
 void thmCoverCropBegin(struct menu_list *menu, struct submenu_list *item, GSTEXTURE *art, float aspect);
 void thmCoverCropEnd(void);
 int thmIsBackdropElem(const theme_elems_t *family, const theme_element_t *elem);
+// Both families start with the same background (the same backdrop elements, drawing the same pictures), so a switch
+// between them can fade only what is in front of it.
+int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b);
 // Switch to the next view the active theme offers (hold L3), Coverflow (3) and Coverflow (5) counting as
 // two stops. Returns 1 when the view changed; a step between the two Coverflow stops does not reload.
 int thmCycleView(void);
