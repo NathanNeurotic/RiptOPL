@@ -2163,7 +2163,8 @@ int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
             ia->backdropLayer != ib->backdropLayer || (sa == NULL) != (sb == NULL) || (sa != NULL && strcmp(sa, sb)))
             return 0;
     }
-    return ea == NULL ? (eb == NULL || !thmIsBackdropElem(b, eb)) : 0;
+    // a's backdrop has ended (at its content or its end): b's must end here too.
+    return eb == NULL || !thmIsBackdropElem(b, eb);
 }
 
 void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme)
