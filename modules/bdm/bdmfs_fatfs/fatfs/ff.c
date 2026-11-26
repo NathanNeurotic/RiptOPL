@@ -1056,7 +1056,7 @@ static void clear_share (	/* Clear all lock entries of the volume */
 /* Move/Flush disk access window in the filesystem object                */
 /*-----------------------------------------------------------------------*/
 #if !FF_FS_READONLY
-static FRESULT sync_window (	/* Returns FR_OK or FR_DISK_ERR */
+static FRESULT sync_window (	/* Returns FR_OK, FR_DISK_ERR or FR_WRITE_PROTECTED */
 	FATFS* fs			/* Filesystem object */
 )
 {
@@ -1064,11 +1064,19 @@ static FRESULT sync_window (	/* Returns FR_OK or FR_DISK_ERR */
 
 
 	if (fs->wflag) {	/* Is the disk access window dirty? */
-		if (disk_write(fs->pdrv, fs->win, fs->winsect, 1) == RES_OK) {	/* Write it back into the volume */
+		DRESULT dr = disk_write(fs->pdrv, fs->win, fs->winsect, 1);	/* Write it back into the volume */
+
+		if (dr == RES_OK) {
 			fs->wflag = 0;	/* Clear window dirty flag */
 			if (fs->winsect - fs->fatbase < fs->fsize) {	/* Is it in the 1st FAT? */
 				if (fs->n_fats == 2) disk_write(fs->pdrv, fs->win, fs->winsect + fs->fsize, 1);	/* Reflect it to 2nd FAT if needed */
 			}
+		} else if (dr == RES_WRPRT) {
+			/* RiptOPL: the driver refused the write and nothing reached the disk. Drop the change,
+			   or the window stays dirty and every later read of another sector fails with it. */
+			fs->wflag = 0;
+			fs->winsect = (LBA_t)0 - 1;
+			res = FR_WRITE_PROTECTED;
 		} else {
 			res = FR_DISK_ERR;
 		}
@@ -4717,6 +4725,15 @@ FRESULT f_lseek (
 				fp->clust = clst;
 			}
 			if (clst != 0) {
+#if FF_FS_EXFAT
+				if (fs->fs_type == FS_EXFAT && fp->obj.stat == 2 && !(fp->flag & FA_WRITE) && ofs > bcs) {	/* Contiguous file (no FAT chain) in read mode: */
+					DWORD n = (DWORD)((ofs - 1) / bcs);	/* jump straight to the target cluster instead of following it one by one */
+					clst += n;
+					if (clst <= 1 || clst >= fs->n_fatent) ABORT(fs, FR_INT_ERR);
+					ofs -= (FSIZE_t)n * bcs; fp->fptr += (FSIZE_t)n * bcs;
+					fp->clust = clst;
+				}
+#endif
 				while (ofs > bcs) {						/* Cluster following loop */
 					ofs -= bcs; fp->fptr += bcs;
 #if !FF_FS_READONLY

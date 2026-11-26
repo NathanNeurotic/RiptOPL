@@ -324,6 +324,8 @@ jobs:
         run: |
           python3 .github/scripts/test_vmc_contiguous_create.py
           python3 .github/scripts/test_vmc_past_2tb_ata.py
+      - name: Check a write the disk driver refuses leaves the FAT/exFAT volume readable
+        run: python3 .github/scripts/test_fatfs_refused_write.py
       - name: Check the exFAT free-space scan steps over full bitmap bytes and sectors with the same result
         run: python3 .github/scripts/test_exfat_bitmap_scan.py
       - name: Check Default Menu HDD Games opens an exFAT or FAT32 internal drive's page
@@ -334,6 +336,8 @@ jobs:
         run: python3 .github/scripts/test_link_iop.py
       - name: Check a free run is never made of the end of a volume joined to its start
         run: python3 .github/scripts/test_fatfs_free_run_wrap.py
+      - name: Check a seek in a one-piece exFAT file lands on the right bytes
+        run: python3 .github/scripts/test_fatfs_contiguous_seek.py
       - name: Check the game-list sort keeps the old order in O(n log n)
         run: python3 .github/scripts/test_menu_sort.py
       - name: Check a failed first PS2 scan runs once and names the folder

@@ -228,4 +228,5 @@ int bdmReadDriverName(int dir, char *driverName, int driverNameLength);
  * private bdm_device_data_t, which a background rescan rewrites.
  */
 int bdmModeIsSIO2(int mode);
+const char *bdmModeMountedRoot(int mode); // "massN:" of a mounted, identified BDM slot, else NULL
 #endif

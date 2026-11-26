@@ -280,6 +280,7 @@ def check_driver_policy():
 
 BD_HARNESS_PREFIX = r'''
 #include <assert.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -312,6 +313,8 @@ int main(void)
     assert(ata_bd_write_hits_apa_reserved(0, 7, 1));
     assert(ata_bd_write_hits_apa_reserved(0, 0x3FFFF, 1));
     assert(ata_bd_write_hits_apa_reserved(0, 2048, 64));
+    /* Refused by policy, nothing sent: -EROFS tells the filesystem it may drop the change and keep reading. */
+    assert(ata_bd_write_hits_apa_reserved(0, 2048, 64) == -EROFS);
     assert(!ata_bd_write_hits_apa_reserved(0, 0x40000, 1));
     assert(!ata_bd_write_hits_apa_reserved(0, 0x12345678, 8));
 
@@ -325,7 +328,7 @@ int main(void)
 
     /* LBA 0 unreadable: the disk cannot be proven non-APA, so low writes are refused. */
     read_fails = 1;
-    assert(ata_bd_write_hits_apa_reserved(0, 6, 1));
+    assert(ata_bd_write_hits_apa_reserved(0, 6, 1) == -EIO);
 
     /* Writes above the reserved area never pay for the probe read, and zero-length writes do nothing. */
     reads = 0;

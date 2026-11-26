@@ -70,6 +70,7 @@ typedef int sys_sem_t;
 #define SOL_SOCKET 0xfff
 #define SO_BROADCAST 0x20
 #define SO_KEEPALIVE 0x08
+#define SO_RCVTIMEO 0x1006
 #define IPPROTO_IP 0
 #define IPPROTO_TCP 6
 #define IP_TTL 2
@@ -94,6 +95,8 @@ struct netconn {
     union { struct tcp_pcb *tcp; } pcb;
     int mbox;
     void (*callback)(struct netconn *, int, u16_t);
+    u32_t recv_timeout;
+    u8_t recv_timedout;
 };
 struct api_msg_msg { struct netconn *conn; };
 struct netbuf { int marker; };
@@ -200,6 +203,7 @@ int main(void)
     assert((pcb.flags & TF_NODELAY) != 0);
     assert(lwip_setsockopt(7, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) == 0);
     assert((pcb.so_options & SO_KEEPALIVE) != 0);
+    assert(lwip_setsockopt(7, SOL_SOCKET, SO_RCVTIMEO, &val, sizeof(val)) == 0 && conn.recv_timeout == 100);
     assert(lwip_setsockopt(7, IPPROTO_IP, IP_TTL, &val, sizeof(val)) == 0);
     assert(pcb.ttl == 100);
     assert(lwip_setsockopt(7, IPPROTO_TCP, TCP_NODELAY, &on, 1) == -1);

@@ -30,6 +30,9 @@ static menu_list_t *selected_item = &selection;
 #define SFX_CURSOR 0
 static int sounds;
 static void sfxPlay(int id) {(void)id;sounds++;}
+static int menuSemaId, semaDepth;
+static void WaitSema(int id) {(void)id;semaDepth++;}
+static void SignalSema(int id) {(void)id;semaDepth--;}
 static int animations, direction;
 [[maybe_unused]] static void thmTriggerCoverflowAnim(int dir) {animations++;direction=dir;}
 @FUNCTIONS@
@@ -145,7 +148,7 @@ int main(void) {
         for (int n=1;n<=40;n++) for (int s=0;s<n;s++) {
             setup(n,s,s);menuFillPage();
             int top=s+rows<=n ? s : (n>rows ? n-rows : 0);
-            assert(item.current==&nodes[s] && item.pagestart==&nodes[top]);
+            assert(item.current==&nodes[s] && item.pagestart==&nodes[top] && semaDepth==0);
         }
     }
     list.hidden=1;list.displayedItems=17;setup(40,39,39);menuFillPage();assert(item.pagestart==&nodes[39]);
