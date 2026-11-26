@@ -95,6 +95,8 @@ struct netconn
     sys_sem_t sem;
     int socket;
     s16_t recv_avail;
+    u32_t recv_timeout; /* ms a TCP receive waits for data (SO_RCVTIMEO); 0 waits for ever */
+    u8_t recv_timedout; /* the last netconn_recv() returned NULL because recv_timeout passed */
     void (*callback)(struct netconn *, enum netconn_evt, u16_t len);
 };
 
