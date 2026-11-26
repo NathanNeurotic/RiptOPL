@@ -129,7 +129,8 @@ static int iLinkSync(struct TransactionContextData *trContext, unsigned int Payl
     DEBUG_PRINTF("Payload transmitted. Now awaiting response...\n");
 
     SplitAlarmFired = 0;
-    SetAlarm(&Timeout, &TimeoutCallbackFunction, NULL);
+    if (SetAlarm(&Timeout, &TimeoutCallbackFunction, NULL) != 0)
+        SplitAlarmFired = 1; /* No alarm to end an unanswered request: let the first error end it. */
     /* RiptOPL: the controller's own STO and UResp interrupts do not end a request. The SDK never
      * acted on them: its interrupt handler leaves LocalCachedIntr0Register at 0 on exit, so a request
      * failed only when this function's alarm ran out, and a late answer was still taken. Ending the
@@ -147,6 +148,12 @@ static int iLinkSync(struct TransactionContextData *trContext, unsigned int Payl
                 keepWaiting = 1;
             }
             CpuResumeIntr(state);
+            /* The answer can be accepted between the wake-up and the check above: take it. */
+            if (!keepWaiting) {
+                u32 received;
+                if (PollEventFlag(IntrEventFlag, iLinkEventDataReceived, WEF_OR, &received) == 0)
+                    FlagBits |= received & iLinkEventDataReceived;
+            }
         }
     } while (keepWaiting);
 

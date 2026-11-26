@@ -85,8 +85,14 @@ static int WaitEventFlag(int id,int bits,int mode,u32 *out) {
     return 0;
 }
 static int iSetEventFlag(int id,int bits) { (void)id;(void)bits;return 0; }
+static int lateAnswer,alarmFails;
+static int PollEventFlag(int id,int bits,int mode,u32 *out) {
+    (void)id;(void)mode;
+    if(lateAnswer && (bits&iLinkEventDataReceived)) { *out=iLinkEventDataReceived;return 0; }
+    *out=0;return -421;
+}
 static int SetAlarm(iop_sys_clock_t *clock,unsigned int (*fn)(void *),void *arg) {
-    (void)clock;(void)fn;(void)arg;alarms++;return 0;
+    (void)clock;(void)fn;(void)arg;if(alarmFails) return -1;alarms++;return 0;
 }
 static int CancelAlarm(unsigned int (*fn)(void *),void *arg) {
     (void)fn;(void)arg;cancels++;alarms=0;return 0;
@@ -96,7 +102,7 @@ static unsigned int read_rx(volatile unsigned int *buffer) { rxReads++;return *b
 #define CHECK(c,msg) do { if(!(c)) { printf("FAIL: %s\n",msg);failures++; } } while(0)
 static void reset(void) {
     available=1;waits=signals=blocks=alarms=cancels=earlyError=rxReads=changeOnClear=changeOnResponse=0;
-    responsePending=1;controllerFlag=controllerWakes=clears=0;SplitAlarmFired=0;
+    responsePending=1;controllerFlag=controllerWakes=clears=lateAnswer=alarmFails=0;SplitAlarmFired=0;
     GenerationNumber=1;LocalCachedIntr0Register=0;memset(&regs,0,sizeof(regs));
 }
 static void stale(int headerLength,int payloadLength,int atClear) {
@@ -140,6 +146,10 @@ int main(void) {
     CHECK(iLinkSync(&ctx,12)==-1026 && clears==0,"RetEx still ends the request");
     reset();controllerFlag=iLink_INTR0_STO;controllerWakes=1;responsePending=0;
     CHECK(iLinkSync(&ctx,12)<0 && clears==0,"a refused answer still ends the request");
+    reset();controllerFlag=iLink_INTR0_STO;controllerWakes=1;responsePending=0;lateAnswer=1;
+    CHECK(iLinkSync(&ctx,12)==12,"an answer accepted just after a controller STO is taken");
+    reset();controllerFlag=iLink_INTR0_STO;controllerWakes=1;alarmFails=1;
+    CHECK(iLinkSync(&ctx,12)==-1024 && clears==0,"without an alarm the controller STO ends the request");
     for(int write=0;write<2;write++) {
         reset();earlyError=2;changeOnResponse=1;
         CHECK((write ? iLinkWriteReq(&ctx,0,0,data,4) : iLinkReadReq(&ctx,0,0,data,4))==-1021,
