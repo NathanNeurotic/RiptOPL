@@ -35,7 +35,10 @@ count = function(source, r'^u32 sbGetMediaLsnCount\(const char \*path, u64 total
 # a loop of their own, where an unopened part must count as unmeasured -- never be skipped.
 SIZED = r'if \(partBytes > 0\)\n\s+isoTotalBytes \+= \(u64\)partBytes;\n\s+else\n\s+isoSizeKnown = 0;'
 LOOPS = {
-    'bdmlaunch.cpp': r's64 partBytes = lseek64\(fd, 0, SEEK_END\);\n\s+' + SIZED,
+    # BDM reads the size from the directory entry (getstat): lseek to the end walks the whole FAT chain.
+    'bdmlaunch.cpp': (r'u64 partBytes = 0;\n\s+if \(fileXioGetStat\(partname, &partStat\) >= 0\)\n'
+                      r'\s+partBytes = \(\(u64\)partStat\.hisize << 32\) \| partStat\.size;\n\s+'
+                      r'if \(partBytes > 0\)\n\s+isoTotalBytes \+= partBytes;\n\s+else\n\s+isoSizeKnown = 0;'),
     'ethsupport.cpp': (r'int fd = open\(partname, O_RDONLY, 0666\);\n\s+s64 partBytes = -1;\n\s+if \(fd >= 0\) \{\n'
                      r'\s+partBytes = lseek64\(fd, 0, SEEK_END\);\n\s+close\(fd\);\n\s+\}\n\s+' + SIZED),
 }
