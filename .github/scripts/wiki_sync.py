@@ -24,6 +24,12 @@ from markdownify import MarkdownConverter
 REPO = "https://github.com/NathanNeurotic/RiptOPL"
 SITE = "https://nathanneurotic.github.io/RiptOPL/"
 WIKI = REPO + "/wiki/"
+CREATOR = SITE + "theme-creator.html"
+GALLERY = "https://nathanneurotic.github.io/RiptOPL-Themes/"
+# The Theme Creator banner, first on the wiki's Home (the picture lives on the site, served as image/svg+xml).
+CREATOR_BANNER = (f"[![RiptOPL Theme Creator: design your own theme in the browser, then download a ready-to-use "
+                  f"thm_<Name>.tar. Click to open.]({SITE}assets/theme-creator-banner.svg)]({CREATOR})\n\n"
+                  f"**[Open the Theme Creator]({CREATOR})** · [Browse community themes]({GALLERY})\n\n")
 ROOT = None  # Explicit output checkout, selected by --wiki.
 MD = MarkdownIt("commonmark", {"html": True}).enable("table")
 COMPAT_BUILDER = '''"""Compatibility entry point; the reviewed builder now lives in the source repository."""
@@ -406,7 +412,7 @@ def link(label, page):
 
 def home(source_sha):
     media = f"{REPO}/raw/{source_sha}/docs/assets/ui"
-    text = f"""> [!NOTE]
+    text = CREATOR_BANNER + f"""> [!NOTE]
 > This is the wiki of **RiptOPL**, the C++ edition built with ps2build, where RiptOPL is developed.
 > The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader).
 
@@ -488,6 +494,7 @@ a guide does not establish hardware compatibility.
 
 def sidebar():
     text = "**" + link("RiptOPL Wiki", "Home") + "**\n\n"
+    text += f"🎨 **[Theme Creator]({CREATOR})**: make your own theme\n\n"
     for group, pages in SITE_GROUPS.items():
         text += f"**{group}**\n\n"
         text += "\n".join("- " + link(title, page) for _, page, title in pages) + "\n\n"

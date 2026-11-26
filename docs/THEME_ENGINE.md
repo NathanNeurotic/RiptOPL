@@ -142,6 +142,7 @@ Layout* swaps the theme's shape for 4 x 2, 5 x 2, 3 x 2 Large or 6 x 3 Compact (
 | `width`, `height` | One cover; default 80 x 112. In widescreen the cover and the column pitch narrow with the aspect correction. |
 | `<block>_rows`, `<block>_columns` | Grid shape, read from the theme's **first** `Grid` block only (navigation needs one column count): default 3 rows of 4, at most 8 columns and 4 rows, and never more than 24 covers (rows are dropped first). Grid Layout, when set, replaces them; the Grid (7x2) view pick replaces both with a fixed 7 x 2 page. |
 | `<block>_spacing` | Gap between covers in pixels, from the first `Grid` block; default 16. |
+| `<block>_cell_width`, `<block>_cell_height` | The cell each cover sits in, from the first `Grid` block; both or neither (default: the element's `width` / `height`). Use them when the case picture is a larger canvas than its cover window: `width` / `height` and the overlay corners then describe the picture, and the cover window is fitted into the cell (Korium: 256 x 256 cases in 100 x 140 cells). Grid Layout presets replace them. |
 | `pattern`, `default`, `count` | Native artwork suffix (default `COV`), missing-art asset and cache capacity, as for `Coverflow`. |
 | `overlay`, `overlay2`, overlay corners | Native frame layers, scaled with each cover. Author corners against the element's `width` / `height`. |
 | `font` | Font for the position counter. |
