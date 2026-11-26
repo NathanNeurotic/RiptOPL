@@ -436,8 +436,8 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t pMBox, void **ppvMSG, u32_t u32Timeout)
 
         u32Time += u32WaitTime;
         if (u32Timeout != 0) {
-            /* A finite budget that is used up ends the fetch: 0 would mean wait forever. */
-            if (u32WaitTime >= u32Timeout) {
+            /* A used-up finite budget with nothing queued ends the fetch: 0 would mean wait forever. */
+            if (u32WaitTime >= u32Timeout && IsMessageBoxEmpty(pMBox)) {
                 u32Time = SYS_ARCH_TIMEOUT;
                 goto end;
             }
