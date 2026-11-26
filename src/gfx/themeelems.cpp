@@ -1738,6 +1738,9 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
     if (art < 0)
         return elem;
     item_list_t *menuList = (item_list_t *)menu->item->userdata;
+    mutable_image_t *cimg = (mutable_image_t *)elem->extended;
+    if (cimg == NULL || cimg->cache == NULL || cimg->cache->suffix() == NULL || strcmp(cimg->cache->suffix(), "COV") != 0)
+        shape = -1; // Cover Shape moves covers only: a disc icon, logo or screenshot keeps its row kind's element
     if (shape >= 0)
         art = shape;
     if (art == ART_PS2) {
