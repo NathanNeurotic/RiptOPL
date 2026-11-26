@@ -375,7 +375,11 @@
       }
       var len = 0;
       while (len < 64 && slotPresent(len)) len++;
-      var lost = byFamily[fk].filter(function (x) { return x >= len; }).sort(function (a, b) { return a - b; });
+      // A block whose only type is <block>_type_desc exists only while List Title and Description shows the CFG
+      // text (docs/THEME_ENGINE.md, <key>_desc); with it off the engine stops there on purpose. Not an error
+      // when every block past the stop is such a desc-only block.
+      var descOnly = function (x) { var b = (vw ? vw + "." : "") + fk.replace(/^[^.]*\./, "") + x; return !m.has(b + "_type") && m.has(b + "_type_desc"); };
+      var lost = byFamily[fk].filter(function (x) { return x >= len && !descOnly(x); }).sort(function (a, b) { return a - b; });
       if (lost.length) add("error", "Slot " + len + " is empty in " + (vw ? "the " + S.VIEW_LABEL[vw] + " view's " : "") + chain[chain.length - 1] + " list, so " + lost.map(function (x) { return fk + x; }).join(", ") + (lost.length > 1 ? " are" : " is") + " never read. Number blocks without gaps (Elements tab: Renumber).", fk + lost[0]);
     });
     ["main", "info"].forEach(function (f) {

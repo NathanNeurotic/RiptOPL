@@ -97,8 +97,9 @@
     GLOBALS["font" + f + "_weight"] = { kind: "int", group: "Fonts", label: "Font " + f + " weight", extra: true };
   }
   // Keys a <view>. prefix may override (themeviews.cpp thmView* readers).
+  // list_cfg_text is read per view too (thmLoad: thmViewGetInt(viewPrefix, "list_cfg_text")).
   var VIEW_GLOBALS = ["use_default", "use_real_height", "coverflow_cover_offset", "bg_color", "plasma_blend_color",
-    "text_color", "ui_text_color", "title_color", "sel_text_color", "hd_autofit", "inherit"];
+    "text_color", "ui_text_color", "title_color", "sel_text_color", "hd_autofit", "inherit", "list_cfg_text"];
 
   // Element properties. "for" limits where the form shows them; the parser reads any key it knows.
   var PROPS = {

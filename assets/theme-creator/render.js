@@ -437,22 +437,34 @@
     var p = e.props, gp = X.gridProps || p, q = X.pos(e), c = X.c, items = pd.items;
     var rows = Math.max(1, Math.min(4, num(gp.rows, 3))), cols = Math.max(1, Math.min(8, num(gp.columns, 4))), gap = num(gp.spacing, 16);
     while (rows * cols > 24 && rows > 1) rows--;
-    var cw = q.w, ch = q.h; if (X.wide) cw = cw * 3 / 4;
+    // <block>_cell_width / _cell_height (grid.cpp gridCellSize): the cell a cover sits in, else the element's size.
+    // A case picture larger than its cover window (Korium: a 256 x 256 canvas) is then fitted by that window.
+    var cellW = num(gp.cell_width, 0), cellH = num(gp.cell_height, 0), hasCell = cellW > 0 && cellH > 0;
+    var cw = hasCell ? cellW : q.w, ch = hasCell ? cellH : q.h; if (X.wide) cw = cw * 3 / 4;
     var totW = cols * cw + (cols - 1) * gap * (X.wide ? 0.75 : 1), totH = rows * ch + (rows - 1) * gap;
     var x0 = q.x - totW / 2, y0 = q.y - totH / 2, selR = null, sel = pd.sel % (rows * cols);
     var vig = num(gp.vignette, 1);
+    function frameIn(r) {
+      if (!hasCell || p.overlay_ulx === undefined) return r;
+      var ew = num(p.width, q.w) || q.w, eh = num(p.height, q.h) || q.h;
+      var l = Math.min(num(p.overlay_ulx, 0), num(p.overlay_llx, 0)), t = Math.min(num(p.overlay_uly, 0), num(p.overlay_ury, 0));
+      var rr = Math.max(num(p.overlay_urx, ew), num(p.overlay_lrx, ew)), b = Math.max(num(p.overlay_lly, eh), num(p.overlay_lry, eh));
+      if (rr <= l || b <= t) return r;
+      var k = Math.min(r.w / (rr - l), r.h / (b - t));
+      return { x: r.x + (r.w - (rr - l) * k) / 2 - l * k, y: r.y + (r.h - (b - t) * k) / 2 - t * k, w: ew * k, h: eh * k };
+    }
     for (var i = 0; i < rows * cols && i < items.length; i++) {
       var r = { x: x0 + (i % cols) * (cw + gap * (X.wide ? 0.75 : 1)), y: y0 + Math.floor(i / cols) * (ch + gap), w: cw, h: ch };
       if (i === sel) { selR = r; continue; }
       var art = artFor(X, e, items[i], pd, "COV");
       if (!art && gp.coverless === "name" || !art && gp.coverless === "serial") { glassTile(X, r, gp.coverless === "serial" ? items[i].id : items[i].name); continue; }
       art = art || X.img(p["default"]);
-      c.save(); c.globalAlpha = vig === 0 ? 1 : vig === 2 || X.o.dim ? 0.45 : 0.72; X.drawFramed(art, e, r); c.restore();
+      c.save(); c.globalAlpha = vig === 0 ? 1 : vig === 2 || X.o.dim ? 0.45 : 0.72; X.drawFramed(art, e, frameIn(r)); c.restore();
     }
     if (selR) {
       var g2 = { x: selR.x - selR.w * 0.06, y: selR.y - selR.h * 0.06, w: selR.w * 1.12, h: selR.h * 1.12 };
       c.save(); c.shadowColor = textCss(X.col.sel, 0.8); c.shadowBlur = 16; c.fillStyle = "rgba(0,0,0,.01)"; c.fillRect(g2.x, g2.y, g2.w, g2.h); c.restore();
-      X.drawFramed(artFor(X, e, items[sel], pd, "COV") || X.img(p["default"]), e, g2);
+      X.drawFramed(artFor(X, e, items[sel], pd, "COV") || X.img(p["default"]), e, frameIn(g2));
       c.save(); c.strokeStyle = textCss(X.col.sel); c.lineWidth = 2; c.strokeRect(g2.x, g2.y, g2.w, g2.h); c.restore();
     }
     var font = X.font(num(p.font, 0));

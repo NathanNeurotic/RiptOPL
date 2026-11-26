@@ -1476,6 +1476,34 @@
     lastSnap = C.serialize(st.map);
     refreshAll();
     showTab(saved ? "elements" : "start");
+    await importFromLink(!!(saved && saved.cfg));
+  }
+
+  // ---- Open a theme by link: theme-creator.html?import=<url of a thm_<Name>.tar> -------------------------------
+  // The RiptOPL Themes gallery links each theme here. Only this page's own origin is accepted (the gallery and
+  // the docs share nathanneurotic.github.io), so a link cannot make the page fetch from anywhere else. Pictures
+  // and fonts are not kept between visits, so the link is what brings them in; work in progress is asked about
+  // before it is replaced.
+  async function importFromLink(hasSaved) {
+    var raw = new URLSearchParams(location.search).get("import");
+    if (!raw) return;
+    var url;
+    try { url = new URL(raw, location.href); } catch (e) { toast("That theme link is not a valid address.", "bad"); return; }
+    if (url.origin !== location.origin) { toast("Themes open by link only from " + location.origin + ". Download it and use Open a theme instead.", "bad"); return; }
+    if (!/\.tar$/i.test(url.pathname)) { toast("A theme link must point at a thm_<Name>.tar.", "bad"); return; }
+    var file = decodeURIComponent(url.pathname.split("/").pop());
+    if (hasSaved && !(await ask("Open " + file + "? It replaces the theme you are editing here. Download yours first to keep it.", "Open " + file, "Keep mine"))) {
+      history.replaceState(null, "", location.pathname + location.hash);
+      return;
+    }
+    try {
+      var r = await fetch(url.href, { cache: "no-cache" });
+      if (!r.ok) throw new Error("The theme could not be downloaded (HTTP " + r.status + ").");
+      await importFiles(IO.untar(await r.arrayBuffer()));
+      if (/^thm_/i.test(file)) { st.name = file.replace(/^thm_/i, "").replace(/\.tar$/i, ""); $("#th-name").value = st.name; }
+      save(); refreshAll();
+      history.replaceState(null, "", location.pathname + location.hash); // a reload must not re-import over edits
+    } catch (e) { toast(e.message, "bad"); }
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
