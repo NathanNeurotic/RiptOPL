@@ -80,9 +80,10 @@ static void check_at(FIL *f,FSIZE_t ofs,FSIZE_t size) {
     }
 }
 
-static void check_file(const char *path,FSIZE_t size,BYTE fs_type,int expect_contiguous,BYTE mode) {
+static void check_file(const char *path,FSIZE_t size,BYTE fs_type,int expect_contiguous,BYTE mode,int stale_stat) {
     FIL f;DWORD bcs;
     assert(f_open(&f,path,mode)==FR_OK);
+    if(stale_stat) f.obj.stat=2; /* a reused FIL slot keeps an old exFAT flag; FAT must still walk its chain */
     assert(f_size(&f)==size);
     if(fs_type==FS_EXFAT) assert((f.obj.stat==2)==expect_contiguous);
     bcs=(DWORD)f.obj.fs->csize*512;
@@ -105,9 +106,10 @@ static void run(BYTE fmt,BYTE fs_type) {
     assert(f_open(&gap,"0:/gap.bin",FA_CREATE_ALWAYS|FA_WRITE)==FR_OK);
     write_pattern("0:/frag.iso",size,0,&gap);
     assert(f_close(&gap)==FR_OK);
-    check_file("0:/one.iso",size,fs_type,1,FA_READ);
-    check_file("0:/frag.iso",size,fs_type,0,FA_READ);
-    check_file("0:/one.iso",size,fs_type,1,FA_READ|FA_WRITE); /* write mode keeps the chain walk */
+    check_file("0:/one.iso",size,fs_type,1,FA_READ,0);
+    check_file("0:/frag.iso",size,fs_type,0,FA_READ,0);
+    if(fs_type!=FS_EXFAT) check_file("0:/frag.iso",size,fs_type,0,FA_READ,1);
+    check_file("0:/one.iso",size,fs_type,1,FA_READ|FA_WRITE,0); /* write mode keeps the chain walk */
     assert(f_unmount("0:")==FR_OK);
 }
 
@@ -122,7 +124,7 @@ int main(void) {
 '''
 fatfs = root / 'modules/bdm/bdmfs_fatfs/fatfs'
 ff = (fatfs / 'ff.c').read_text()
-assert 'fp->obj.stat == 2 && !(fp->flag & FA_WRITE)' in ff, 'the contiguous-file seek shortcut is missing'
+assert 'fs->fs_type == FS_EXFAT && fp->obj.stat == 2 && !(fp->flag & FA_WRITE)' in ff, 'the contiguous-file seek shortcut is missing'
 with tempfile.TemporaryDirectory() as temp:
     build = Path(temp)
     for source_file in [fatfs / 'ff.c', fatfs / 'ffunicode.c', *sorted((fatfs / 'include').glob('*.h'))]:

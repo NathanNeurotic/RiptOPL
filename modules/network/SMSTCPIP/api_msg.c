@@ -264,6 +264,8 @@ accept_function(void *arg, struct tcp_pcb *newpcb, err_t err)
         return ERR_MEM;
     }
     newconn->acceptmbox = SYS_MBOX_NULL;
+    newconn->recv_timeout = 0; /* pool entries are reused: no stale SO_RCVTIMEO */
+    newconn->recv_timedout = 0;
     newconn->err = err;
     /* Register event with callback */
     if (conn->callback) {

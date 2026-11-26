@@ -764,7 +764,7 @@ static int get_frag_list(FIL *file, void *rdata, unsigned int rdatalen)
     // An exFAT file flagged contiguous (no FAT chain) is one fragment by definition; walking it
     // cluster by cluster costs about 0.2 s per GiB on the IOP for the same answer.
     if (fs->fs_type == FS_EXFAT && file->obj.stat == 2) {
-        if (iClusterStart < 2 || clusters > fs->n_fatent - iClusterStart)
+        if (iClusterStart < 2 || iClusterStart >= fs->n_fatent || clusters > fs->n_fatent - iClusterStart)
             return -EIO;
         u64 count = clusters * fs->csize;
         if (count > 0xFFFFFFFF)

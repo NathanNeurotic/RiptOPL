@@ -4726,7 +4726,7 @@ FRESULT f_lseek (
 			}
 			if (clst != 0) {
 #if FF_FS_EXFAT
-				if (fp->obj.stat == 2 && !(fp->flag & FA_WRITE) && ofs > bcs) {	/* Contiguous file (no FAT chain) in read mode: */
+				if (fs->fs_type == FS_EXFAT && fp->obj.stat == 2 && !(fp->flag & FA_WRITE) && ofs > bcs) {	/* Contiguous file (no FAT chain) in read mode: */
 					DWORD n = (DWORD)((ofs - 1) / bcs);	/* jump straight to the target cluster instead of following it one by one */
 					clst += n;
 					if (clst <= 1 || clst >= fs->n_fatent) ABORT(fs, FR_INT_ERR);

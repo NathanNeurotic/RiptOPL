@@ -63,7 +63,11 @@ const char *bdmModeMountedRoot(int mode)
     if (mode < BDM_MODE || mode > BDM_MODE_LAST)
         return NULL;
     const bdm_device_data_t *pDeviceData = (const bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
-    return bdmSlotIdentified(pDeviceData) ? pDeviceData->bdmDeviceRoot : NULL;
+    // Mounted and identified is enough: a device with no game list (bdmULSizePrev -2) can still hold neutrino.elf.
+    if (pDeviceData == NULL || pDeviceData->bdmDeviceRoot[0] == '\0' || pDeviceData->bdmDriver[0] == '\0' ||
+        pDeviceData->bdmDeviceType == BDM_TYPE_UNKNOWN)
+        return NULL;
+    return pDeviceData->bdmDeviceRoot;
 }
 
 void bdmInitDevicesData()

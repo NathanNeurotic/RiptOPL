@@ -103,6 +103,7 @@ int main(void) {
     CHECK(get_frag_list(&file,NULL,0)==1 && calls==0);
     reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=62; CHECK(get_frag_list(&file,NULL,0)<0);
     reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=61; CHECK(get_frag_list(&file,NULL,0)==1);
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=65; CHECK(get_frag_list(&file,NULL,0)<0); /* past the volume: no wrap */
     reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=1; CHECK(get_frag_list(&file,NULL,0)<0);
     /* stat 3 (fragmented in the FAT) still walks the chain. */
     reset(); fs.fs_type=FS_EXFAT; file.obj.stat=3; fat[4]=0x7FFFFFFF; CHECK(get_frag_list(&file,NULL,0)==1 && calls==3);
