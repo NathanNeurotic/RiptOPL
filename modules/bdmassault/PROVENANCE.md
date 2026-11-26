@@ -19,7 +19,7 @@ fallback — the same external-beats-embedded order POPSLoader ships.
 | usbd.irx.ata | 42749 | 4e1d39365854747117a08f8a8d843937614590ea072cf2b70f6e4c2ebbf3c6ee |
 | usbhdfsd.irx.ata | 21837 | 1cc865cd09997bd708e9e102c0f0f1f17f352b7844b282fcfa6a00f38609db9c |
 | usbd.irx.ilink | 48500 | 5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369 |
-| usbhdfsd.irx.ilink | 27833 | a5c741565a9015283610e400401c3bbdea94d3e9c54ce483897f6dba725ab544 |
+| usbhdfsd.irx.ilink | 27593 | 871bc500168ecf80dd1f9d80837ab75b5fdd3a8d4dfd09819ab6efdc45ad043d |
 
 **Dedupe (verified by sha256):** `usbd.irx.mx4sio` and `usbd.irx.ilink` are byte-identical to
 `usbd.irx.usbexfat` (all are copies of `bdm_assault.irx`).
@@ -94,6 +94,9 @@ fallback — the same external-beats-embedded order POPSLoader ships.
   The configuration ROM retry fix extends the same discovery retry to read failures before LOGIN.
   The pinned build from [PR #484 CI](https://github.com/NathanNeurotic/RiptOPL/actions/runs/44939370040)
   is 27833 bytes, SHA-256 `a5c741565a9015283610e400401c3bbdea94d3e9c54ce483897f6dba725ab544`.
+  The embedded manager's receive handlers then read each packet by its own length, as the SDK
+  does, instead of dropping one that was still arriving when the receive FIFO level was sampled.
+  That build is 27593 bytes, SHA-256 `871bc500168ecf80dd1f9d80837ab75b5fdd3a8d4dfd09819ab6efdc45ad043d`.
   **Rebuilt from source:** the bytes above are the output of `make` in that directory inside
   `ps2dev/ps2dev@sha256:8fba50ecc2229acd7f8da63d34302f12939b7d4fa6848dda1e6a0ce083321a11` (the
   PS2DEVPINNED container), which also reproduces the 21609-byte build from its source exactly. CI
