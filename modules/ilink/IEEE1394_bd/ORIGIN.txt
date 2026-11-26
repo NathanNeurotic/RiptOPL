@@ -119,5 +119,10 @@ and the manager recovery corrections. No physical-console acceptance yet.
    retry. A readable non-SBP-2 device and the local node are ignored. Both the native/bundled
    Neutrino pair and the POPStarter pair are covered by test_ilink_discovery.py.
 
+9. A drive whose self-ID reports speed code 3 (1394b, FireWire 800 bridges) is attached again.
+   Change 1-7 skipped it as "not a speed this driver can use"; the SDK accepted it and iLinkman's
+   iLinkSetNodeTrSpeed caps the transfer at S400. The transfer speed check after iLinkTrAlloc
+   stays. Both copies; test_ilink_discovery.py scenario 4. Not tested on a console.
+
 RE-VENDOR: fetch the files above from the new pin, clang-format 12, then re-apply LOCAL CHANGES and
 update the pin. Keep test_ilink_bd_reset.py passing.

@@ -61,7 +61,7 @@ static struct SBP2Device SBP2Devices[MAX_DEVICES];
 static struct { int pending;struct SBP2Device *owner; } command;
 static int sbp2_io_sema,sbp2_event_flag;
 static int failures,held,scenario,generation,waits,allocations,frees,live[64];
-static int nNodes, speedNow, attempts, cromFailures, selfReads;
+static int nNodes, speedNow, allocSpeed, attempts, cromFailures, selfReads;
 static unsigned int NodeData[63];
 static unsigned short LocalNodeID = 63;
 static unsigned long long simUs,resetAtUs;
@@ -131,7 +131,7 @@ static int iLinkReadCROM(unsigned short node, unsigned int offset, unsigned int 
 static int iLinkGetLocalNodeID(void) { return 0xffc0; }
 static int iLinkGetNodeMaxSpeed(int node) { (void)node;return speedNow; }
 static int iLinkTrAlloc(int node,int speed) {
-    (void)node;(void)speed;CHECK(held,"context allocation serialized with I/O");
+    (void)node;allocSpeed=speed;CHECK(held,"context allocation serialized with I/O");
     live[allocations]=1;return allocations++;
 }
 static void iLinkTrFree(int ctx) {
@@ -185,7 +185,7 @@ static void run(int which,unsigned long long reset_at) {
     memset(SBP2Devices,0,sizeof(SBP2Devices));memset(live,0,sizeof(live));memset(&command,0,sizeof(command));
     memset(attemptUs,0,sizeof(attemptUs));
     for(int i=0;i<MAX_DEVICES;i++) { SBP2Devices[i].trContext=-1;SBP2Devices[i].scsi.priv=&SBP2Devices[i]; }
-    scenario=which;generation=waits=held=allocations=frees=attempts=0;
+    scenario=which;generation=waits=held=allocations=frees=attempts=allocSpeed=0;
     cromFailures=selfReads=0;
     simUs=0;resetAtUs=reset_at;
     if(setjmp(done)==0) iLinkIntrCBHandlingThread(NULL);
@@ -231,9 +231,11 @@ int main(void) {
     CHECK(backoff,"retries back off 1, 2, 4, then 5 s and keep the drive's slot");
     CHECK(waits==1,"with no drive attached, retries go on and do not wait for a bus reset");
 
-    /* A speed this driver cannot use is permanent: no context, no attempt, no retry. */
+    /* A 1394b (FireWire 800) drive reports speed code 3. It attaches like any other: the SDK driver
+       accepted it, and iLinkman caps the transfer speed at S400. */
     run(4,0);
-    CHECK(!allocations && !attempts && simUs==0,"an unusable node is neither configured nor retried");
+    CHECK(allocations==1 && allocSpeed==3 && attempts==1 && SBP2Devices[0].IsConnected,
+          "a drive faster than S400 is attached, not skipped");
 
     /* Two drives: node 1's LOGIN is never answered; node 2 attaches. A reset comes during the
        second retry wait and node 1 leaves the bus. */
