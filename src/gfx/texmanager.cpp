@@ -380,10 +380,10 @@ void gsKit_TexManager_release(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
         pending->frame = __building;
         pending->next = __pending;
         __pending = pending;
-    } else {
+    } else if (!referenced) {
         free(tex->Mem);
         free(tex->Clut);
-    }
+    } // no record for pixels a live queue still uploads: leave them allocated rather than free them under the replay
     tex->Mem = NULL;
     tex->Clut = NULL;
 }
