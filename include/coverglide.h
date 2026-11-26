@@ -26,4 +26,16 @@ int coverGlideActive(void);
 // Returns 0x80 and leaves `box` alone otherwise.
 int coverGlide(const char *title, int id, int steps, glide_box_t *box);
 
+// A case frame's corner offset `v` (theme units, for a cover `full` wide or high) on a cover drawn `drawn` wide or
+// high. At a whole size it is exactly what the integer maths always gave (v * drawn / full); in between it blends the
+// two whole sizes either side, so the window moves smoothly with a moving cover and does not jump when it lands.
+static inline float glideCorner(int v, float drawn, int full)
+{
+    if (full <= 0)
+        return 0.0f;
+    int lo = (int)drawn;
+    float a = (float)(v * lo / full), b = (float)(v * (lo + 1) / full);
+    return a + (drawn - lo) * (b - a);
+}
+
 #endif

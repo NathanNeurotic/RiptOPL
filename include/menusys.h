@@ -124,6 +124,7 @@ int menuHasRegisteredItems(void);
 // Defined in src/gfx/themeelems.cpp so the tab bar can use it without reaching up a layer.
 int menuItemShown(const struct menu_item *item);
 void menuReinitMainMenu(void);
+int menuMainInfoShareBackdrop(void);
 struct _item_list_t;
 void menuInitGameMenu(struct _item_list_t *support);
 void menuInitAppMenu(void);

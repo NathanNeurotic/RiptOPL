@@ -25,6 +25,7 @@ def function(source, signature):
 
 functions = "\n".join([function(platform, s) for s in (
     "static const char *sysLastPathSeparator(",
+    "static int neutrinoArgHasActiveFlag(",
     "static int neutrinoArgActiveValue(",
     "static int sysNeutrinoCheatPath(",
     "static int sysNeutrinoCfgNameSafe(",
@@ -49,17 +50,18 @@ harness = r'''
 #define RA_MODE_XERABORA 0
 #define RA_MODE_CADUCEUS 1
 #define _STR_RA_NEUTRINO_UNTRACKED 1
+#define _STR_RA_NEUTRINO_HDL_UNTRACKED 2
 #define LOG(...) ((void)0)
 @LIMIT@
 static char gNeutrinoArgs[256], sysNeutrinoCheatArg[24], sysNeutrinoCheatStartup[32];
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
-static int sysNeutrinoRANetworkGame;
+static int sysNeutrinoRANetworkGame, sysNeutrinoRAHddGame;
 static void (*netDownSet)(void);
 static void ethDeinitModules(void){}
 static void sysNeutrinoSetRANetDown(void (*f)(void)){netDownSet=f;}
 static int gRATelemetry=1, gRAMode, gRAHostIp[4]={192,168,1,2}, ps2_ip[4]={192,168,1,10}, ps2_ip_use_dhcp;
 static int count=2, bytes=5, warning, networkCalls, writes, missingMarker, failWrite, failClose, flat;
-static int nicBusy, sessionFail; /* a resident UDP transport; a Caduceus bridge reporting OFFLINE */
+static int nicBusy, sessionFail, noAtaNet; /* noAtaNet: the kit has no bsd-ata-net.toml */ /* a resident UDP transport; a Caduceus bridge reporting OFFLINE */
 static const char *marker="RiptOPL ORBIT RA handoff v1\nORBIT credits\n";
 static unsigned int entries[2]={RA_WATCH_PACK(0x100000,4),RA_WATCH_PACK(0x100004,1)};
 static char cfg[2048], watch[128], tomlPath[512], wlPath[512];
@@ -72,6 +74,7 @@ static int fake_open(const char *path,int flags,...) {
     }
     if (strstr(path,"ORBIT-RA.txt")) return missingMarker ? -1 : 1;
     if (flat && strstr(path,"system.toml")) return -1;
+    if (noAtaNet && strstr(path,"bsd-ata-net.toml")) return -1;
     return 2;
 }
 static int fake_read(int fd,void *out,int size) {
@@ -196,6 +199,22 @@ int main(void) {
     assert(sysNeutrinoRADirOnNetwork("smb0:/neutrino/neutrino.elf","-cwd=mass0:/neutrino"));
     assert(sysNeutrinoRADirOnNetwork("udpfs:/neutrino.elf","-cwd=mass0:/neutrino"));
     assert(sysNeutrinoRADirOnNetwork("neutrino.elf",""));
+    gRAMode=RA_MODE_XERABORA;count=2;
+    /* NULD parity: no achievements through Neutrino for HD Loader games, with its own notice. */
+    prepare("apa", "");assert(!sysNeutrinoRAArg[0] && !writes && !networkCalls && warning==1);
+    /* HDD (exFAT on ata): Neutrino's HDD-plus-network DEV9 and the game's network drivers faked. */
+    prepare("ata", "");
+    assert(sysNeutrinoRAArg[0] && sysNeutrinoRAHddGame && !warning && strstr(cfg,"depends = [\"i_dev9_ns\"]"));
+    assert(!strstr(cfg,"i_dev9_hidden") && strstr(cfg,"file = \"SMAP.IRX\"") && strstr(cfg,"file = \"ENT_SMAP.IRX\""));
+    assert(strstr(cfg,"file = \"smap.irx\"") && strstr(cfg,"raagent.irx"));
+    prepare("ata", "-cfg=mine");assert(strstr(cfg,"depends = [\"i_dev9_ns\", \"mine\"]"));
+    /* A kit without bsd-ata-net.toml keeps the hidden DEV9 and -bsd=ata, as before. */
+    noAtaNet=1;prepare("ata", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && !warning && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));noAtaNet=0;
+    /* The user's own -bsd= comes after ours and wins, so its DEV9 stays. */
+    prepare("ata", "-bsd=ata");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));
+    snprintf(gNeutrinoArgs,sizeof(gNeutrinoArgs),"-bsd=ata");prepare("ata", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame);gNeutrinoArgs[0]=0;
+    /* Every other device keeps the hidden DEV9, as before. */
+    prepare("usb", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));
     puts("ORBIT handoff: device paths, network ownership, config/cheats, watch limits and failures passed");
     return 0;
 }
@@ -231,3 +250,10 @@ for need in ("sysNeutrinoRANetDown != NULL", "sysNeutrinoRAArg[0]", "sysNeutrino
 assert "sysShutdownDev9(" not in launch[gate:handoff]
 assert "ethDeinitModules" not in platform, "the platform layer must not name the sources-layer network stack"
 print("PASS: RA launches release the menu network before the Neutrino handoff (NULD parity); others unchanged")
+
+# An RA launch of an HDD (ata) game asks Neutrino for its HDD-plus-network driver set; nothing else changes.
+cut = launch.index('snprintf(bsd, sizeof(bsd), "-bsd=%s", deviceName);')
+ra_bsd = launch[cut:launch.index("argv[argc++] = bsd;", cut)]
+for need in ("#ifdef RETROACHIEVEMENTS", "sysNeutrinoRAHddGame", "sysNeutrinoRAStartup", '!strcmp(deviceName, "ata")', '"-bsd=ata-net"'):
+    assert need in ra_bsd, need
+print("PASS: HD Loader games stay untracked; HDD games use bsd-ata-net with RA (NULD and Neutrino parity)")

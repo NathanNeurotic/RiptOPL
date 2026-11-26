@@ -61,9 +61,9 @@ static int configGetInt(config_set_t *s, const char *key, int *value)
     *value = s->value; return 1;
 }
 static int handCleared, listCleared;
-static int sysNeutrinoHandRA(const char *startup, const char *a, const char *b, int c, const unsigned char *d,
+static int sysNeutrinoHandRA(const char *startup, const char *a, const char *b, int c, int hdd, const unsigned char *d,
                              const unsigned char *e, const void *f, int g)
-{ assert(!startup && !a && !b && !c && !d && !e && !f && !g); handCleared++; return 0; }
+{ assert(!startup && !a && !b && !c && !hdd && !d && !e && !f && !g); handCleared++; return 0; }
 static void ClearWatchList(void) { listCleared++; }
 static int sbRaHuntCount, sbRaHuntBytes, sbRaHuntTotal, sbRaHuntUnlocked;
 @BODY@

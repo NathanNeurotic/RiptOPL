@@ -2007,6 +2007,9 @@ gui_strings:
 # RA through Neutrino: the RA kit's ORBIT runtime cannot take this launch (sysNeutrinoPrepareRA).
 - label: RA_NEUTRINO_UNTRACKED
   string: "Neutrino RA is unavailable for this launch. Check the RA runtime, companion IP and saved watch list. Launching without achievements."
+# RA through Neutrino skips HD Loader (APA) games, as NULD does; the OPL core still tracks them.
+- label: RA_NEUTRINO_HDL_UNTRACKED
+  string: "Neutrino does not track achievements for HDD (HD Loader) games. Launching without achievements. The OPL core tracks them."
 # RA PS1: rapops in POPS/MODULE_9.IRX for tracked USB VCD launches (rapopslaunch.cpp); the clean-up
 # prompts run in every edition, since a module an RA launch left behind would start with any POPStarter.
 - label: PS1_RA_USB_REQUIRED

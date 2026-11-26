@@ -1097,7 +1097,7 @@ void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_eleme
     theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
 }
 
-void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, float x, float y, int coverW, int coverH, int inset, u64 color)
 {
     if (gTheme == NULL || gTheme->discCache == NULL || menu == NULL || menu->item == NULL || item == NULL)
         return;
@@ -1117,10 +1117,10 @@ void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, s
         side = coverH / 2;
     if (side < 4)
         return;
-    int left = x - rmWideScale(coverW) / 2;
-    int bottom = y + coverH / 2;
-    int cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
-    int cy = bottom - side / 2 - inset;
+    float left = x - rmWideScale(coverW) / 2; // a moving cover's fractions kept: the disc stays on its case
+    float bottom = y + coverH / 2;
+    float cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
+    float cy = bottom - side / 2 - inset;
     rmDrawPixmap(disc, cx, cy, ALIGN_CENTER, side, side, SCALING_RATIO, color, 0);
 }
 
@@ -1504,13 +1504,16 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
             glide_box_t to = at;
             int alpha = coverGlide(item->item.text, item->item.id, 0, &at);
             if (alpha < 0x80 || at.x != to.x || at.y != to.y || at.w != to.w || at.h != to.h) {
-                int x = (int)at.x, y = (int)at.y, w = (int)at.w, h = (int)at.h, ew = drawElem->width, eh = drawElem->height;
+                // Drawn at its box as it is, fractions included: the renderer puts it on whole display pixels.
+                float x = at.x, y = at.y, w = at.w, h = at.h;
+                int ew = drawElem->width, eh = drawElem->height;
                 u64 color = (gDefaultCol & ~(0xffULL << 24)) | ((u64)alpha << 24);
                 image_texture_t *ov = gameImage->overlayTexture;
                 if (ov) {
-                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, ov->upperLeft_x * w / ew,
-                                        ov->upperLeft_y * h / eh, ov->upperRight_x * w / ew, ov->upperRight_y * h / eh, ov->lowerLeft_x * w / ew,
-                                        ov->lowerLeft_y * h / eh, ov->lowerRight_x * w / ew, ov->lowerRight_y * h / eh, 0);
+                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, glideCorner(ov->upperLeft_x, w, ew),
+                                        glideCorner(ov->upperLeft_y, h, eh), glideCorner(ov->upperRight_x, w, ew), glideCorner(ov->upperRight_y, h, eh),
+                                        glideCorner(ov->lowerLeft_x, w, ew), glideCorner(ov->lowerLeft_y, h, eh), glideCorner(ov->lowerRight_x, w, ew),
+                                        glideCorner(ov->lowerRight_y, h, eh), 0);
                     if (gameImage->overlayTexture2)
                         rmDrawPixmap(&gameImage->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
                 } else
@@ -2130,6 +2133,45 @@ static int thmFullScreenImage(const theme_element_t *e)
 int thmIsBackdropElem(const theme_elems_t *family, const theme_element_t *elem)
 {
     return (elem == family->first && elem->type == ELEM_TYPE_BACKGROUND) || thmFullScreenImage(elem);
+}
+
+static int thmSameTexture(const image_texture_t *a, const image_texture_t *b)
+{
+    if (a == b)
+        return 1;
+    return a != NULL && b != NULL && a->name != NULL && b->name != NULL && !strcmp(a->name, b->name) &&
+           a->upperLeft_x == b->upperLeft_x && a->upperLeft_y == b->upperLeft_y && a->upperRight_x == b->upperRight_x &&
+           a->upperRight_y == b->upperRight_y && a->lowerLeft_x == b->lowerLeft_x && a->lowerLeft_y == b->lowerLeft_y &&
+           a->lowerRight_x == b->lowerRight_x && a->lowerRight_y == b->lowerRight_y;
+}
+
+int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
+{
+    if (a == NULL || b == NULL)
+        return 0;
+    const theme_element_t *ea = a->first, *eb = b->first;
+    for (; ea != NULL && thmIsBackdropElem(a, ea); ea = ea->next, eb = eb->next) {
+        if (eb == NULL || !thmIsBackdropElem(b, eb) || ea->type != eb->type || ea->drawElem != eb->drawElem ||
+            ea->posX != eb->posX || ea->posY != eb->posY || ea->width != eb->width || ea->height != eb->height ||
+            ea->aligned != eb->aligned || ea->scaled != eb->scaled)
+            return 0;
+        const mutable_image_t *ia = (const mutable_image_t *)ea->extended, *ib = (const mutable_image_t *)eb->extended;
+        if (ia == NULL || ib == NULL) {
+            if (ia != ib)
+                return 0;
+            continue;
+        }
+        const char *sa = ia->cache ? ia->cache->suffix() : NULL, *sb = ib->cache ? ib->cache->suffix() : NULL;
+        if (!thmSameTexture(ia->defaultTexture, ib->defaultTexture) || !thmSameTexture(ia->overlayTexture, ib->overlayTexture) ||
+            !thmSameTexture(ia->overlayTexture2, ib->overlayTexture2) || ia->wallpaper != ib->wallpaper ||
+            ia->backdropLayer != ib->backdropLayer || (sa == NULL) != (sb == NULL) || (sa != NULL && strcmp(sa, sb)))
+            return 0;
+        // Game art: each page holds the last picture it drew (holdLastBackground), so both must hold the same one.
+        if (ia->cache != NULL && (ia->lastCacheId != ib->lastCacheId || ia->lastUid != ib->lastUid))
+            return 0;
+    }
+    // a's backdrop has ended (at its content or its end): b's must end here too.
+    return eb == NULL || !thmIsBackdropElem(b, eb);
 }
 
 void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme)

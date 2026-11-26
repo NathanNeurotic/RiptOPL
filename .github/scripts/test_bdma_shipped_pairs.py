@@ -48,13 +48,13 @@ int main() {
         markerMode=mode;assert(!vcdBdmaEnvironmentValid(mode));
     }
     /* A card holding an older iLink driver needs the current pair. */
-    const int staleIlink[]={21609,23452,21977,22025,22185,27081,27145,27129,27641,27705,27769};
+    const int staleIlink[]={21609,23452,21977,22025,22185,27081,27145,27129,27641,27705,27769,27593,27977};
     for(int stale:staleIlink) {
         pairSize[0]=48500;pairSize[1]=stale;markerMode=VCD_BDMA_ILINK;markerExists=true;
         assert(!vcdBdmaEnvironmentValid(VCD_BDMA_ILINK));
         markerExists=false;assert(!vcdBdmaManualPairMatches(VCD_BDMA_ILINK));
     }
-    assert(!vcdBdmaPairMatches(-1,48500,27593)&&!vcdBdmaPairMatches(7,48500,27593));
+    assert(!vcdBdmaPairMatches(-1,48500,28073)&&!vcdBdmaPairMatches(7,48500,28073));
     pairSize[0]=pairSize[1]=-1;assert(vcdBdmaEnvironmentValid(0));
     pairSize[0]=48500;assert(!vcdBdmaEnvironmentValid(0));
     /* No POPSTARTER folder: no external pair, which is exactly the FAT32 environment (and reading never makes one). */

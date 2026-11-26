@@ -25,8 +25,8 @@ public:
     void end(void);
     void drawQuad(rm_quad_t *q);
     void setReflectionYOffset(int yoff);
-    void drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection);
-    void drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color, GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection);
+    void drawPixmap(GSTEXTURE *txt, float x, float y, short aligned, float w, float h, short scaled, u64 color, int reflection);
+    void drawOverlayPixmap(GSTEXTURE *overlay, float x, float y, short aligned, float w, float h, short scaled, u64 color, GSTEXTURE *inlay, float ulx, float uly, float urx, float ury, float blx, float bly, float brx, float bry, int reflection);
     void drawRect(int x, int y, int w, int h, u64 color);
     void drawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u64 fillColor);
     void drawLine(int x1, int y1, int x2, int y2, u64 color);
@@ -50,7 +50,7 @@ public:
     void onVSync();
 
 private:
-    void setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q);
+    void setupQuad(GSTEXTURE *txt, float x, float y, short aligned, float w, float h, short scaled, u64 color, rm_quad_t *q);
     void drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float botV);
     int interlacedFrameMode();
     void applyLineBlend(void);
@@ -73,6 +73,10 @@ private:
     {
         return (y * displayHeight_) / 480;
     }
+    // 640x480 design units -> whole display pixels, truncated as the integer scaling always was (renderman.cpp).
+    int displayX(float x) const { return (int)scaleX(x); }
+    int displayY(float y) const { return (int)scaleY(y); }
+    int displayW(float w, short scaled) const { return (scaled & SCALING_RATIO) ? (int)scaleX(w * aspectWidth_) >> 2 : (int)scaleX(w); }
 
     int order_ = 0;
     short int vmode_ = -1;

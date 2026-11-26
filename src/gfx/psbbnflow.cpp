@@ -164,15 +164,16 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
     // The card flat, at its size: how a framed cover is drawn, and where a layout switch flies a cover to.
     int w = (card.xr - card.xl) * 1000 / rmWideScale(1000), h = card.hl > card.hr ? card.hl : card.hr;
     int x = (card.xl + card.xr) / 2, y = card.yc;
+    float fx = x, fy = y, fw = w, fh = h; // where it is drawn: the glide's fractions while it moves
     if (position > -1000 && position < 1000 * (PSBBN_FLOW_TAIL + 1)) { // the cards in the row, not the one leaving
         glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
         int a = coverGlide(item->item.text, item->item.id, (position < 0 ? -position : position) / 1000, &box);
         if (box.x != x || box.y != y || box.w != w || box.h != h || a < 0x80) { // on its way: flat until it lands
-            x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
+            fx = box.x, fy = box.y, fw = box.w, fh = box.h;
             color = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
             if (!image->overlayTexture) { // a framed cover keeps its frame below
-                thmCoverCropBegin(menu, item, art, h > 0 ? (float)w / (float)h : 0.0f);
-                rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                thmCoverCropBegin(menu, item, art, box.h > 0.0f ? box.w / box.h : 0.0f);
+                rmDrawPixmap(texture, box.x, box.y, ALIGN_CENTER, box.w, box.h, SCALING_RATIO, color, 0); // its fractions: whole display pixels
                 thmCoverCropEnd();
                 return;
             }
@@ -183,15 +184,15 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
         image_texture_t *ov = image->overlayTexture;
         int cw = coverElem->width > 0 ? coverElem->width : 1;
         int ch = coverElem->height > 0 ? coverElem->height : 1;
-        thmCoverCropBegin(menu, item, art, h > 0 ? thmCoverAspect(coverElem) * w * ch / ((float)h * cw) : 0.0f); // the window as drawn
-        rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color,
-                            texture, ov->upperLeft_x * w / cw, ov->upperLeft_y * h / ch,
-                            ov->upperRight_x * w / cw, ov->upperRight_y * h / ch,
-                            ov->lowerLeft_x * w / cw, ov->lowerLeft_y * h / ch,
-                            ov->lowerRight_x * w / cw, ov->lowerRight_y * h / ch, 0);
+        thmCoverCropBegin(menu, item, art, fh > 0.0f ? thmCoverAspect(coverElem) * fw * ch / (fh * cw) : 0.0f); // the window as drawn
+        rmDrawOverlayPixmap(&ov->source, fx, fy, ALIGN_CENTER, fw, fh, SCALING_RATIO, color,
+                            texture, glideCorner(ov->upperLeft_x, fw, cw), glideCorner(ov->upperLeft_y, fh, ch),
+                            glideCorner(ov->upperRight_x, fw, cw), glideCorner(ov->upperRight_y, fh, ch),
+                            glideCorner(ov->lowerLeft_x, fw, cw), glideCorner(ov->lowerLeft_y, fh, ch),
+                            glideCorner(ov->lowerRight_x, fw, cw), glideCorner(ov->lowerRight_y, fh, ch), 0);
         thmCoverCropEnd();
         if (image->overlayTexture2)
-            rmDrawPixmap(&image->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+            rmDrawPixmap(&image->overlayTexture2->source, fx, fy, ALIGN_CENTER, fw, fh, SCALING_RATIO, color, 0);
         return;
     }
 

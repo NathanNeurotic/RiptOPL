@@ -81,5 +81,22 @@ int main()
         glide_box_t d = box(i, i, 10, 10);
         CHECK(coverGlide("Many", i, 0, &d) == 0x80);
     }
+    // A frame's corner offsets: at every whole size exactly the old integer value, and between two whole sizes never
+    // outside them, so the window does not jump on a glide's last frames (e.g. a 180-wide cover landing at 180).
+    int bad = 0;
+    for (int full = 1; full <= 400; full += 7)
+        for (int v = -40; v <= 400; v += 3)
+            for (int s = 0; s <= 600; s++) {
+                if (glideCorner(v, (float)s, full) != (float)(v * s / full))
+                    bad++;
+                float lo = (float)(v * s / full), hi = (float)(v * (s + 1) / full);
+                float m = glideCorner(v, s + 0.5f, full);
+                if (m < (lo < hi ? lo : hi) - 0.001f || m > (lo < hi ? hi : lo) + 0.001f)
+                    bad++;
+            }
+    CHECK(bad == 0);
+    CHECK(glideCorner(17, 179.99f, 180) > 16.9f && glideCorner(17, 179.99f, 180) <= 17.0f);
+    CHECK(glideCorner(17, 180.0f, 180) == 17.0f);
+    CHECK(glideCorner(5, 50.0f, 0) == 0.0f);
     TEST_DONE("coverglide");
 }

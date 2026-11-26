@@ -1043,6 +1043,7 @@ int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *di
 // sysNeutrinoHandRA writes its files and sysRunNeutrinoLaunch appends -cfg=ript-ra and this argument.
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
 static int sysNeutrinoRANetworkGame;       // the game itself streams over the network (its transport owns SMAP)
+static int sysNeutrinoRAHddGame;           // an HDD (exFAT) game: the network shares the DEV9 with the drive (bsd-ata-net)
 static void (*sysNeutrinoRANetDown)(void); // the menu's network shutdown, given by the sources layer
 
 void sysNeutrinoSetRANetDown(void (*netDown)(void))
@@ -1120,7 +1121,7 @@ static int sysNeutrinoRAWrite(const char *path, const void *data, int size)
     return 0;
 }
 
-int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char *extraArgs, int networkGame,
+int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char *extraArgs, int networkGame, int hddGame,
                       const unsigned char *ip, const unsigned char *peer, const void *watch, int size)
 {
     char dir[256], config[320], path[340], userCfg[64], text[1024];
@@ -1129,6 +1130,7 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
     sysNeutrinoRAArg[0] = '\0';
     sysNeutrinoRAStartup[0] = '\0';
     sysNeutrinoRANetworkGame = networkGame;
+    sysNeutrinoRAHddGame = 0;
     if (startup == NULL)
         return 0;
     // Next to the cheats file: config/ under the working directory, or the directory itself.
@@ -1145,10 +1147,33 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
         userCfg[0] = '\0';
     if (!sysNeutrinoCfgNameSafe(userCfg) || !strcmp(userCfg, "ript-ra"))
         return -1;
+    // An HDD game shares the DEV9 between the drive and the network: Neutrino's own HDD-plus-network
+    // setup (bsd-ata-net.toml: the no-shutdown DEV9, ATAD faked) instead of the hidden DEV9, which the
+    // RA kit's bsd-ata.toml also loads, and the game's own network drivers faked (bsd-udpbd-hdd.toml).
+    // A -bsd= of the user's own comes after ours and wins (Neutrino keeps the last), so its DEV9 stays.
+    // A kit without bsd-ata-net.toml keeps the hidden DEV9 and -bsd=ata, as before.
+    hddGame = hddGame && !networkGame && !neutrinoArgHasActiveFlag(gNeutrinoArgs, "-bsd=") &&
+              !neutrinoArgHasActiveFlag(extraArgs, "-bsd=");
+    if (hddGame) {
+        snprintf(path, sizeof(path), "%sbsd-ata-net.toml", config);
+        int fd = open(path, O_RDONLY);
+        if (fd < 0)
+            hddGame = 0;
+        else
+            close(fd);
+    }
+    const char *dev9 = "\"i_dev9_hidden\"";
+    if (networkGame)
+        dev9 = "";
+    else if (hddGame)
+        dev9 = "\"i_dev9_ns\"";
     len = snprintf(text, sizeof(text), "# Written by RiptOPL for an RA launch through ORBIT Neutrino. Safe to delete.\n"
                                        "name = \"RiptOPL RA\"\ndepends = [%s%s%s%s%s]\n",
-                   networkGame ? "" : "\"i_dev9_hidden\"", userCfg[0] && !networkGame ? ", " : "",
-                   userCfg[0] ? "\"" : "", userCfg, userCfg[0] ? "\"" : "");
+                   dev9, userCfg[0] && !networkGame ? ", " : "", userCfg[0] ? "\"" : "", userCfg, userCfg[0] ? "\"" : "");
+    if (hddGame)
+        len += snprintf(text + len, sizeof(text) - len,
+                        "[[fake]]\nfile = \"ENT_SMAP.IRX\"\nname = \"ent_smap\"\nversion = 0x021f\nloadrv = 0\nstartrv = 2\n"
+                        "[[fake]]\nfile = \"SMAP.IRX\"\nname = \"INET_SMAP_driver\"\nversion = 0x0219\nloadrv = 0\nstartrv = 2\n");
     // A network game's own transport already loads SMAP and the stack.
     if (!networkGame)
         len += snprintf(text + len, sizeof(text) - len,
@@ -1162,6 +1187,7 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
         return -1;
     snprintf(sysNeutrinoRAArg, sizeof(sysNeutrinoRAArg), "-ra=%sript-ra.wl", config);
     snprintf(sysNeutrinoRAStartup, sizeof(sysNeutrinoRAStartup), "%s", startup);
+    sysNeutrinoRAHddGame = hddGame;
     return 0;
 }
 #endif
@@ -1246,6 +1272,12 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
             argv[argc++] = filePath;
     } else {
         snprintf(bsd, sizeof(bsd), "-bsd=%s", deviceName);
+#ifdef RETROACHIEVEMENTS
+        // An RA launch of an HDD game: the drive and the agent's network share the DEV9 (sysNeutrinoHandRA).
+        if (sysNeutrinoRAHddGame && sysNeutrinoRAArg[0] != '\0' && startup != NULL && !strcmp(startup, sysNeutrinoRAStartup) &&
+            !strcmp(deviceName, "ata"))
+            snprintf(bsd, sizeof(bsd), "-bsd=ata-net");
+#endif
         if (argc < argvMax)
             argv[argc++] = bsd;
         // Per-game -bsdfs override (parity-audit #11), Auto(0) = today's bytes exactly (no -bsdfs,
