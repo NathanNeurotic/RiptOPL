@@ -1150,12 +1150,17 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
     // An HDD game shares the DEV9 between the drive and the network: Neutrino's own HDD-plus-network
     // setup (bsd-ata-net.toml: the no-shutdown DEV9, ATAD faked) instead of the hidden DEV9, which the
     // RA kit's bsd-ata.toml also loads, and the game's own network drivers faked (bsd-udpbd-hdd.toml).
-    if (hddGame && !networkGame) {
+    // A -bsd= of the user's own comes after ours and wins (Neutrino keeps the last), so its DEV9 stays.
+    // A kit without bsd-ata-net.toml keeps the hidden DEV9 and -bsd=ata, as before.
+    hddGame = hddGame && !networkGame && !neutrinoArgHasActiveFlag(gNeutrinoArgs, "-bsd=") &&
+              !neutrinoArgHasActiveFlag(extraArgs, "-bsd=");
+    if (hddGame) {
         snprintf(path, sizeof(path), "%sbsd-ata-net.toml", config);
         int fd = open(path, O_RDONLY);
         if (fd < 0)
-            return -1;
-        close(fd);
+            hddGame = 0;
+        else
+            close(fd);
     }
     const char *dev9 = "\"i_dev9_hidden\"";
     if (networkGame)
@@ -1165,7 +1170,7 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
     len = snprintf(text, sizeof(text), "# Written by RiptOPL for an RA launch through ORBIT Neutrino. Safe to delete.\n"
                                        "name = \"RiptOPL RA\"\ndepends = [%s%s%s%s%s]\n",
                    dev9, userCfg[0] && !networkGame ? ", " : "", userCfg[0] ? "\"" : "", userCfg, userCfg[0] ? "\"" : "");
-    if (hddGame && !networkGame)
+    if (hddGame)
         len += snprintf(text + len, sizeof(text) - len,
                         "[[fake]]\nfile = \"ENT_SMAP.IRX\"\nname = \"ent_smap\"\nversion = 0x021f\nloadrv = 0\nstartrv = 2\n"
                         "[[fake]]\nfile = \"SMAP.IRX\"\nname = \"INET_SMAP_driver\"\nversion = 0x0219\nloadrv = 0\nstartrv = 2\n");
@@ -1182,7 +1187,7 @@ int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char 
         return -1;
     snprintf(sysNeutrinoRAArg, sizeof(sysNeutrinoRAArg), "-ra=%sript-ra.wl", config);
     snprintf(sysNeutrinoRAStartup, sizeof(sysNeutrinoRAStartup), "%s", startup);
-    sysNeutrinoRAHddGame = hddGame && !networkGame;
+    sysNeutrinoRAHddGame = hddGame;
     return 0;
 }
 #endif

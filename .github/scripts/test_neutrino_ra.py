@@ -25,6 +25,7 @@ def function(source, signature):
 
 functions = "\n".join([function(platform, s) for s in (
     "static const char *sysLastPathSeparator(",
+    "static int neutrinoArgHasActiveFlag(",
     "static int neutrinoArgActiveValue(",
     "static int sysNeutrinoCheatPath(",
     "static int sysNeutrinoCfgNameSafe(",
@@ -207,7 +208,11 @@ int main(void) {
     assert(!strstr(cfg,"i_dev9_hidden") && strstr(cfg,"file = \"SMAP.IRX\"") && strstr(cfg,"file = \"ENT_SMAP.IRX\""));
     assert(strstr(cfg,"file = \"smap.irx\"") && strstr(cfg,"raagent.irx"));
     prepare("ata", "-cfg=mine");assert(strstr(cfg,"depends = [\"i_dev9_ns\", \"mine\"]"));
-    noAtaNet=1;prepare("ata", "");assert(!sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && warning);noAtaNet=0;
+    /* A kit without bsd-ata-net.toml keeps the hidden DEV9 and -bsd=ata, as before. */
+    noAtaNet=1;prepare("ata", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && !warning && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));noAtaNet=0;
+    /* The user's own -bsd= comes after ours and wins, so its DEV9 stays. */
+    prepare("ata", "-bsd=ata");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));
+    snprintf(gNeutrinoArgs,sizeof(gNeutrinoArgs),"-bsd=ata");prepare("ata", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame);gNeutrinoArgs[0]=0;
     /* Every other device keeps the hidden DEV9, as before. */
     prepare("usb", "");assert(sysNeutrinoRAArg[0] && !sysNeutrinoRAHddGame && strstr(cfg,"\"i_dev9_hidden\"") && !strstr(cfg,"[[fake]]"));
     puts("ORBIT handoff: device paths, network ownership, config/cheats, watch limits and failures passed");
