@@ -1042,7 +1042,13 @@ int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *di
 // raagent.irx speaks xeRAbora's wire protocol. sbNeutrinoPrepareRA decides whether a game is tracked;
 // sysNeutrinoHandRA writes its files and sysRunNeutrinoLaunch appends -cfg=ript-ra and this argument.
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
-static int sysNeutrinoRANetworkGame; // the game itself streams over the network (its transport owns SMAP)
+static int sysNeutrinoRANetworkGame;       // the game itself streams over the network (its transport owns SMAP)
+static void (*sysNeutrinoRANetDown)(void); // the menu's network shutdown, given by the sources layer
+
+void sysNeutrinoSetRANetDown(void (*netDown)(void))
+{
+    sysNeutrinoRANetDown = netDown;
+}
 
 // The effective -cwd, user overrides included, else the folder holding neutrino.elf; with a trailing '/'.
 // 0 = usable; -1 = none, or one we must not write under (hddN: is raw APA, where O_CREAT makes a partition).
@@ -1063,14 +1069,20 @@ static int sysNeutrinoRADir(const char *neutrinoPath, const char *extraArgs, cha
     return 0;
 }
 
-// 1 = Neutrino's working directory (its config, modules and the RA files) is on an SMB, NFS or UDPFS
-// mount, which Neutrino still reads through the menu's network stack until its own IOP reset.
+static int sysNeutrinoPathOnNetwork(const char *path)
+{
+    return !strncasecmp(path, "smb", 3) || !strncasecmp(path, "nfs", 3) || !strncasecmp(path, "udp", 3);
+}
+
+// 1 = neutrino.elf itself, or Neutrino's working directory (its config, modules and the RA files), is on
+// an SMB, NFS or UDPFS mount, which is still read through the menu's network stack until Neutrino's own
+// IOP reset (the ELF is loaded by the handoff, the working directory by Neutrino).
 static int sysNeutrinoRADirOnNetwork(const char *neutrinoPath, const char *extraArgs)
 {
     char dir[256];
-    if (sysNeutrinoRADir(neutrinoPath, extraArgs, dir, sizeof(dir)) < 0)
+    if (sysNeutrinoPathOnNetwork(neutrinoPath) || sysNeutrinoRADir(neutrinoPath, extraArgs, dir, sizeof(dir)) < 0)
         return 1; // unknown: keep the stack, as before
-    return !strncasecmp(dir, "smb", 3) || !strncasecmp(dir, "nfs", 3) || !strncasecmp(dir, "udp", 3);
+    return sysNeutrinoPathOnNetwork(dir);
 }
 
 int sysNeutrinoRARuntime(const char *neutrinoPath, const char *extraArgs)
@@ -1455,12 +1467,13 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
 #ifdef RETROACHIEVEMENTS
     // RA only, NULD parity (launcher.c launch(): ra_prepare, then net_down(), then the loader). The menu
     // raised its network to reach xeRAbora; release that stack's RPC clients before Neutrino takes the
-    // IOP, as NULD does. Not when the game or Neutrino's own files come over the network: that mount is
-    // still being read until Neutrino resets the IOP. DEV9 stays powered (no sysShutdownDev9).
-    if (sysNeutrinoRAArg[0] != '\0' && startup != NULL && !strcmp(startup, sysNeutrinoRAStartup) &&
-        !sysNeutrinoRANetworkGame && !sysNeutrinoRADirOnNetwork(neutrinoPath, extraArgs)) {
+    // IOP, as NULD does. Not when the game, neutrino.elf or Neutrino's own files come over the network:
+    // that mount is still read until Neutrino resets the IOP. DEV9 stays powered.
+    if (sysNeutrinoRANetDown != NULL && sysNeutrinoRAArg[0] != '\0' && startup != NULL &&
+        !strcmp(startup, sysNeutrinoRAStartup) && !sysNeutrinoRANetworkGame &&
+        !sysNeutrinoRADirOnNetwork(neutrinoPath, extraArgs)) {
         LOG("[NEUTRINO] RA: network down before the handoff\n");
-        ethDeinitModules();
+        sysNeutrinoRANetDown();
     }
 #endif
     if (sysLoadELFKeepIOP(neutrinoPath, "", argc, argv) < 0)

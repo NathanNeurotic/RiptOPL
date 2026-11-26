@@ -1978,6 +1978,7 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
             goto untracked;
         memcpy(file, &header, sizeof(header));
         memcpy(file + sizeof(header), GetWatchList(), size - sizeof(header));
+        sysNeutrinoSetRANetDown(ethDeinitModules); // the platform layer cannot name the network stack itself
         int result = sysNeutrinoHandRA(startup, neutrinoPath, extraArgs, networkGame, ip, peer, file, size);
         free(file);
         if (result == 0)

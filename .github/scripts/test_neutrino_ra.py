@@ -29,6 +29,7 @@ functions = "\n".join([function(platform, s) for s in (
     "static int sysNeutrinoCheatPath(",
     "static int sysNeutrinoCfgNameSafe(",
     "static int sysNeutrinoRADir(",
+    "static int sysNeutrinoPathOnNetwork(",
     "static int sysNeutrinoRADirOnNetwork(",
     "int sysNeutrinoRARuntime(",
     "static int sysNeutrinoRAWrite(",
@@ -53,6 +54,9 @@ harness = r'''
 static char gNeutrinoArgs[256], sysNeutrinoCheatArg[24], sysNeutrinoCheatStartup[32];
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
 static int sysNeutrinoRANetworkGame;
+static void (*netDownSet)(void);
+static void ethDeinitModules(void){}
+static void sysNeutrinoSetRANetDown(void (*f)(void)){netDownSet=f;}
 static int gRATelemetry=1, gRAMode, gRAHostIp[4]={192,168,1,2}, ps2_ip[4]={192,168,1,10}, ps2_ip_use_dhcp;
 static int count=2, bytes=5, warning, networkCalls, writes, missingMarker, failWrite, failClose, flat;
 static int nicBusy, sessionFail; /* a resident UDP transport; a Caduceus bridge reporting OFFLINE */
@@ -113,6 +117,7 @@ static void prepare(const char *driver,const char *args) {
 }
 int main(void) {
     prepare("mmce", "-cfg=mine");
+    assert(netDownSet==ethDeinitModules); /* the sources layer hands over the network shutdown */
     assert(sysNeutrinoRAArg[0]);assert(networkCalls==1 && writes==2 && !warning);
     assert(!strcmp(sysNeutrinoRAArg,"-ra=mmce1:/neutrino/config/ript-ra.wl"));
     assert(!strcmp(wlPath,"mmce1:/neutrino/config/ript-ra.wl") && !strcmp(tomlPath,"mmce1:/neutrino/config/ript-ra.toml"));
@@ -187,6 +192,9 @@ int main(void) {
     assert(sysNeutrinoRADirOnNetwork("nfs:/neutrino/neutrino.elf",""));
     assert(sysNeutrinoRADirOnNetwork("udpfs:/neutrino/neutrino.elf",""));
     assert(sysNeutrinoRADirOnNetwork("mass0:/neutrino/neutrino.elf","-cwd=smb0:/n"));
+    /* A network-hosted neutrino.elf with a local -cwd: the handoff still loads the ELF over the network. */
+    assert(sysNeutrinoRADirOnNetwork("smb0:/neutrino/neutrino.elf","-cwd=mass0:/neutrino"));
+    assert(sysNeutrinoRADirOnNetwork("udpfs:/neutrino.elf","-cwd=mass0:/neutrino"));
     assert(sysNeutrinoRADirOnNetwork("neutrino.elf",""));
     puts("ORBIT handoff: device paths, network ownership, config/cheats, watch limits and failures passed");
     return 0;
@@ -212,13 +220,14 @@ print("PASS: all four launch legs prepare RA before argument-budget validation a
 # menu's network stack right before the keep-IOP handoff; a launch without RA is untouched.
 launch = function(platform, "static int sysRunNeutrinoLaunch(")
 handoff = launch.index("sysLoadELFKeepIOP(neutrinoPath")
-down = launch.rfind("ethDeinitModules();", 0, handoff)
+down = launch.rfind("sysNeutrinoRANetDown();", 0, handoff)
 assert down > launch.index("if (checkOnly)"), "network shutdown must run only on the real launch"
 gate = launch.rfind("#ifdef RETROACHIEVEMENTS", 0, down)
 assert gate > launch.rfind("#endif", 0, down), "network shutdown must be RA-only"
 cond = launch[gate:down]
-for need in ("sysNeutrinoRAArg[0]", "sysNeutrinoRAStartup", "!sysNeutrinoRANetworkGame", "!sysNeutrinoRADirOnNetwork("):
+for need in ("sysNeutrinoRANetDown != NULL", "sysNeutrinoRAArg[0]", "sysNeutrinoRAStartup", "!sysNeutrinoRANetworkGame",
+             "!sysNeutrinoRADirOnNetwork("):
     assert need in cond, need
 assert "sysShutdownDev9(" not in launch[gate:handoff]
-assert launch.count("ethDeinitModules();") == 1
+assert "ethDeinitModules" not in platform, "the platform layer must not name the sources-layer network stack"
 print("PASS: RA launches release the menu network before the Neutrino handoff (NULD parity); others unchanged")
