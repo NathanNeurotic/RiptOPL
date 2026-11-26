@@ -2139,7 +2139,10 @@ static int thmSameTexture(const image_texture_t *a, const image_texture_t *b)
 {
     if (a == b)
         return 1;
-    return a != NULL && b != NULL && a->name != NULL && b->name != NULL && !strcmp(a->name, b->name);
+    return a != NULL && b != NULL && a->name != NULL && b->name != NULL && !strcmp(a->name, b->name) &&
+           a->upperLeft_x == b->upperLeft_x && a->upperLeft_y == b->upperLeft_y && a->upperRight_x == b->upperRight_x &&
+           a->upperRight_y == b->upperRight_y && a->lowerLeft_x == b->lowerLeft_x && a->lowerLeft_y == b->lowerLeft_y &&
+           a->lowerRight_x == b->lowerRight_x && a->lowerRight_y == b->lowerRight_y;
 }
 
 int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
@@ -2159,7 +2162,8 @@ int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
             continue;
         }
         const char *sa = ia->cache ? ia->cache->suffix() : NULL, *sb = ib->cache ? ib->cache->suffix() : NULL;
-        if (!thmSameTexture(ia->defaultTexture, ib->defaultTexture) || ia->wallpaper != ib->wallpaper ||
+        if (!thmSameTexture(ia->defaultTexture, ib->defaultTexture) || !thmSameTexture(ia->overlayTexture, ib->overlayTexture) ||
+            !thmSameTexture(ia->overlayTexture2, ib->overlayTexture2) || ia->wallpaper != ib->wallpaper ||
             ia->backdropLayer != ib->backdropLayer || (sa == NULL) != (sb == NULL) || (sa != NULL && strcmp(sa, sb)))
             return 0;
     }

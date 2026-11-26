@@ -205,6 +205,7 @@ struct submenu_list {submenu_item_t item;};
 // The hold L3 layout switch (coverglide.h): no switch running, so every card draws where it is.
 typedef struct {float x,y,w,h;} glide_box_t;
 static int coverGlide(const char *,int,int,glide_box_t *) {return 0x80;}
+static float glideCorner(int v,float drawn,int full) {if(full<=0)return 0.0f;int lo=(int)drawn;float a=(float)(v*lo/full),b=(float)(v*(lo+1)/full);return a+(drawn-lo)*(b-a);}
 static int gThmScreenWidth=640,gThmScreenHeight=480,hidden,overlays,batches,tris,textured,wDraw,hDraw;
 static float uMin,uMax,vMin,vMax;
 static GSTEXTURE *loaded,*drawn;
