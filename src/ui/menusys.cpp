@@ -2669,8 +2669,14 @@ int menuRenderLaunchCover(float in)
                 w = gGuiScreenWidth - 80;
             }
             int x = gGuiScreenWidth / 2, y = gGuiScreenHeight * 42 / 100;
+            // Cover Shape: the art cropped as the page draws it, in the built-in theme's PS2 case (184 by 256) or square.
+            float uv[4] = {0.0f, 0.0f, (float)cover->Width, (float)cover->Height};
+            thmCoverCropBegin(selected_item, selected_item->item->current, cover, gCoverShape == COVER_SHAPE_PS2 ? 184.0f / 256.0f : 1.0f);
+            if (rmCoverCropUV(cover, uv) && uv[3] > uv[1])
+                w = (int)(h * (uv[2] - uv[0]) / (uv[3] - uv[1]));
             rmSetFade((u8)(in * 0x80), 0.0f);
             rmDrawPixmap(cover, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, gDefaultCol, 0);
+            thmCoverCropEnd();
             const char *title = submenuItemGetText(item);
             if (title != NULL)
                 fntRenderStringFit(gTheme->fonts[0], x, y + h / 2 + 12, ALIGN_HCENTER, gGuiScreenWidth - 80, title, gTheme->textColor, 0);

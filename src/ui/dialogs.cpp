@@ -1100,6 +1100,12 @@ struct UIItem diaThemeConfig[] = {
     {UI_BOOL, UICFG_COVERART, 1, 1, _STR_HINT_COVERART, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    // One box for every cover (FifthFox's idea): Mixed keeps each kind's own; PS2, PS1 or APP crops the art to that box.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COVER_SHAPE}}},
+    {UI_SPACER},
+    {UI_ENUM, UICFG_COVER_SHAPE, 1, 1, _STR_HINT_COVER_SHAPE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DISCART}}},
     {UI_SPACER},
     {UI_BOOL, UICFG_ENABLE_DISCART, 1, 1, _STR_HINT_DISCART, 0, 0, {.intvalue = {0, 0}}},

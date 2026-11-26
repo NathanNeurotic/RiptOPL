@@ -2835,3 +2835,8 @@ gui_strings:
 - comment: Advanced page row indented under Cache Game List. Keep the six leading spaces.
   label: GLC_UDPFS
   string: "      UDPFS"
+- comment: Theme Settings row. Its choices are Mixed, PS2, PS1 and APP (not translated).
+  label: COVER_SHAPE
+  string: Cover Shape
+- label: HINT_COVER_SHAPE
+  string: "Mixed draws each cover in its own box. PS2, PS1 or APP draws every cover in that box, the art cropped to fit: in PS2, PS1 art loses its logo strip on the left; in PS1, PS2 art loses its logo band on top."
