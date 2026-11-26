@@ -99,6 +99,10 @@ public:
         gDeviceReads++;
         if (!strcmp(suffix, ART_PSBBN_SUFFIX)) {
             gPsbbnReads++;
+            if (gPsbbnTransient > 0) {
+                gPsbbnTransient--;
+                return ERR_FILE_IO;
+            }
             if (!gPsbbnArt || strncmp(value, "SLUS", 4) != 0)
                 return ERR_BAD_FILE;
             resultTex->Mem = (u32 *)malloc(16);
@@ -114,9 +118,9 @@ public:
         }
         return ERR_BAD_FILE;
     }
-    static int gIdArt, gPsbbnArt, gPsbbnReads;
+    static int gIdArt, gPsbbnArt, gPsbbnReads, gPsbbnTransient;
 };
-int FakeSource::gIdArt = 0, FakeSource::gPsbbnArt = 0, FakeSource::gPsbbnReads = 0;
+int FakeSource::gIdArt = 0, FakeSource::gPsbbnArt = 0, FakeSource::gPsbbnReads = 0, FakeSource::gPsbbnTransient = 0;
 
 // ---- the frame loop --------------------------------------------------------------------------------------
 
@@ -381,6 +385,22 @@ int main()
         cacheDestroyCache(next);
         CHECK(after->residentByValue(id) == NULL && after->residentByValue(name) == NULL);
         cacheDestroyCache(after);
+
+        // A read fault on the PSBBN picture is not its absence: the cover is not parked missing (nor drawn from the
+        // Normal lookup) but asked for again, and the PSBBN picture arrives once the device answers. Here the game
+        // has no Normal cover at all, so a fall-through would have parked it.
+        FakeSource::gIdArt = 0;
+        FakeSource::gPsbbnTransient = 1;
+        image_cache_t *retry = cacheInitCache(0, "ART", 1, "COV", 5);
+        cacheId = -1, uid = 0;
+        int readsBefore = gDeviceReads;
+        tex = cacheGetTexture(retry, &source, &cacheId, &uid, id);
+        drainWorker();
+        CHECK(gDeviceReads == readsBefore + 1); // the PSBBN read only, no Normal lookup after the fault
+        for (f = 0; f < 5; f++, drainWorker())
+            tex = cacheGetTexture(retry, &source, &cacheId, &uid, id);
+        CHECK(cacheId != -2 && tex != NULL && tex->Width == 2 && cacheIsPsbbnArt(tex));
+        cacheDestroyCache(retry);
         gCoverArt = COVER_ART_NORMAL;
         FakeSource::gIdArt = 0;
         FakeSource::gPsbbnArt = 0;
