@@ -26,9 +26,9 @@ SITE = "https://nathanneurotic.github.io/RiptOPL/"
 WIKI = REPO + "/wiki/"
 CREATOR = SITE + "theme-creator.html"
 GALLERY = "https://nathanneurotic.github.io/RiptOPL-Themes/"
-# The Theme Creator banner, first on the wiki's Home (the picture lives on the site, served as image/svg+xml).
-CREATOR_BANNER = (f"[![RiptOPL Theme Creator: design your own theme in the browser, then download a ready-to-use "
-                  f"thm_<Name>.tar. Click to open.]({SITE}assets/theme-creator-banner.svg)]({CREATOR})\n\n"
+# The Theme Creator ad, first on the wiki's Home (the picture is the site's, assets/theme-creator-ad.jpg).
+CREATOR_BANNER = (f"[![Make your own RiptOPL theme: drag things around on a live PS2 preview, add your own art and fonts, "
+                  f"then download a ready-to-play thm_<Name>.tar. Start creating.]({SITE}assets/theme-creator-ad.jpg)]({CREATOR})\n\n"
                   f"**[Open the Theme Creator]({CREATOR})** · [Browse community themes]({GALLERY})\n\n")
 ROOT = None  # Explicit output checkout, selected by --wiki.
 MD = MarkdownIt("commonmark", {"html": True}).enable("table")

@@ -6,7 +6,7 @@
 <p align="center"><a href="#"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/rebuild/main/docs/assets/riptopl.png" /></a></p>
 
 <!-- theme-creator-banner:start -->
-<p align="center"><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html"><img alt="RiptOPL Theme Creator: design your own theme in the browser with a live preview of every screen, then download a ready-to-use thm_&lt;Name&gt;.tar. Click to open." src="docs/assets/theme-creator-banner.svg" width="100%" /></a></p>
+<p align="center"><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html"><img alt="Make your own RiptOPL theme. Drag things around on a live PS2 preview, drop in your own art and fonts, then download a ready-to-play thm_&lt;Name&gt;.tar. Free, in your browser. Start creating." src="docs/assets/theme-creator-ad.jpg" width="100%" /></a></p>
 <p align="center"><b><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html">Open the Theme Creator</a></b> · <a href="https://nathanneurotic.github.io/RiptOPL-Themes/">Browse community themes</a></p>
 <!-- theme-creator-banner:end -->
 
