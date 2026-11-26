@@ -3,7 +3,7 @@
 The glyph atlases are GS textures. gsKit's texture manager keeps every texture in one unlocked
 global list that the GUI thread walks on each draw, and a frame's inline uploads reference the
 atlas pixels until that frame (and, under HIRES, its replay) is retired. The theme loader honours
-that in thmLoad: GUI lock, rmDiscardFrame(), then free. The font loaders did not: fntLoadFile,
+that in thmLoad: GUI lock, then free. The font loaders did not: fntLoadFile,
 fntLoadDefault, fntSetWeight and fntUpdateAspectRatio flushed EVERY font's atlases
 (updateAspectRatioLocked -> cacheFlush -> Atlas::destroy -> rmUnloadTexture + free) under the
 font lock alone. A saved disk theme found by the IO worker while the boot splash is drawing is
@@ -12,8 +12,9 @@ a plausible, not console-confirmed, mechanism for the reported saved-theme freez
 verifies the lock contract, not the cause of the report.
 
 Compile the production FontSystem loaders against a stub GUI/renderer that models the contract:
- - a texture may leave the texture manager only under the GUI lock, after the in-flight frame was
-   retired with rmDiscardFrame();
+ - a texture may leave the texture manager only under the GUI lock. The pixels a live frame still
+   uploads are kept by rmReleaseTexture until it is retired, so no flip to an empty frame
+   (rmDiscardFrame) is taken: under HIRES that showed a black screen for the whole load;
  - the slow file read stays OUTSIDE the GUI lock (the splash keeps drawing while a font is read);
  - release() takes no GUI lock of its own: thmFree calls it already holding the lock.
 The "before" control strips only the fix from the same production code and must fail.
@@ -76,7 +77,6 @@ static void rmUnloadTexture(GSTEXTURE *) {
     ++unloads;
     if (!guiReady) return;
     if (!guiLocked) throw std::runtime_error("glyph atlas left the texture manager outside the GUI lock");
-    if (!frameRetired) throw std::runtime_error("glyph atlas freed while the last frame's uploads can still reference it");
 }
 static void rmGetScreenExtents(int *w, int *h) { *w = 640; *h = 480; }
 static void rmGetScreenExtentsNative(int *w, int *h) { *w = 640; *h = 448; }
@@ -174,13 +174,14 @@ int main() {
         cacheDrawn(fs, FNT_DEFAULT);
         assert(fs.loadDefault(themeFont) == 0); idle();
 
-        // thmFree: release() runs under the caller's GUI lock, after its own rmDiscardFrame.
+        // thmFree: release() runs under the caller's GUI lock.
         cacheDrawn(fs, id);
-        host::ui().lock(); rmDiscardFrame();
+        host::ui().lock();
         fs.release(id);
         host::ui().unlock(); idle();
         assert(!fs.fonts_[id].isValid);
-        assert(unloads > 0 && discards > 0);
+        assert(unloads > 0);
+        if (discards != 0) throw std::runtime_error("a font load flipped HIRES to an empty frame (black screen)");
     } catch (const std::runtime_error &e) {
         std::fprintf(stderr, "%s\n", e.what());
         return 3;
@@ -208,6 +209,6 @@ with tempfile.TemporaryDirectory(prefix='font-flush-frame-lock-') as folder:
             print(f'FAIL: {name}: exit {result.returncode}, expected {expected}\n{result.stderr}')
             sys.exit(1)
         if name == 'before' and before == production:
-            print('FAIL: the font loaders take no FontFrameScope (GUI lock + rmDiscardFrame) around their atlas flush')
+            print('FAIL: the font loaders take no FontFrameScope (GUI lock) around their atlas flush')
             sys.exit(1)
-print('PASS: font loads flush glyph atlases under the GUI lock after retiring the frame; the file read stays outside it; release() does not re-lock; the before-control is caught')
+print('PASS: font loads flush glyph atlases under the GUI lock without flipping to an empty frame; the file read stays outside it; release() does not re-lock; the before-control is caught')

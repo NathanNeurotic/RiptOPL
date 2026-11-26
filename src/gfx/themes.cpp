@@ -1849,12 +1849,12 @@ static int thmLoad(const char *themePath)
     // holds thmSwitchSema, though, so curT is still the published theme here: no other load has freed it meanwhile.
     THEME_BOOT_TRACE("theme load: waiting for GUI publish");
     host::ui().lock();
-    // The GUI lock excludes CPU drawing, but HIRES still replays the previous frame's inline
-    // texture uploads. Retire that queue before freeing the theme whose buffers it references.
-    if (curT != NULL) {
-        rmDiscardFrame();
+    // The GUI lock excludes CPU drawing. HIRES keeps replaying the last frame's inline uploads, and the old theme's
+    // pixels stay allocated until that frame is retired (rmReleaseTexture), so its picture stays on screen until the
+    // new theme's first frame replaces it. Flipping to an empty frame here left HIRES black for the
+    // whole load.
+    if (curT != NULL)
         gridReleaseGlyphs();
-    }
     gTheme = newT;
     loadedFontSize = gFontSize;
     gGridSidebarOpen = 0;

@@ -127,18 +127,15 @@ void FontSystem::unlock(void)
    the GUI thread inside gsKit and could leave it spinning in a corrupted block list with the GUI lock
    held -- a plausible, not console-confirmed, way for the splash to freeze on its last status line.
    Either way the race is real, so a flush is frame work, done the way thmLoad
-   publishes a theme: GUI lock, retire the in-flight frame, then the font lock -- the order
-   renderString establishes (frame lock first, font lock inside). Entry points that may flush take
+   publishes a theme: GUI lock, then the font lock -- the order renderString establishes (frame lock
+   first, font lock inside). The atlas pixels a frame still uploads (under HIRES, its replay) are kept
+   by rmReleaseTexture until that frame is retired, so the picture on screen stays up meanwhile. Entry points that may flush take
    one of these; their callers (thmLoadFonts, lngSetGuiValue, Gui::updateScreenScale) hold no GUI lock.
-   release() does not: thmFree calls it already under the lock, after its own rmDiscardFrame. Before
+   release() does not: thmFree calls it already under the lock. Before
    guiInit the GUI lock is a no-op and the renderer has nothing in flight. */
 struct FontFrameScope
 {
-    FontFrameScope()
-    {
-        host::ui().lock();
-        rmDiscardFrame();
-    }
+    FontFrameScope() { host::ui().lock(); }
     ~FontFrameScope() { host::ui().unlock(); }
     FontFrameScope(const FontFrameScope &) = delete;
     FontFrameScope &operator=(const FontFrameScope &) = delete;
