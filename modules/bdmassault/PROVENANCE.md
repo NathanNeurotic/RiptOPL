@@ -19,7 +19,7 @@ fallback — the same external-beats-embedded order POPSLoader ships.
 | usbd.irx.ata | 42749 | 4e1d39365854747117a08f8a8d843937614590ea072cf2b70f6e4c2ebbf3c6ee |
 | usbhdfsd.irx.ata | 21837 | 1cc865cd09997bd708e9e102c0f0f1f17f352b7844b282fcfa6a00f38609db9c |
 | usbd.irx.ilink | 48500 | 5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369 |
-| usbhdfsd.irx.ilink | 27593 | 871bc500168ecf80dd1f9d80837ab75b5fdd3a8d4dfd09819ab6efdc45ad043d |
+| usbhdfsd.irx.ilink | 27977 | 27fbf6df5450f408a35703c5c6ddfbb138901964d1638e62525b6c16acef0f36 |
 
 **Dedupe (verified by sha256):** `usbd.irx.mx4sio` and `usbd.irx.ilink` are byte-identical to
 `usbd.irx.usbexfat` (all are copies of `bdm_assault.irx`).
@@ -97,6 +97,9 @@ fallback — the same external-beats-embedded order POPSLoader ships.
   The embedded manager's receive handlers then read each packet by its own length, as the SDK
   does, instead of dropping one that was still arriving when the receive FIFO level was sampled.
   That build is 27593 bytes, SHA-256 `871bc500168ecf80dd1f9d80837ab75b5fdd3a8d4dfd09819ab6efdc45ad043d`.
+  The embedded manager then stopped ending a request on the controller's STO and UResp flags, which
+  stock iLinkman never acted on, so an answer still on its way is taken. That build is 27977 bytes,
+  SHA-256 `27fbf6df5450f408a35703c5c6ddfbb138901964d1638e62525b6c16acef0f36`.
   **Rebuilt from source:** the bytes above are the output of `make` in that directory inside
   `ps2dev/ps2dev@sha256:8fba50ecc2229acd7f8da63d34302f12939b7d4fa6848dda1e6a0ce083321a11` (the
   PS2DEVPINNED container), which also reproduces the 21609-byte build from its source exactly. CI
