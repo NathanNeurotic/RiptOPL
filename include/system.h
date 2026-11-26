@@ -95,6 +95,8 @@ int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *di
 int sysNeutrinoRARuntime(const char *neutrinoPath, const char *extraArgs);
 int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char *extraArgs, int networkGame,
                       const unsigned char *ip, const unsigned char *peer, const void *watch, int size);
+/* The menu network shutdown an RA launch runs right before the Neutrino handoff (NULD parity). */
+void sysNeutrinoSetRANetDown(void (*netDown)(void));
 #endif
 int sysNeutrinoArgsPreflight(const char *driver, const char *path, const char *startup, int compatmask, int EnablePS2Logo, const char *neutrinoPath, const char *extraArgs, int neutrinoVideo, int neutrinoGsmComp, int neutrinoBsdfs, int bdDevNr, const neutrino_vmc_args_t *vmcArgs);
 

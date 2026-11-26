@@ -613,6 +613,15 @@ static int bdmLoadOptionalModuleArgs(const char *name, void *module, int moduleS
     return result;
 }
 
+/* DIAGNOSTIC BUILD: the last iLink start-up results. Each boot stage line is replaced by the next one
+ * at once, so "END iLinkman result=" was on screen for a moment only; the MASS line and the iLink line
+ * below are the ones that stay long enough to read. 1 means not tried (iLink off or already loaded). */
+static int bdmDiagIlinkManResult = 1;
+static int bdmDiagIlinkBdResult = 1;
+#ifdef __OPLDIAG
+static int bdmDiagIlinkFailShown = 0;
+#endif
+
 /* OPEN EVERY massN: ROOT ONCE, AND SAY WHAT WAS THERE.
  *
  * The probe is FUNCTIONAL and always compiled; only the on-screen report is diagnostic-only.
@@ -640,6 +649,10 @@ static int bdmProbeMassSlots(const char *when)
     int absent = 0;
 
     len = snprintf(summary, sizeof(summary), "MASS %s:", when);
+#ifdef __OPLDIAG
+    if (gEnableILK)
+        len = snprintf(summary, sizeof(summary), "MASS %s: ilk=%d/%d", when, bdmDiagIlinkManResult, bdmDiagIlinkBdResult);
+#endif
 
     for (i = 0; i < MAX_BDM_DEVICES && len > 0 && len < (int)sizeof(summary); i++) {
         char root[16];
@@ -1298,10 +1311,13 @@ void bdmLoadBlockDeviceModules(void)
     }
 
     if (gEnableILK && !iLinkModLoaded) {
+#ifdef __OPLDIAG
+        bdmDiagIlinkFailShown = 0; // each load attempt that fails gets its own on-screen line
+#endif
         // Load iLink Block Device drivers
-        if (!iLinkManModLoaded && bdmDiagLoadOptionalModule("iLinkman", "ILINKMAN", &iLinkman_irx, size_iLinkman_irx) >= 0)
+        if (!iLinkManModLoaded && (bdmDiagIlinkManResult = bdmDiagLoadOptionalModule("iLinkman", "ILINKMAN", &iLinkman_irx, size_iLinkman_irx)) >= 0)
             iLinkManModLoaded = 1;
-        if (iLinkManModLoaded && !ieee1394ModLoaded && bdmDiagLoadOptionalModule("IEEE1394_bd", "IEEE1394_BD", &IEEE1394_bd_irx, size_IEEE1394_bd_irx) >= 0)
+        if (iLinkManModLoaded && !ieee1394ModLoaded && (bdmDiagIlinkBdResult = bdmDiagLoadOptionalModule("IEEE1394_bd", "IEEE1394_BD", &IEEE1394_bd_irx, size_IEEE1394_bd_irx)) >= 0)
             ieee1394ModLoaded = 1;
 
         iLinkModLoaded = iLinkManModLoaded && ieee1394ModLoaded;
@@ -1501,8 +1517,30 @@ void bdmLoadBlockDeviceModules(void)
             DelayThread(250 * 1000);
         if (waitedMs > 0)
             LOG("[BDM] iLink root %s after ~%d ms\n", waitedMs < 3000 ? "appeared" : "not found", waitedMs);
+#ifdef __OPLDIAG
+        {
+            char status[64];
+
+            // waitedMs counts the 250 ms sleeps only, not the root checks between them.
+            snprintf(status, sizeof(status), "ILINK man=%d bd=%d drive %s, slept %d ms", bdmDiagIlinkManResult,
+                     bdmDiagIlinkBdResult, waitedMs < 3000 ? "found" : "NOT found", waitedMs);
+            host::ui().bootStatusStickyCopy(status);
+        }
+#endif
         bdmForceDeviceRefresh(); // publish either a newly ready root or the final absent result
     }
+#ifdef __OPLDIAG
+    else if (!iLinkModLoaded && !bdmDiagIlinkFailShown) {
+        // A driver that failed to load skips the wait above; the MASS line needs USB. Say it here,
+        // once, without touching ilinkProbeDone, so a later successful load still gets its wait.
+        char status[64];
+
+        bdmDiagIlinkFailShown = 1;
+        snprintf(status, sizeof(status), "ILINK man=%d bd=%d drivers did NOT load", bdmDiagIlinkManResult,
+                 bdmDiagIlinkBdResult);
+        host::ui().bootStatusStickyCopy(status);
+    }
+#endif
 }
 
 // Auto Loading retries its own mass device. The menu discovery settles above must not delay its IO

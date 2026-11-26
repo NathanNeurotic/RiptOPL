@@ -60,6 +60,10 @@ typedef struct
     // long as the list was on screen. Like any resident cover it holds until the slot is evicted;
     // cacheClearItem zeroes it with the rest of the entry.
     unsigned char nameFallback;
+
+    // 1 when the picture is a PSBBN Art Database one (Cover Art PSBBN: ART/PSBBN/<id>): square key art with no logo
+    // strip, which Cover Shape crops to the box without a logo trim (cacheIsPsbbnArt).
+    unsigned char psbbn;
 } cache_entry_t;
 
 // A PS1 row's cache_id when its disc-id art AND its name art are both parked absent in the current
@@ -111,6 +115,8 @@ private:
     friend void cacheDestroyCache(image_cache_t *);
     friend void cacheNewGeneration(void);
     friend void cacheRehomeLoaded(image_cache_t *);
+    friend void cacheDropCoversOnNextLoad(void);
+    friend int cacheIsPsbbnArt(const GSTEXTURE *);
     friend GSTEXTURE *cacheGetTextureEx(image_cache_t *, item_list_t *, int *, int *, char *, int);
     friend GSTEXTURE *cacheLookupTexture(image_cache_t *, int *, int *);
     friend void cacheAbortOtherBackgrounds(image_cache_t *, const char *);
@@ -145,6 +151,8 @@ private:
     int artRank_;
     inline static image_cache_t *sLive_ = nullptr;
     inline static unsigned int sGeneration_ = 0;
+    // cacheDropCoversOnNextLoad: the covers of caches made before this generation are not carried over.
+    inline static unsigned int sDropCoversBefore_ = 0;
 };
 
 /** Initializes the cache subsystem.
@@ -226,6 +234,13 @@ unsigned int cacheDebugTransientFail(void);
 void cacheDebugLastLoad(int *lastMs, int *lastOkMs, int *width, int *height);
 
 void cacheInvalidateFailMemo(void);
+
+/** Cover Art changed: the next theme load does not carry the covers already loaded over to its caches
+ * (cacheRehomeLoaded), so every cover is read again from the folder now chosen. GUI thread. */
+void cacheDropCoversOnNextLoad(void);
+
+/** 1 when txt is a cover the cache loaded from ART/PSBBN (cache_entry_t::psbbn). GUI thread, as the draws. */
+int cacheIsPsbbnArt(const GSTEXTURE *txt);
 
 /** 1 when `uid` (a parked row's cache_uid) is the current fail generation, i.e. the absence still holds. */
 int cacheAbsenceIsCurrent(int uid);

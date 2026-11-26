@@ -49,6 +49,8 @@ typedef struct load_image_request
     //   1 = read artArchivePath and nothing else   0 = ordinary multi-device sweep
     //  -1 = this row's source has no archive home; probe no archive at all
     signed char artArchive;
+    // 1 once the picture was loaded from ART/PSBBN (Cover Art PSBBN), published into entry->psbbn
+    unsigned char psbbn;
     // Trails value in the SAME allocation (NULL unless artArchive == 1), so a request costs nothing
     // extra on the common path. Art has no queue-depth cap, so a fixed 256-byte field here would be
     // paid hundreds of times over on a slow device.

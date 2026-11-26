@@ -18,6 +18,7 @@
 #include "include/appsupport.h" // appGetArtMode -- APP rows are proxies for another device
 #include "include/favsupport.h" // favGetArtMode -- so are FAV rows
 #include "include/hddsupport.h" // hddGetArtArchivePath -- exact HDD tar home
+#include <stdint.h> // uintptr_t
 #include <kernel.h>
 #include <delaythread.h> // DelayThread -- must be included explicitly, it is not pulled in by kernel.h
 
@@ -110,10 +111,31 @@ void cacheNewGeneration(void)
 // screen. Rows find them by key (cacheGetTextureEx's reunion by value); their old slot numbers are reset by
 // cacheRowPairsReady. A picture with no free slot to go to is left for the caller to free. Caller:
 // cacheDestroyCache, once no art request references `from`.
+void cacheDropCoversOnNextLoad(void)
+{
+    image_cache_t::sDropCoversBefore_ = image_cache_t::sGeneration_ + 1; // the caches made before the next theme load
+}
+
+int cacheIsPsbbnArt(const GSTEXTURE *txt)
+{
+    if (txt == NULL)
+        return 0;
+    for (const image_cache_t *c = image_cache_t::sLive_; c != NULL; c = c->nextLive_) {
+        uintptr_t at = (uintptr_t)txt, first = (uintptr_t)c->content_, end = (uintptr_t)(c->content_ + c->count_);
+        if (at >= first && at < end) {
+            const cache_entry_t *e = &c->content_[(at - first) / sizeof(cache_entry_t)];
+            return &e->texture == txt && e->psbbn;
+        }
+    }
+    return 0;
+}
+
 void cacheRehomeLoaded(image_cache_t *from)
 {
     if (from->userId_ < 0 || from->generation_ == image_cache_t::sGeneration_)
         return;
+    if (from->generation_ < image_cache_t::sDropCoversBefore_ && from->suffix() != NULL && strcmp(from->suffix(), "COV") == 0)
+        return; // Cover Art changed: these came from the other folder
 
     image_cache_t *to = image_cache_t::sLive_;
     while (to != NULL && (to->generation_ != image_cache_t::sGeneration_ || to->artRank_ != from->artRank_ || !cacheSameArt(from, to)))
@@ -539,6 +561,7 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
         req->prev = NULL;
         req->queueEpoch = 0;
         req->sio2 = (unsigned char)isSio2; // resolved above, on the GUI thread
+        req->psbbn = 0;
 
         cacheClearItem(oldestEntry, 1);
         oldestEntry->qr = req;

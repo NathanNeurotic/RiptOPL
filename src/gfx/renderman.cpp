@@ -541,21 +541,25 @@ void Renderer::drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float
     }
 }
 
-// Cover Shape (rmSetCoverCrop): the cover texture whose art is cropped, its trims and the aspect it is fitted to.
+// Cover Shape (rmSetCoverCrop): the cover texture whose art is cropped, its trims, the aspect it is fitted to and the
+// part of the box's height a plain pixmap of it takes (Cover Art Crop).
 static GSTEXTURE *sCropCover;
 static float sCropTrim[4];
 static float sCropAspect;
+static float sCropHeight = 1.0f;
 
-void rmSetCoverCrop(GSTEXTURE *cover, const float *trim, float aspect)
+void rmSetCoverCrop(GSTEXTURE *cover, const float *trim, float aspect, float height)
 {
     sCropCover = trim != NULL ? cover : NULL;
     if (trim != NULL)
         for (int i = 0; i < 4; i++)
             sCropTrim[i] = trim[i];
     sCropAspect = aspect;
+    sCropHeight = height > 0.0f && height < 1.0f ? height : 1.0f;
 }
 
-int rmCoverCropUV(GSTEXTURE *txt, float uv[4])
+// The crop to a box of `aspect` (width / height); see rmSetCoverCrop.
+static int coverCropUV(GSTEXTURE *txt, float uv[4], float aspect)
 {
     if (txt == NULL || txt != sCropCover)
         return 0;
@@ -565,25 +569,37 @@ int rmCoverCropUV(GSTEXTURE *txt, float uv[4])
     uv[2] -= w * sCropTrim[2];
     uv[3] -= h * sCropTrim[3];
     w = uv[2] - uv[0], h = uv[3] - uv[1];
-    if (sCropAspect <= 0.0f || w <= 0.0f || h <= 0.0f)
+    if (aspect <= 0.0f || w <= 0.0f || h <= 0.0f)
         return 1;
-    if (w > h * sCropAspect) { // wider than the box: keep the middle columns
-        float c = (uv[0] + uv[2]) * 0.5f, half = h * sCropAspect * 0.5f;
+    if (w > h * aspect) { // wider than the box: keep the middle columns
+        float c = (uv[0] + uv[2]) * 0.5f, half = h * aspect * 0.5f;
         uv[0] = c - half;
         uv[2] = c + half;
     } else { // taller: keep the middle rows
-        float c = (uv[1] + uv[3]) * 0.5f, half = w / sCropAspect * 0.5f;
+        float c = (uv[1] + uv[3]) * 0.5f, half = w / aspect * 0.5f;
         uv[1] = c - half;
         uv[3] = c + half;
     }
     return 1;
 }
 
+int rmCoverCropUV(GSTEXTURE *txt, float uv[4])
+{
+    return coverCropUV(txt, uv, sCropAspect);
+}
+
+// A plain pixmap of the cropped cover: under Cover Art Crop the quad is the shorter box, centred, and the art fits that.
 static void cropQuad(GSTEXTURE *txt, rm_quad_t *q)
 {
     float uv[4] = {q->ul.u, q->ul.v, q->br.u, q->br.v};
-    rmCoverCropUV(txt, uv);
+    if (!coverCropUV(txt, uv, sCropHeight < 1.0f ? sCropAspect / sCropHeight : sCropAspect))
+        return;
     q->ul.u = uv[0], q->ul.v = uv[1], q->br.u = uv[2], q->br.v = uv[3];
+    if (sCropHeight < 1.0f) {
+        float c = (q->ul.y + q->br.y) * 0.5f, half = (q->br.y - q->ul.y) * sCropHeight * 0.5f;
+        q->ul.y = c - half;
+        q->br.y = c + half;
+    }
 }
 
 void Renderer::drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)

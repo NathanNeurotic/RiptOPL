@@ -314,7 +314,8 @@ typedef struct theme
     int hintsColumn;  // 1 one hint a line from the element's x/y down; 0 one row (the default)
     int hintsSpacing; // a column's line pitch
     int coverSpine;   // Cover Shape PS2: percent of a PS1 cover's width cut off its left (logo strip), cover_ps1_spine
-    int coverBand;    // Cover Shape PS1: percent of a PS2 cover's height cut off its top (logo band), cover_ps2_band
+    int coverBand;    // Cover Shape PS1 and Cover Art Crop: percent of a PS2 cover's height cut off its top (logo band), cover_ps2_band
+    int coverCrop;    // Cover Art Crop: percent of the PS2 box's height every cover is drawn, cover_crop_height
 
     // list_cfg_text=0 (RIPPS2 build 126): the list pages leave out the game CFG's Title and Description.
     // 0 (the key absent, or any other number) shows them, as before the key existed. A word such as "on"
@@ -391,7 +392,7 @@ int thmCanCycleView(void);
 // animation draws it while the art worker is held.
 GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row);
 /* Cover Shape: crops a row's cover art (art, not a placeholder) to the box it is drawn in, aspect its width / height
-   (thmCoverAspect of the element drawing it), until thmCoverCropEnd. Does nothing under Mixed. */
+   (thmCoverAspect of the element drawing it), until thmCoverCropEnd. Under Mixed it crops only PSBBN art (square). */
 float thmCoverAspect(const theme_element_t *coverElem);
 void thmCoverCropBegin(struct menu_list *menu, struct submenu_list *item, GSTEXTURE *art, float aspect);
 void thmCoverCropEnd(void);

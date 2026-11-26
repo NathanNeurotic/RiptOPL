@@ -2943,6 +2943,9 @@ static int guiSettingsShowTheme(void)
     static const char *coverShapeNames[] = {"Mixed", "PS2", "PS1", "APP", NULL};
     diaSetEnum(ui, UICFG_COVER_SHAPE, coverShapeNames);
     diaSetInt(ui, UICFG_COVER_SHAPE, gCoverShape);
+    static const char *coverArtNames[] = {"Normal", "PSBBN", "Crop", NULL};
+    diaSetEnum(ui, UICFG_COVER_ART, coverArtNames);
+    diaSetInt(ui, UICFG_COVER_ART, gCoverArt);
     diaSetInt(ui, UICFG_ENABLE_DISCART, gEnableDiscArt);
     diaSetInt(ui, UICFG_ENABLE_LOGOART, gEnableLogoArt);
     diaSetInt(ui, UICFG_ENABLE_BGART, gEnableBGArt);
@@ -2979,6 +2982,8 @@ static int guiSettingsShowTheme(void)
         diaGetInt(ui, UICFG_THEME, &themeID);
         diaGetInt(ui, UICFG_COVERART, &gEnableArt);
         diaGetInt(ui, UICFG_COVER_SHAPE, &gCoverShape); // read as each cover draws: nothing to rebuild
+        const int previousCoverArt = gCoverArt;
+        diaGetInt(ui, UICFG_COVER_ART, &gCoverArt);
         diaGetInt(ui, UICFG_ENABLE_DISCART, &gEnableDiscArt);
         diaGetInt(ui, UICFG_ENABLE_LOGOART, &gEnableLogoArt);
         diaGetInt(ui, UICFG_ENABLE_BGART, &gEnableBGArt);
@@ -3035,6 +3040,15 @@ static int guiSettingsShowTheme(void)
             gThemeWallpaper = wallpaperRequest;
             if (!thmSetView(themeViewRequest))
                 thmRefreshDisplayLayout();
+        }
+        if ((gCoverArt == COVER_ART_PSBBN) != (previousCoverArt == COVER_ART_PSBBN)) {
+            // Every cover on screen came from the other folder: reload the theme without carrying them over, and
+            // ask again for the ones that were not there. Normal and Crop read the same pictures: nothing to reload.
+            cacheDropCoversOnNextLoad();
+            cacheInvalidateFailMemo();
+            // An abandoned reload keeps the old theme and its covers: keep the old setting with them.
+            if (!thmReload())
+                gCoverArt = previousCoverArt;
         }
         sfxInit(0);
         if (gEnableBGM && !isBgmPlaying())

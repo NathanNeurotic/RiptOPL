@@ -211,6 +211,9 @@ int texLookupInternalTexId(const char *name);
 int texLoadInternal(GSTEXTURE *texture, int texId);
 int texLoadFromMemory(GSTEXTURE *texture, const void *buf, u32 size);
 int texDiscoverLoad(GSTEXTURE *texture, const char *path, int texId);
+// The art suffix Cover Art PSBBN asks a source for: texDiscoverArt reads "<folder>/<id>_PSBBN" as
+// "<folder>/PSBBN/<id>", the PSBBN Art Database picture (LUNA's ART/PSBBN/<TITLE_ID>.png).
+#define ART_PSBBN_SUFFIX "PSBBN"
 // Game art for itemGetImage: <path> as PNG, JPG or JPEG in any letter case, then OPL Manager's name for it.
 int texDiscoverArt(GSTEXTURE *texture, const char *path);
 // A PNG or JPG game art picture already in RAM (an ART .tar member); a JPG is shrunk to a full screen when

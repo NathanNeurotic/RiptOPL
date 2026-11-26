@@ -586,5 +586,12 @@ BLURT output char blurttext[128];
 #define COVER_SHAPE_PS1   2
 #define COVER_SHAPE_APP   3
 extern int gCoverShape;
+// Cover Art: Normal (ART/<id>_COV), PSBBN (ART/PSBBN/<id>, the square PSBBN Art Database pictures LUNA uses, the Normal
+// cover when a game has none) or Crop (FifthFox: every Normal cover with its logo strip cut off, in one box a little
+// shorter than a PS2 case, whatever Cover Shape says).
+#define COVER_ART_NORMAL 0
+#define COVER_ART_PSBBN  1
+#define COVER_ART_CROP   2
+extern int gCoverArt;
 
 #endif

@@ -276,6 +276,7 @@ int gSelStyle = SEL_STYLE_COLOR | SEL_STYLE_CURSOR | SEL_STYLE_HIGHLIGHT;
 // User Wallpaper (Berion's request): wallpaper.png from the settings folder instead of the theme's background.
 int gThemeWallpaper;
 int gCoverShape = COVER_SHAPE_MIXED;
+int gCoverArt = COVER_ART_NORMAL;
 int gEnableAmbientEffects = 1;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
