@@ -5,6 +5,11 @@
 
 <p align="center"><a href="#"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/rebuild/main/docs/assets/riptopl.png" /></a></p>
 
+<!-- theme-creator-banner:start -->
+<p align="center"><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html"><img alt="Make your own RiptOPL theme. Drag things around on a live PS2 preview, drop in your own art and fonts, then download a ready-to-play thm_&lt;Name&gt;.tar. Free, in your browser. Start creating." src="docs/assets/theme-creator-ad.jpg" width="100%" /></a></p>
+<p align="center"><b><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html">Open the Theme Creator</a></b> · <a href="https://nathanneurotic.github.io/RiptOPL-Themes/">Browse community themes</a></p>
+<!-- theme-creator-banner:end -->
+
 > **RiptOPL is affiliated with the [RIPPS2 Project](https://gitlab.com/akilluminati247/RIPPS2) by [Akilluminati47](https://gitlab.com/akilluminati247).**
 
 ## Community Contributors
