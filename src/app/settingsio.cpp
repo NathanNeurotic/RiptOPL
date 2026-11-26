@@ -4,7 +4,6 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
-#include "include/rigtest.h"
 #include "include/settings.h"
 #include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/oplint.h"
@@ -332,10 +331,6 @@ static int readConfigPathRedirect(char *outPath, int outPathLen)
 
 static int writeConfigPathRedirect(const char *path)
 {
-#ifdef RIG_SMB_TEST
-    (void)path;
-    return 0;
-#endif
     char redirectFile[sizeof(gBootDir) + 32];
     int fd;
     int primaryOk = 0;
@@ -2610,11 +2605,6 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh)
 
 int saveConfig(int types, int showUI)
 {
-#ifdef RIG_SMB_TEST
-    (void)types;
-    (void)showUI;
-    return 0; // write nothing on the rig console
-#endif
     char notification[128];
     lscstatus = types;
     lscret = 0;

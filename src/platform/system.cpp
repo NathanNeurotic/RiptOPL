@@ -4,7 +4,6 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
-#include "include/rigtest.h"
 #include "disc_key.h"
 
 #ifdef __DECI2_DEBUG
@@ -1403,7 +1402,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     diagLog("launch: OPL core, %s, %s, logo %d, compat 0x%x", mode_str, filename, EnablePS2Logo, compatflags);
 
     ethGetNetConfig(local_ip_address, local_netmask, local_gateway);
-#if (!defined(__DEBUG) && !defined(_DTL_T10000) && !defined(RIG_SMB_TEST))
+#if (!defined(__DEBUG) && !defined(_DTL_T10000))
     if (strcmp(sysHistoryRecorded, filename) != 0) // not already written early by the launch path
         AddHistoryRecordUsingFullPath(filename);
     sysHistoryRecorded[0] = '\0';
