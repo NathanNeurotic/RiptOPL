@@ -56,15 +56,19 @@ Ruled out from the source: a GUI/theme lock-order inversion (every
 (`malloc`/`free` are semaphore-locked in ps2sdk's libcglue); IO-thread stack;
 `gsKit_hires_sync` (a plain VSync semaphore wait).
 
-**Fix (`src/gfx/fntsys.cpp`):** a `FontFrameScope` -- GUI lock, `rmDiscardFrame()`,
-released at scope exit -- wraps the locked section of the four entry points that
+**Fix (`src/gfx/fntsys.cpp`):** a `FontFrameScope` -- the GUI lock, released at
+scope exit -- wraps the locked section of the four entry points that
 can flush atlases: `loadFile`, `loadDefault`, `setWeight`, `updateAspectRatio`.
 Lock order is the one `renderString` already establishes (frame lock, then font
 lock). The slow file read stays outside both locks, so the splash keeps drawing
 while a font is read from a slow device. `release()` is deliberately not wrapped:
-`thmFree` calls it already holding the GUI lock after its own `rmDiscardFrame`.
-Before `guiInit` the GUI lock is a no-op and `rmDiscardFrame` has nothing to
-retire, so `lngInit`/`thmInit` are unaffected.
+`thmFree` calls it already holding the GUI lock. Before `guiInit` the GUI lock is
+a no-op, so `lngInit`/`thmInit` are unaffected.
+
+Later (11-26): the scope and the theme publish no longer call `rmDiscardFrame()`.
+Under HIRES it flipped to an empty frame, so the screen stayed black for the whole
+theme load (the hold-L3 layout switch). Pixels a live frame still uploads are kept
+by `rmReleaseTexture` (`texmanager.cpp`, #495) until that frame is retired.
 
 **Regression test:** `.github/scripts/test_font_flush_frame_lock.py` compiles
 the production loaders against a stub GUI/renderer that models the contract; its

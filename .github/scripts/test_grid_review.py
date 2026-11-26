@@ -25,8 +25,10 @@ for label, source, signature in (
 
 load = themes[themes.index("static int thmLoad("):themes.index("int thmRefreshFontSize(")]
 publish = load[load.rindex("    host::ui().lock();"):load.rindex("    return 0;")]
-if "gridReleaseGlyphs();" not in publish or publish.index("gridReleaseGlyphs();") < publish.index("rmDiscardFrame();"):
-    failures.append("a committed theme load does not retire the frame before releasing Grid glyphs")
+if "gridReleaseGlyphs();" not in publish:
+    failures.append("a committed theme load does not release the Grid glyphs")
+if "rmReleaseTexture(&gridGlyphs);" not in function(grid, "void gridReleaseGlyphs("):
+    failures.append("the Grid glyphs are not freed through the texture manager, which keeps pixels a live frame uploads")
 
 program = r'''
 #include <assert.h>

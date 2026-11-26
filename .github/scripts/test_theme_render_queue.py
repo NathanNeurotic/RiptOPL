@@ -1,99 +1,43 @@
-"""Exercise the production theme publish tail against a retained HIRES upload queue.
+"""The theme publish keeps the last frame on screen while a HIRES queue still uploads the old theme's pixels.
 
-gsKit HIRES replays its last queue until a flip replaces it. Inline upload tags
-refer to EE texture pixels, so a CPU frame lock alone cannot make those freeable.
-This models that ownership contract, not PS2 DMA execution or console acceptance.
+gsKit HIRES replays its last queue until a flip replaces it. Inline upload tags refer to EE texture
+pixels, so the old theme's pixels must outlive that replay. rmReleaseTexture (texmanager.cpp) keeps
+pixels a live queue still uploads until that queue is retired; test_hires_texture_ownership.py
+models that. So the publish must not flip to an empty frame (rmDiscardFrame): under HIRES that
+showed a black screen for the whole theme load, the hold-L3 layout switch included.
+This checks the source contract, not PS2 DMA execution or console acceptance.
 """
 from pathlib import Path
 import re
-import subprocess
-import tempfile
+import sys
 
 root = Path(__file__).resolve().parents[2]
 renderer = (root / 'src/gfx/renderman.cpp').read_text()
 themes = (root / 'src/gfx/themes.cpp').read_text()
-retire = re.search(r'^void Renderer::discardFrame\(void\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
-wrapper = re.search(r'^void rmDiscardFrame\(void\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
 load = themes[themes.index('static int thmLoad('):themes.index('int thmRefreshFontSize(')]
 publish = load[load.rindex('    host::ui().lock();'):load.rindex('    return 0;')]
-assert publish.index('rmDiscardFrame();') < publish.index('thmFree(curT);') < publish.index('host::ui().unlock();')
+free_start = themes.index('static void thmFree(')
+thm_free = themes[free_start:themes.index('\n}\n', free_start)]
+
+failures = []
+if 'rmDiscardFrame' in publish:
+    failures.append('the theme publish flips HIRES to an empty frame (black until the next frame)')
+if not (publish.index('gTheme = newT;') < publish.index('thmFree(curT);') < publish.index('host::ui().unlock();')):
+    failures.append('the theme publish no longer swaps and frees the old theme under the GUI lock')
+if 'rmReleaseTexture(' not in thm_free or re.search(r'\bfree\([^)]*->Mem\)|texFree\(', thm_free):
+    failures.append('thmFree frees theme pixels without the texture manager, which keeps what a live frame uploads')
+release = re.search(r'^void rmReleaseTexture\(GSTEXTURE \*txt\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
+if 'gsKit_TexManager_release' not in release:
+    failures.append('rmReleaseTexture does not defer pixels through the texture manager')
 draw_quad = re.search(r'^void Renderer::drawQuad\(rm_quad_t \*q\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
-assert re.search(r'if \(gsKit_TexManager_bind\(gsGlobal, q->txt\) == GSKIT_TEXMGR_BIND_DEFERRED\) \{\n'
+if not re.search(r'if \(gsKit_TexManager_bind\(gsGlobal, q->txt\) == GSKIT_TEXMGR_BIND_DEFERRED\) \{\n'
                  r'        if \(fixedAlpha\)\n'
                  r'            gsKit_set_primalpha\(gsGlobal, gDefaultAlpha, 0\);\n'
-                 r'        return;\n    \}', draw_quad), 'deferred CT24 draw must restore fixed alpha'
+                 r'        return;\n    \}', draw_quad):
+    failures.append('deferred CT24 draw must restore fixed alpha')
 
-fixture = r'''
-#include <cassert>
-#include <cstdio>
-#include <stdexcept>
-#define THEME_BOOT_TRACE(...) ((void)0)
-struct Theme { int pixels; };
-static Theme *gTheme;
-static Theme *replayed;
-static bool locked;
-static int syncs, flips, frees;
-static int loadedFontSize, gFontSize, gGridSidebarOpen;
-static void *gGridSidebarCursor;
-static void *gsGlobal;
-struct UI {
-    void lock() { assert(!locked); locked=true; }
-    void unlock() { assert(locked); locked=false; }
-};
-namespace host { static UI instance; UI &ui() { return instance; } }
-class Renderer { public: bool hires_; void discardFrame(void); };
-static Renderer gRenderer;
-static void gsKit_hires_sync(void *) { assert(locked); ++syncs; }
-static void gsKit_hires_flip(void *) {
-    assert(locked && syncs==flips+1);
-    // The between-frame draw queue is empty. Flip waits for the previous DMA,
-    // changes the queue the HIRES worker replays, and resets the old queue.
-    replayed=nullptr; ++flips;
-}
-static void gsKit_TexManager_commitFrame(int) {}
-@RETIRE@
-@WRAPPER@
-static void psbbnFlowReset() { assert(locked); }
-static void thmFree(Theme *old) {
-    assert(locked);
-    if (old && replayed==old)
-        throw std::runtime_error("retained HIRES upload references the freed theme");
-    if (old) ++frees;
-}
-static void gridReleaseGlyphs() {
-    if (replayed)
-        throw std::runtime_error("retained HIRES upload references the Grid glyphs");
-}
-static void publish(Theme *curT, Theme *newT) {
-@PUBLISH@
-}
-static void run(bool hires, bool first) {
-    Theme old{}, next{};
-    gRenderer.hires_=hires; gTheme=first?nullptr:&old;
-    replayed=hires && !first?&old:nullptr;
-    locked=false; syncs=flips=frees=0;
-    publish(gTheme,&next);
-    assert(gTheme==&next && !locked && frees==!first);
-    assert(syncs==(hires && !first) && flips==syncs);
-}
-int main() {
-    try { run(false,false); run(true,true); run(true,false); }
-    catch (const std::runtime_error &e) { std::fprintf(stderr,"%s\n",e.what()); return 3; }
-}
-'''
-with tempfile.TemporaryDirectory(prefix='theme-render-queue-') as folder:
-    folder = Path(folder)
-    for name, tail, expected in [('fixed', publish, 0), ('before', publish.replace('rmDiscardFrame();', '(void)0;'), 3)]:
-        # Before control retains the old publish/free sequence while omitting only the fix.
-        source = fixture.replace('@RETIRE@', retire).replace('@WRAPPER@', wrapper).replace('@PUBLISH@', tail)
-        if name == 'before':
-            source = source.replace('assert(syncs==(hires && !first) && flips==syncs);', '')
-        cpp = folder / (name + '.cpp')
-        exe = folder / name
-        cpp.write_text(source)
-        subprocess.run(['g++', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', str(cpp), '-o', str(exe)], check=True)
-        result = subprocess.run([str(exe)], capture_output=True, text=True)
-        assert result.returncode == expected, (name, result.returncode, result.stderr)
-        if name == 'before':
-            assert 'retained HIRES upload references' in result.stderr
-print('PASS: old theme retained through HIRES queue retirement; baseline fails, fixed path passes; non-HIRES and first load do not flip')
+if failures:
+    for failure in failures:
+        print('FAIL:', failure)
+    sys.exit(1)
+print('PASS: the theme publish keeps the last frame up (no flip to an empty frame); old pixels go through the texture manager')
