@@ -157,7 +157,7 @@ bdm = (root / 'src/sources/bdmsupport.cpp').read_text()
 bdmReset = bdm[bdm.index('void bdmIopWasReset(void)'):]
 bdmReset = bdmReset[:bdmReset.index('\n}\n')]
 for latch in ('iUSBModLoaded', 'iLinkModLoaded', 'iLinkManModLoaded', 'ieee1394ModLoaded', 'mx4sioModLoaded',
-              'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed'):
+              'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed', 'bdmDeviceModeStarted'):
     assert latch in bdmReset, latch + ' survives an IOP reset'
 print('ok   reset() clears every source module latch')
 
@@ -177,7 +177,7 @@ print('ok   MMCE Game ID is sent and the launch goes on, with no wait for the sw
 
 # The latches are cleared, not just named: run bdmIopWasReset with every latch set.
 latches = ('iUSBModLoaded', 'iLinkModLoaded', 'iLinkManModLoaded', 'ieee1394ModLoaded', 'mx4sioModLoaded',
-           'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed')
+           'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed', 'bdmDeviceModeStarted')
 reset_program = '#include <assert.h>\nstatic int ' + ', '.join(l + ' = 1' for l in latches) + \
     ', pccfProbeGeneration, udpbdLoadedProtocol = 1;\nstruct { void setLoadedNetProtocol(int p) { udpbdLoadedProtocol = p; } } gBdmSupport;\n' + bdmReset + '\n}\nint main(void)\n{\n    bdmIopWasReset();\n' + \
     ''.join('    assert(%s == 0);\n' % l for l in latches) + \

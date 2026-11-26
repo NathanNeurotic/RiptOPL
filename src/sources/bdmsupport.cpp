@@ -66,6 +66,10 @@ void bdmIopWasReset(void)
     iUSBModLoaded = iLinkModLoaded = iLinkManModLoaded = ieee1394ModLoaded = mx4sioModLoaded = 0;
     pccfModLoaded = hddModLoaded = udpbdModLoaded = udpbdNicClaimed = 0;
     gBdmSupport.setLoadedNetProtocol(-1);
+    // BDM Manual: "started" is forgotten too. The reset freed every page (cleanUp) and Manual never
+    // starts a page by itself, so with this left set bdmInitDevicesData hid them all, the start page
+    // with them, until a reboot (Set from Internet or Check for Updates with UDPFS, NBD server stop).
+    bdmDeviceModeStarted = 0;
 }
 /*
   udpbdModLoaded alone is protocol-agnostic: both branches of the loader set it to 1, so once
