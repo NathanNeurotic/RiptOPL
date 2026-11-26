@@ -1,0 +1,61 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+html,body{background:transparent}
+.ad{position:relative;overflow:hidden;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#fff;border-radius:16px;
+  background:radial-gradient(600px 300px at 18% 10%,#2b3f7a 0%,transparent 60%),radial-gradient(520px 320px at 92% 110%,#5a2a63 0%,transparent 60%),linear-gradient(120deg,#0e1020,#151229 55%,#0d0d14);
+  border:2px solid rgba(255,255,255,.14)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:26px 26px;mask-image:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent)}
+.rim{position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,#4baf92,#c87e87,#7f9ac8,#c386b6)}
+.tag{position:absolute;top:14px;right:16px;font-size:11px;font-weight:800;letter-spacing:.16em;color:#0e1020;background:#ffd54a;padding:4px 9px;border-radius:5px;box-shadow:0 2px 10px rgba(255,213,74,.45)}
+.tv{position:absolute;border-radius:12px;background:#050507;padding:7px;box-shadow:0 18px 40px rgba(0,0,0,.65),0 0 0 2px rgba(255,255,255,.12)}
+.tv img{display:block;width:100%;height:100%;object-fit:cover;border-radius:6px}
+.tv::after{content:"";position:absolute;inset:7px;border-radius:6px;background:linear-gradient(160deg,rgba(255,255,255,.18),transparent 40%)}
+.glyphs{position:absolute;right:18px;bottom:14px;display:flex;gap:10px;font-size:20px;font-weight:900;opacity:.85;z-index:4}
+h1{font-weight:900;letter-spacing:-.01em;line-height:1.02;text-shadow:0 4px 22px rgba(0,0,0,.6)}
+h1 .hl{background:linear-gradient(90deg,#8fb4ff,#e7a6f0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:#c9cde0;line-height:1.35}
+.cta{display:inline-flex;align-items:center;gap:10px;font-weight:900;border-radius:999px;color:#fff;
+  background:linear-gradient(135deg,#4f7cff,#b05cff);box-shadow:0 10px 26px rgba(120,90,255,.55),inset 0 1px 0 rgba(255,255,255,.35)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-size:12px;font-weight:700;color:#dfe3ff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);padding:4px 10px;border-radius:999px}
+.burst{position:absolute;border-radius:50%;filter:blur(1px)}
+/* desktop billboard 970x250 */
+#d{width:970px;height:250px}
+#d .t1{left:36px;top:38px;width:236px;height:177px;transform:rotate(-7deg)}
+#d .t2{left:150px;top:22px;width:250px;height:188px;transform:rotate(3deg);z-index:2}
+#d .t3{left:276px;top:58px;width:210px;height:158px;transform:rotate(9deg);z-index:1}
+#d .copy{position:absolute;left:520px;top:24px;width:420px;z-index:3}
+#d h1{font-size:39px}
+#d .sub{font-size:15px;margin:10px 0 16px;max-width:410px}
+#d .cta{font-size:19px;padding:13px 24px}
+#d .pills{margin-top:14px}
+/* mobile 360x300 */
+#m{width:360px;height:340px}
+#m .t1{left:18px;top:34px;width:150px;height:112px;transform:rotate(-7deg)}
+#m .t2{left:104px;top:22px;width:160px;height:120px;transform:rotate(3deg);z-index:2}
+#m .t3{left:196px;top:44px;width:144px;height:108px;transform:rotate(9deg);z-index:1}
+#m .copy{position:absolute;left:18px;right:18px;top:160px;z-index:3;text-align:center}
+#m h1{font-size:26px}
+#m .sub{font-size:12.5px;margin:6px 0 12px}
+#m .glyphs{display:none}
+#m .cta{font-size:16px;padding:10px 20px}
+#m .pills{display:none}
+</style></head><body>
+<div id="wrap"></div>
+<template id="tpl">
+  <div class="grid"></div><div class="rim"></div>
+  <div class="burst" style="left:200px;top:-40px;width:180px;height:180px;background:rgba(127,154,200,.18)"></div>
+  <div class="tv t1"><img src="s1.png"></div>
+  <div class="tv t2"><img src="s2.png"></div>
+  <div class="tv t3"><img src="s3.png"></div>
+  <div class="glyphs"><span style="color:#4baf92">&#9651;</span><span style="color:#c87e87">&#9675;</span><span style="color:#7f9ac8">&#10005;</span><span style="color:#c386b6">&#9633;</span></div>
+  <div class="tag">NEW · FREE</div>
+  <div class="copy">
+    <h1>Make your own<br><span class="hl">RiptOPL theme.</span></h1>
+    <p class="sub">Drag things around on a live PS2 preview, drop in your own art and fonts, then download a ready-to-play <b>thm_&lt;Name&gt;.tar</b>. Free, in your browser.</p>
+    <span class="cta">Start creating &rarr;</span>
+  </div>
+</template>
+<script>
+for (const id of ["d","m"]) { const a=document.createElement("div"); a.className="ad"; a.id=id; a.innerHTML=document.getElementById("tpl").innerHTML; document.getElementById("wrap").appendChild(a); a.style.marginBottom="20px"; }
+</script></body></html>

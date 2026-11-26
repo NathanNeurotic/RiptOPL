@@ -89,6 +89,10 @@
     hints_labels:        { kind: "bool", group: "Button hints", label: "Draw labels beside the buttons", def: "1" },
     hints_layout:        { kind: "enum", group: "Button hints", label: "Layout", values: ["", "row", "column"] },
     hints_spacing:       { kind: "int", group: "Button hints", label: "Column line pitch (12 to 96)", min: 12, max: 96 },
+    // Cover Shape's logo trims (themes.cpp thmLoad): percent of the art cut away when a PS1 cover is shown in a PS2
+    // case (its left spine) or a PS2 cover in a PS1 case (its top band). 0 to 40.
+    cover_ps1_spine:     { kind: "int", group: "Covers", label: "PS1 spine trim in a PS2 case (%)", min: 0, max: 40, def: "13" },
+    cover_ps2_band:      { kind: "int", group: "Covers", label: "PS2 logo band trim in a PS1 case (%)", min: 0, max: 40, def: "11" },
     badge_set:           { kind: "enum", group: "Button hints", label: "Badge set", values: ["", "ripps2"] }
   };
   for (var f = 1; f <= 15; f++) {
