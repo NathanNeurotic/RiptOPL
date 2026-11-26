@@ -121,6 +121,9 @@ static u8 nb_GetPacketType(void) // Read Session Service header type.
 }
 
 //-------------------------------------------------------------------------
+#define SMB_RECV_WAIT_MS 100 // one wait of a receive; the reply deadline is checked between waits
+static int smb_recv_waits;   // the socket's SO_RCVTIMEO is set: receives wait instead of polling
+
 int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
 {
     register int sock, ret;
@@ -134,6 +137,10 @@ int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
 
     opt = 1;
     plwip_setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char *)&opt, sizeof(opt));
+    // A receive then wakes as data arrives, as upstream OPL's blocking one does, and gives up after
+    // SMB_RECV_WAIT_MS so smb_RecvTimed can check its reply deadline. Without it, it polls (#399).
+    opt = SMB_RECV_WAIT_MS;
+    smb_recv_waits = plwip_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&opt, sizeof(opt)) == 0;
 
     memset(&sock_addr, 0, sizeof(sock_addr));
     sock_addr.sin_addr = dst_IP;
@@ -171,8 +178,8 @@ static int SendData(int sock, char *buf, int size)
     return size;
 }
 
-// SMSTCPIP exports no select/ioctl and does not implement socket read timeouts.
-// Its recvfrom(MSG_DONTWAIT) is supported, including the SMB-specific split-buffer path.
+// SMSTCPIP exports no select/ioctl. Its SO_RCVTIMEO takes an int in milliseconds; without it,
+// recvfrom(MSG_DONTWAIT) is polled. Both keep the SMB-specific split-buffer path.
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40 // SMSTCPIP/include/lwip/sockets.h, not menu ps2ip's value
 #endif
@@ -285,7 +292,7 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             smb_rx.timed_out = 1;
             return -2;
         }
-        result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
+        result = plwip_recvfrom(sock, header, hlen, payload, plen, smb_recv_waits ? 0 : MSG_DONTWAIT, NULL, NULL);
         if (result == 0) {
             smb_Disconnect(); // EOF: do not leave a dead socket in service.
             return 0;
@@ -297,6 +304,8 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             }
             return result;
         }
+        // With SO_RCVTIMEO the receive has already waited; the short sleep below only matters for an
+        // error that returns at once, which must not spin the CDVD thread.
         /* A blocking receive, as upstream OPL's, wakes when the next segment arrives. A read reply comes as
            several TCP segments a fraction of a millisecond apart, so sleeping 1 ms before every retry added
            about a millisecond to each 8 KB read (#399). Poll every 100 us for the first 2 ms, then every 1 ms

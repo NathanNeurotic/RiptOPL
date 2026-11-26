@@ -159,6 +159,8 @@ struct
     conn->socket = 0;
     conn->callback = callback;
     conn->recv_avail = 0;
+    conn->recv_timeout = 0;
+    conn->recv_timedout = 0;
 
     if ((msg = memp_malloc(MEMP_API_MSG)) == NULL) {
         memp_free(MEMP_NETCONN, conn);
@@ -432,7 +434,16 @@ netconn_recv(struct netconn *conn)
             return NULL;
         }
 
-        sys_mbox_fetch(conn->recvmbox, (void **)&p);
+        /* With a receive timeout, wake when data comes or the timeout passes (the caller keeps its deadline),
+           instead of the caller polling with MSG_DONTWAIT and sleeping between polls. */
+        if (conn->recv_timeout != 0) {
+            if (sys_arch_mbox_fetch(conn->recvmbox, (void **)&p, conn->recv_timeout) == SYS_ARCH_TIMEOUT) {
+                memp_free(MEMP_NETBUF, buf);
+                conn->recv_timedout = 1;
+                return NULL;
+            }
+        } else
+            sys_mbox_fetch(conn->recvmbox, (void **)&p);
 
         if (p != NULL) {
             len = p->tot_len;
