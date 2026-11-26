@@ -655,18 +655,22 @@ static void cacheLoadImage(load_image_request_t *req)
 
     // Cover Art PSBBN: the game's square PSBBN Art Database picture first (ART/PSBBN/<id>), ahead of an archive's
     // cover; a game with none there gets its Normal cover below. The source builds "<folder>/<id>_PSBBN" and
-    // texDiscoverArt reads it as "<folder>/PSBBN/<id>".
+    // texDiscoverArt reads it as "<folder>/PSBBN/<id>". Only a picture that is NOT THERE (ERR_BAD_FILE) falls back:
+    // a read fault or an abort ends the load with that result, so the cover is asked for again as any failed read is,
+    // instead of the Normal lookup's absence parking it as missing.
     const char *artSuffix = req->cache->suffix();
+    int fallBack = 1;
     if (gCoverArt == COVER_ART_PSBBN && req->cache->isPrefixRelative() && artSuffix != NULL && !strcmp(artSuffix, "COV")) {
         static char psbbnSuffix[] = ART_PSBBN_SUFFIX;
         result = gsOf(handler)->image(handler, req->cache->prefix(), 1, req->value, psbbnSuffix, &staged, GS_PSM_CT24);
         req->psbbn = result >= 0;
+        fallBack = result == ERR_BAD_FILE && !req->abortRequested;
     }
 
     // The archive decision was made on the GUI thread at enqueue (cacheResolveArtArchive). Nothing
     // here may re-derive it: every input to that answer is support-private state a list rebuild
     // rewrites underneath this thread.
-    if (result < 0 && gEnableArtTar) {
+    if (fallBack && result < 0 && gEnableArtTar) {
         if (req->artArchive < 0)
             result = -1; // source has a home we cannot reach -- never fall back to another device's archive
         else if (req->artArchive > 0 && req->artArchivePath != NULL)
@@ -676,7 +680,7 @@ static void cacheLoadImage(load_image_request_t *req)
     }
 
     // Fall through to the per-file lookup whenever the archive is off, absent, or lacks this key.
-    if (result < 0)
+    if (fallBack && result < 0)
         result = gsOf(handler)->image(handler, req->cache->prefix(), req->cache->isPrefixRelative(), req->value, req->cache->suffix(), &staged, GS_PSM_CT24);
 
     texSetLoadAbortFlag(NULL);
