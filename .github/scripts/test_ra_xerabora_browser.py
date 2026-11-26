@@ -330,6 +330,7 @@ static int gRAMode, pc_ip[4], gRAHostIp[4];
 static int nic, sent, closes, scriptPos, scriptOff, ticks, asks, sockets, peeks, lost;
 static const char *script[8];
 static const char *udp[8];
+static char lastRag[96];
 static u32 broadcastFrom = 0x0201a8c0;
 static int htons(int p) { return p; }
 static u32 htonl(u32 p) { return p; }
@@ -339,10 +340,14 @@ void Ranet::forgetPeer() { verifiedIP_ = 0; verifiedMode_ = -1; }
 int Ranet::ask(int, sockaddr_in *to, const char *req, char *out, int max, int) {
     const char *reply = asks < 8 ? udp[asks] : NULL;
     asks++;
+    if (!strncmp(req, "RAG1", 4))
+        snprintf(lastRag, sizeof(lastRag), "%s", req);
     if (reply == NULL)
         return -1;
     if (!strncmp(req, "RAP1", 4))
         assert(to->sin_addr.s_addr == INADDR_BROADCAST && !strcmp(req, "RAP1 192.168.1.9 18196") && max <= 193);
+    else if (!strncmp(req, "RAG1", 4))
+        assert(to->sin_addr.s_addr == 0x0201a8c0 && to->sin_port == RA_PORT);
     else
         assert(to->sin_addr.s_addr == 0x0201a8c0 && to->sin_port == RA_PORT && !strcmp(req, "RAQ1 abc SLUS_000.01 192.168.1.9 18196"));
     replyIP_ = broadcastFrom;
@@ -422,10 +427,19 @@ int main(void)
     assert(identify(NULL, &host, title, &count) == -2 && !host && !net.peerIP());
     udp[0] = "RAO1 OK xeRAbora"; udp[1] = NULL;
     assert(identify(NULL, &host, title, &count) == 0 && host == 0x0201a8c0 && net.peerIP() == 0x0201a8c0 && asks == 1);
-    udp[0] = "RAA1 OK 100 1 76 3 10 Need for Speed: Underground 2  "; udp[1] = NULL;
-    assert(identify("abc", &host, title, &count) == 0 && asks == 1 && count == 76 && !strcmp(title, "Need for Speed: Underground 2"));
-    udp[0] = "RAA1 OK 100 1 76 2 Fast 2 Furious"; udp[1] = NULL; /* an older PC: three numbers, a title starting with digits */
+    /* After OK, the last chunk is taken at once: xeRAbora 2.2.0 leaves its HTTP page unanswered
+       until the console has the last chunk (or 10 s, longer than httpGet's 8 s). */
+    udp[0] = "RAA1 OK 100 1 76 3 10 Need for Speed: Underground 2  "; udp[1] = "RAC1 0 100 x"; udp[2] = NULL;
+    lastRag[0] = '\0';
+    assert(identify("abc", &host, title, &count) == 0 && asks == 2 && count == 76 && !strcmp(title, "Need for Speed: Underground 2"));
+    assert(!strcmp(lastRag, "RAG1 abc 0 192.168.1.9 18196"));
+    udp[0] = "RAA1 OK 2000 3 76 3 10 Need for Speed: Underground 2"; udp[1] = NULL; /* chunk lost: still identified */
+    assert(identify("abc", &host, title, &count) == 0 && asks == 2 && !strcmp(lastRag, "RAG1 abc 2 192.168.1.9 18196") &&
+           !strcmp(title, "Need for Speed: Underground 2"));
+    udp[0] = "RAA1 OK 100 1 76 2 Fast 2 Furious"; udp[1] = "RAC1 0 100 x"; udp[2] = NULL; /* an older PC: three numbers, a title starting with digits */
     assert(identify("abc", &host, title, &count) == 0 && count == 76 && !strcmp(title, "2 Fast 2 Furious"));
+    udp[0] = "RAA1 OK 0 0 0 0 0 Empty"; udp[1] = NULL; lastRag[0] = '\0'; /* nothing to transfer: no chunk asked */
+    assert(identify("abc", &host, title, &count) == 0 && asks == 1 && !lastRag[0]);
     udp[0] = "RAA1 WAIT"; udp[1] = "RAA1 NO unknown"; udp[2] = NULL;
     assert(identify("abc", &host, title, &count) == 1 && asks == 2);
     udp[0] = NULL; assert(identify("abc", &host, title, &count) == -2);

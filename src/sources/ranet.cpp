@@ -1057,9 +1057,10 @@ int Ranet::xeraboraIdentify(const char *hash, const char *serial, unsigned int *
     to.sin_addr.s_addr = *host;
     snprintf(req, sizeof(req), "RAQ1 %s %s%s", hash, serial, myaddr);
     int result = raqAsk(sock, &to, req);
-    disconnect(sock);
-    if (result != 0)
+    if (result != 0) {
+        disconnect(sock);
         return result;
+    }
     int bytes = 0, chunks = 0, unlocked, unsupported, pos = 0;
     // The two reply shapes askPc accepts: five numbers (newer clients) or three, then the title.
     if (sscanf(rx_ + 8, "%d %d %d %d %d %n", &bytes, &chunks, count, &unlocked, &unsupported, &pos) != 5)
@@ -1069,6 +1070,15 @@ int Ranet::xeraboraIdentify(const char *hash, const char *serial, unsigned int *
     while (len > 0 && name[len - 1] == ' ')
         name[--len] = '\0';
     snprintf(title, titlesz, "%s", name);
+    /* xeRAbora 2.2.0 answers OK and then serves only the console's UDP port until the last chunk
+       of the watch list is taken, or 10 s pass: its page on port 18280 goes unanswered meanwhile,
+       and httpGet gives up after 8 s. Only the title and count are wanted here, so take the last
+       chunk at once: that ends the hold. An older client just sends the chunk. */
+    if (chunks > 0) {
+        snprintf(req, sizeof(req), "RAG1 %s %d%s", hash, chunks - 1, myaddr);
+        ask(sock, &to, req, rx_, sizeof(rx_), RA_TRY_LAUNCH);
+    }
+    disconnect(sock);
     return 0;
 }
 
