@@ -354,6 +354,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
         return;
     }
     GSTEXTURE *texture = getGameImageTexture(image->cache, thmGetItemSource(menu, item), &item->item);
+    GSTEXTURE *art = texture != NULL && texture->Mem != NULL ? texture : NULL; // Cover Shape crops art only
     if (texture == NULL || texture->Mem == NULL) {
         if (gTheme->gridCoverless) {
             drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
@@ -368,6 +369,8 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
             thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
         return;
     }
+
+    thmCoverCropBegin(menu, item, art, h > 0 ? (float)w / (float)h : 0.0f); // the cell's box, before a turn squashes it
 
     // The case picture is drawn so its cover window lands on the cover's place in the cell (w by h): the
     // whole picture when the window is the whole element, a larger one round it when it is not. Frame
@@ -390,6 +393,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     } else {
         rmDrawPixmap(texture, x, y, ALIGN_CENTER, tw, h, SCALING_RATIO, color, 0);
     }
+    thmCoverCropEnd();
     if (vignette)
         drawVignette(x, y, rmWideScale(tw), h, vignette);
     if (fabsf(turn) < 0.2f)

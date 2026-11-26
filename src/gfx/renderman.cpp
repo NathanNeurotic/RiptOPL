@@ -541,10 +541,56 @@ void Renderer::drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float
     }
 }
 
+// Cover Shape (rmSetCoverCrop): the cover texture whose art is cropped, its trims and the aspect it is fitted to.
+static GSTEXTURE *sCropCover;
+static float sCropTrim[4];
+static float sCropAspect;
+
+void rmSetCoverCrop(GSTEXTURE *cover, const float *trim, float aspect)
+{
+    sCropCover = trim != NULL ? cover : NULL;
+    if (trim != NULL)
+        for (int i = 0; i < 4; i++)
+            sCropTrim[i] = trim[i];
+    sCropAspect = aspect;
+}
+
+int rmCoverCropUV(GSTEXTURE *txt, float uv[4])
+{
+    if (txt == NULL || txt != sCropCover)
+        return 0;
+    float w = uv[2] - uv[0], h = uv[3] - uv[1];
+    uv[0] += w * sCropTrim[0];
+    uv[1] += h * sCropTrim[1];
+    uv[2] -= w * sCropTrim[2];
+    uv[3] -= h * sCropTrim[3];
+    w = uv[2] - uv[0], h = uv[3] - uv[1];
+    if (sCropAspect <= 0.0f || w <= 0.0f || h <= 0.0f)
+        return 1;
+    if (w > h * sCropAspect) { // wider than the box: keep the middle columns
+        float c = (uv[0] + uv[2]) * 0.5f, half = h * sCropAspect * 0.5f;
+        uv[0] = c - half;
+        uv[2] = c + half;
+    } else { // taller: keep the middle rows
+        float c = (uv[1] + uv[3]) * 0.5f, half = w / sCropAspect * 0.5f;
+        uv[1] = c - half;
+        uv[3] = c + half;
+    }
+    return 1;
+}
+
+static void cropQuad(GSTEXTURE *txt, rm_quad_t *q)
+{
+    float uv[4] = {q->ul.u, q->ul.v, q->br.u, q->br.v};
+    rmCoverCropUV(txt, uv);
+    q->ul.u = uv[0], q->ul.v = uv[1], q->br.u = uv[2], q->br.v = uv[3];
+}
+
 void Renderer::drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
 {
     rm_quad_t quad;
     setupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
+    cropQuad(txt, &quad);
     drawQuad(&quad);
     if (reflection)
         drawReflection(txt, &quad, quad.br.y, quad.br.v); // plain pixmap: the whole texture is the cover
@@ -578,10 +624,10 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
         gsGlobal->PrimAlphaEnable = GS_SETTING_OFF;
     }
 
-    float u0 = (inlay->Filter == GS_FILTER_LINEAR && inlay->Width > 1 && inlay->Height > 1) ? 0.5f : 0.0f;
-    float v0 = u0;
-    float u1 = (float)inlay->Width - u0;
-    float v1 = (float)inlay->Height - v0;
+    float pad = (inlay->Filter == GS_FILTER_LINEAR && inlay->Width > 1 && inlay->Height > 1) ? 0.5f : 0.0f;
+    float crop[4] = {pad, pad, (float)inlay->Width - pad, (float)inlay->Height - pad};
+    rmCoverCropUV(inlay, crop);
+    float u0 = crop[0], v0 = crop[1], u1 = crop[2], v1 = crop[3];
 
     if (gsKit_TexManager_bind(gsGlobal, inlay) != GSKIT_TEXMGR_BIND_DEFERRED)
         gsKit_prim_quad_texture(gsGlobal, inlay,
@@ -621,10 +667,12 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
         // screen space as quad.ul.y), not the frame's top -- otherwise reflH spans the padded frame
         // height and the mirrored art renders vertically stretched, overflowing the frame's mirror.
         iquad.ul.y = quad.ul.y + ((uly < ury) ? uly : ury);
-        iquad.ul.u = 0.0f;
-        iquad.br.u = inlay->Width;
-        iquad.ul.v = 0.0f;
-        drawReflection(inlay, &iquad, waterline, inlay->Height);
+        float art[4] = {0.0f, 0.0f, (float)inlay->Width, (float)inlay->Height};
+        rmCoverCropUV(inlay, art); // a Cover Shape crop mirrors the art as it is drawn upright
+        iquad.ul.u = art[0];
+        iquad.br.u = art[2];
+        iquad.ul.v = art[1];
+        drawReflection(inlay, &iquad, waterline, art[3]);
         drawReflection(overlay, &quad, waterline, botV);
     }
 }
