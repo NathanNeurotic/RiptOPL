@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""The in-game SMB2 and NFS readers poll a silent socket every 100 us for the first 2 ms, then every 1 ms,
-and still give up after their 10 s timeout (#399).
+"""The in-game SMB2 and NFS readers wait on the socket's SO_RCVTIMEO (100 ms per receive), or, when that cannot
+be set, poll a silent socket every 100 us for the first 2 ms, then every 1 ms. Both give up after their 10 s
+timeout (#399, #536).
 
 Each reader's receive function is taken from its source and compiled on the host against a socket that
 never has data and a DelayThread that only advances a virtual clock."""
@@ -41,6 +42,9 @@ typedef unsigned char u8;
 typedef unsigned int u32;
 #define MSG_DONTWAIT 0x40
 static uint64_t virtual_us;
+static int recv_waits; /* SO_RCVTIMEO set on the socket */
+#define smb2_recv_waits recv_waits
+#define nfs_recv_waits recv_waits
 static int short_delays, long_delays, recv_calls;
 static int DelayThread(int us)
 {
@@ -56,7 +60,9 @@ static int DelayThread(int us)
 static int silent_recv(int s, void *mem, int len, unsigned int flags)
 {
     (void)s; (void)mem; (void)len;
-    assert(flags == MSG_DONTWAIT);
+    assert(flags == (recv_waits ? 0 : MSG_DONTWAIT));
+    if (recv_waits)
+        virtual_us += 100000; /* SO_RCVTIMEO passed */
     recv_calls++;
     return -1;
 }
@@ -69,9 +75,10 @@ NFS = 'modules/iopcore/cdvdman/nfs.c'
 
 code = PRELUDE
 code += define(SMB2, 'SMB2_RECV_TIMEOUT_MS') + define(SMB2, 'SMB2_POLL_SHORT_US') + define(SMB2, 'SMB2_POLL_SHORT_COUNT')
+code += define(SMB2, 'SMB2_RECV_WAIT_MS')
 code += 'static int NegotiateTimedOut(void) { return 0; }\n'
 code += function(SMB2, 'static int RecvData(int sock, void *buf, int size)') + '\n'
-code += define(NFS, 'NFS_RECV_TIMEOUT_MS')
+code += define(NFS, 'NFS_RECV_TIMEOUT_MS') + define(NFS, 'NFS_RECV_WAIT_MS')
 code += function(NFS, 'static int nfs_sock_read(int fd, void *buf, int len)') + '\n'
 code += r'''
 int main(void)
@@ -90,7 +97,17 @@ int main(void)
     reset();
     assert(nfs_sock_read(-1, buf, sizeof(buf)) == -1 && recv_calls == 0);
 
-    puts("in-game SMB2 and NFS receive polls: 20 x 100 us, then 1 ms, 10 s timeout kept");
+    /* With SO_RCVTIMEO each receive waits 100 ms itself: about 100 receives, still about 10 s. */
+    recv_waits = 1;
+    reset();
+    assert(RecvData(3, buf, sizeof(buf)) == -1);
+    assert(recv_calls == 101 && virtual_us >= 10000000ULL && virtual_us < 10200000ULL);
+
+    reset();
+    assert(nfs_sock_read(3, buf, sizeof(buf)) == -1);
+    assert(recv_calls == 100 && virtual_us >= 10000000ULL && virtual_us < 10200000ULL);
+
+    puts("in-game SMB2 and NFS receives: wait 100 ms with SO_RCVTIMEO, else poll 20 x 100 us then 1 ms; 10 s timeout kept");
     return 0;
 }
 '''
