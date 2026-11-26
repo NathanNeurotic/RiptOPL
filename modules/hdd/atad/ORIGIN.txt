@@ -22,8 +22,6 @@ LOCAL CHANGES vs the pin (all marked /* FORK */ in src/ps2atad.c):
 6. ata_bd_write refuses a BDM write below the first APA user partition (LBA < 0x40000) when LBA 0
    carries the APA magic, or cannot be read to prove it does not (2026-09, docs/APA-SAFETY.md).
    The partition table, error records and journal live there; no FAT/exFAT volume ever does.
-   A refusal on the APA magic returns -EROFS (nothing was sent to the drive) so bdmfs_fatfs can drop
-   the change and keep reading; an unreadable LBA 0 still returns -EIO.
 7. Backported upstream f30f05eba (2026-08-27): ata_device_sector_io64 counts progress in a u32
    chunk, so a 65536-sector LBA48 request no longer re-issues the same command forever.
 8. ata_device_sector_io64 refuses a request outside the drive's addressable range before issuing

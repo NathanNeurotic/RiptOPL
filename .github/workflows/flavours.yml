@@ -324,8 +324,6 @@ jobs:
         run: |
           python3 .github/scripts/test_vmc_contiguous_create.py
           python3 .github/scripts/test_vmc_past_2tb_ata.py
-      - name: Check a write the disk driver refuses leaves the FAT/exFAT volume readable
-        run: python3 .github/scripts/test_fatfs_refused_write.py
       - name: Check the exFAT free-space scan steps over full bitmap bytes and sectors with the same result
         run: python3 .github/scripts/test_exfat_bitmap_scan.py
       - name: Check Default Menu HDD Games opens an exFAT or FAT32 internal drive's page

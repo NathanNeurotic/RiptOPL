@@ -1613,20 +1613,16 @@ static int ata_bd_write_hits_apa_reserved(int device, u64 sector, u16 count)
     if (count == 0 || sector >= ATA_BD_APA_RESERVED_SECTORS)
         return 0;
     if (ata_device_sector_io64(device, lba0, 0, 1, ATA_DIR_READ) != 0)
-        return -EIO;
-    // -EROFS, not -EIO: nothing was sent to the drive and no retry will change that, so the
-    // filesystem above may drop the change and go on reading (bdmfs_fatfs sync_window).
-    return (lba0[4] == 'A' && lba0[5] == 'P' && lba0[6] == 'A' && lba0[7] == 0) ? -EROFS : 0;
+        return 1;
+    return lba0[4] == 'A' && lba0[5] == 'P' && lba0[6] == 'A' && lba0[7] == 0;
 }
 
 static int ata_bd_write(struct block_device *bd, u64 sector, const void *buffer, u16 count)
 {
-    int refused = ata_bd_write_hits_apa_reserved(bd->devNr, sector, count);
-
-    if (refused) {
+    if (ata_bd_write_hits_apa_reserved(bd->devNr, sector, count)) {
         M_PRINTF("BDM write refused: %u sector(s) at LBA %lu is inside the APA reserved area\n",
                  (unsigned int)count, (unsigned long)sector);
-        return refused;
+        return -EIO;
     }
 
     if (ata_device_sector_io64(bd->devNr, (void *)buffer, sector, count, ATA_DIR_WRITE) != 0) {
