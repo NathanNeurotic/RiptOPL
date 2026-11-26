@@ -85,6 +85,9 @@ typedef struct menu_item
 
     short remindLast;
 
+    /// the theme load (theme_t::artGeneration) this page was last filled for (menuRenderMain)
+    unsigned int page_gen;
+
     void (*refresh)(struct menu_item *curMenu);
 
     void (*execCross)(struct menu_item *curMenu);
