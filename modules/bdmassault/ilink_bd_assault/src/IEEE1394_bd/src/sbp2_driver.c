@@ -478,10 +478,8 @@ static int sbp2AttachUnits(void)
         dev->InitiatorNodeID = iLinkGetLocalNodeID();
         dev->ManagementAgent_high = dev->ManagementAgent_low = 0;
         dev->mgt_ORB_timeout = dev->ORB_size = dev->LUN = 0;
-        /* RiptOPL: code 3 is a 1394b (FireWire 800) node. Accept it like the SDK did: iLinkTrAlloc caps
-         * the transfer speed at S400, the fastest this port has. */
         speed = iLinkGetNodeMaxSpeed(nodeID);
-        if (speed < 0) { /* not on the bus any more */
+        if (speed < 0 || speed > 2) { /* not a speed this driver can use */
             SignalSema(sbp2_io_sema);
             continue;
         }
