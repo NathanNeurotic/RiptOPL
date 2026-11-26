@@ -12,7 +12,7 @@
 
 // ---- link stand-ins for everything outside the cache the two real sources reach for ----------------------
 
-int guiFrameId, guiInactiveFrames, gEnableArtTar;
+int guiFrameId, guiInactiveFrames, gEnableArtTar, gCoverArt;
 void *_gp;
 GameSource::GameSource(short int mode_, char appsPriority_, unsigned char flags_, int delay_, int updateDelay_, unsigned caps)
 {
@@ -92,10 +92,20 @@ public:
     void cleanUp(item_list_t *, int) override {}
     void shutdown(item_list_t *) override {}
     int iconId(item_list_t *) override { return 0; }
-    // Name art exists ("NAME*"), disc-id art ("SLUS*") does not, unless gIdArt says so.
-    int image(item_list_t *, char *, int, char *value, char *, GSTEXTURE *resultTex, short) override
+    // Name art exists ("NAME*"), disc-id art ("SLUS*") does not, unless gIdArt says so. Cover Art PSBBN's picture
+    // (suffix ART_PSBBN_SUFFIX) exists for disc ids when gPsbbnArt says so, and for nothing else.
+    int image(item_list_t *, char *, int, char *value, char *suffix, GSTEXTURE *resultTex, short) override
     {
         gDeviceReads++;
+        if (!strcmp(suffix, ART_PSBBN_SUFFIX)) {
+            gPsbbnReads++;
+            if (!gPsbbnArt || strncmp(value, "SLUS", 4) != 0)
+                return ERR_BAD_FILE;
+            resultTex->Mem = (u32 *)malloc(16);
+            resultTex->Width = 2;
+            resultTex->Height = 2;
+            return 0;
+        }
         if (strncmp(value, "NAME", 4) == 0 || (gIdArt && strncmp(value, "SLUS", 4) == 0)) {
             resultTex->Mem = (u32 *)malloc(16);
             resultTex->Width = 4;
@@ -104,9 +114,9 @@ public:
         }
         return ERR_BAD_FILE;
     }
-    static int gIdArt;
+    static int gIdArt, gPsbbnArt, gPsbbnReads;
 };
-int FakeSource::gIdArt = 0;
+int FakeSource::gIdArt = 0, FakeSource::gPsbbnArt = 0, FakeSource::gPsbbnReads = 0;
 
 // ---- the frame loop --------------------------------------------------------------------------------------
 
@@ -328,6 +338,52 @@ int main()
         CHECK(!cacheRowPairsReady(&ids, &uids, &capacity, &gen, 0, 4)); // a theme with no game caches
         free(ids);
         free(uids);
+    }
+
+    // Cover Art PSBBN: a game's ART/PSBBN picture is read first and marked as one (Cover Shape crops it without a
+    // logo trim); a game with none there gets its Normal cover, not marked. Normal never asks for a PSBBN picture.
+    {
+        resetRows();
+        FakeSource::gIdArt = 1;
+        FakeSource::gPsbbnArt = 1;
+        image_cache_t *cache = cacheInitCache(0, "ART", 1, "COV", 5);
+        GSTEXTURE *tex = NULL;
+        int f, cacheId = -1, uid = 0;
+        char id[] = "SLUS_000.01", name[] = "NAME0";
+        for (f = 0; f < 5; f++, drainWorker())
+            tex = cacheGetTexture(cache, &source, &cacheId, &uid, id);
+        CHECK(tex != NULL && tex->Mem != NULL && FakeSource::gPsbbnReads == 0 && !cacheIsPsbbnArt(tex)); // Normal
+        cacheDestroyCache(cache);
+
+        gCoverArt = COVER_ART_PSBBN;
+        cache = cacheInitCache(0, "ART", 1, "COV", 5);
+        cacheId = -1, uid = 0;
+        for (f = 0; f < 5; f++, drainWorker())
+            tex = cacheGetTexture(cache, &source, &cacheId, &uid, id);
+        CHECK(tex != NULL && tex->Width == 2 && cacheIsPsbbnArt(tex));
+        int nameId = -1, nameUid = 0;
+        for (f = 0; f < 5; f++, drainWorker())
+            tex = cacheGetTexture(cache, &source, &nameId, &nameUid, name); // no PSBBN picture: its Normal cover
+        CHECK(tex != NULL && tex->Width == 4 && !cacheIsPsbbnArt(tex));
+        CHECK(!cacheIsPsbbnArt(NULL));
+        GSTEXTURE other = {};
+        CHECK(!cacheIsPsbbnArt(&other)); // not a cache's picture
+
+        // Changing Cover Art: the next theme load does not carry the covers over; without it they are carried over.
+        cacheNewGeneration();
+        image_cache_t *next = cacheInitCache(0, "ART", 1, "COV", 5);
+        cacheDestroyCache(cache);
+        CHECK(next->residentByValue(id) != NULL && cacheIsPsbbnArt(next->residentByValue(id))); // the mark moves too
+        CHECK(next->residentByValue(name) != NULL);
+        cacheDropCoversOnNextLoad();
+        cacheNewGeneration();
+        image_cache_t *after = cacheInitCache(0, "ART", 1, "COV", 5);
+        cacheDestroyCache(next);
+        CHECK(after->residentByValue(id) == NULL && after->residentByValue(name) == NULL);
+        cacheDestroyCache(after);
+        gCoverArt = COVER_ART_NORMAL;
+        FakeSource::gIdArt = 0;
+        FakeSource::gPsbbnArt = 0;
     }
 
     TEST_DONE("ps1art");

@@ -1800,6 +1800,9 @@ static int thmLoad(const char *themePath)
         // Cover Shape's logo trims (percent, 0 to 40): cover_ps1_spine=13 cover_ps2_band=11
         newT->coverSpine = configGetInt(themeConfig, "cover_ps1_spine", &k) && k >= 0 && k <= 40 ? k : 13;
         newT->coverBand = configGetInt(themeConfig, "cover_ps2_band", &k) && k >= 0 && k <= 40 ? k : 11;
+        // Cover Art Crop's box, percent of the PS2 box's height (50 to 100): cover_crop_height=89, the height a PS2
+        // cover keeps once its 11 percent band is off, so its art is not cut again.
+        newT->coverCrop = configGetInt(themeConfig, "cover_crop_height", &k) && k >= 50 && k <= 100 ? k : 89;
     }
 
     // Embedded attribute glyphs (#Format/#Media/Aspect/Rating/Scan/Vmode values): BUILT-IN theme

@@ -353,6 +353,7 @@ enum UI_ITEMS {
     UICFG_WALLPAPER,
     UICFG_AMBIENT_EFFECTS,
     UICFG_COVER_SHAPE,
+    UICFG_COVER_ART,
     UICFG_SEL_COLOR, // Selection: Colored, Cursor, Highlight -- kept in SEL_STYLE_* bit order
     UICFG_SEL_CURSOR,
     UICFG_SEL_HIGHLIGHT,

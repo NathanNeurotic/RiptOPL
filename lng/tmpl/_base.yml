@@ -2840,3 +2840,8 @@ gui_strings:
   string: Cover Shape
 - label: HINT_COVER_SHAPE
   string: "Mixed draws each cover in its own box. PS2, PS1 or APP draws every cover in that box, the art cropped to fit: in PS2, PS1 art loses its logo strip on the left; in PS1, PS2 art loses its logo band on top."
+- comment: Theme Settings row. Its choices are Normal, PSBBN and Crop (not translated).
+  label: COVER_ART_SOURCE
+  string: Cover Art
+- label: HINT_COVER_ART_SOURCE
+  string: "Normal uses ART/<game ID>_COV. PSBBN uses the square PSBBN Art Database pictures in ART/PSBBN/<game ID>.png, as LUNA does, and the Normal cover for a game that has none there. Crop cuts the logo strip off every Normal cover and draws them all a little shorter than a PS2 case."

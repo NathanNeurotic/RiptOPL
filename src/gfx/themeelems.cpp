@@ -1686,9 +1686,12 @@ static int thmRowArt(struct menu_list *menu, struct submenu_list *item)
     return rowView == LIB_VIEW_PS1 ? ART_PS1 : ART_PS2;
 }
 
-// The box every cover takes under Cover Shape (ART_*), or -1 for Mixed: each cover its own kind's.
+// The box every cover takes under Cover Shape (ART_*), or -1 for Mixed: each cover its own kind's. Cover Art Crop
+// draws every cover in the PS2 box, a little shorter (thmCoverCropBegin), whatever Cover Shape says.
 static int thmShapeArt(void)
 {
+    if (gCoverArt == COVER_ART_CROP)
+        return ART_PS2;
     return gCoverShape >= COVER_SHAPE_PS2 && gCoverShape <= COVER_SHAPE_APP ? gCoverShape - COVER_SHAPE_PS2 : -1;
 }
 
@@ -1803,22 +1806,28 @@ float thmCoverAspect(const theme_element_t *coverElem)
 
 // Cover Shape's crop for one row: in PS2, PS1 art loses the logo strip on its left; in PS1, PS2 art the logo band on
 // its top; then the art is centre-cropped to the box. A cover already of the shape's kind is drawn as under Mixed.
+// Cover Art Crop (FifthFox): PS1 art loses its strip and PS2 art its band, and every cover is drawn
+// cover_crop_height percent of the PS2 box's height, the art cropped to that shorter box. A PSBBN Art Database picture (Cover Art PSBBN)
+// is square key art with no logo: never trimmed, and centre-cropped to its box under every shape, Mixed too.
 void thmCoverCropBegin(struct menu_list *menu, struct submenu_list *item, GSTEXTURE *art, float aspect)
 {
-    int shape = thmShapeArt(), kind = thmRowArt(menu, item);
-    if (shape < 0 || kind < 0 || kind == shape || art == NULL)
+    int shape = thmShapeArt(), kind = thmRowArt(menu, item), crop = gCoverArt == COVER_ART_CROP;
+    if (kind < 0 || art == NULL)
+        return;
+    int psbbn = gCoverArt == COVER_ART_PSBBN && cacheIsPsbbnArt(art);
+    if (!psbbn && (shape < 0 || (kind == shape && !crop)))
         return;
     float trim[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    if (shape == ART_PS2 && kind == ART_PS1)
+    if (!psbbn && shape == ART_PS2 && kind == ART_PS1)
         trim[0] = gTheme->coverSpine / 100.0f;
-    else if (shape == ART_PS1 && kind == ART_PS2)
+    else if (!psbbn && (shape == ART_PS1 || crop) && kind == ART_PS2)
         trim[1] = gTheme->coverBand / 100.0f;
-    rmSetCoverCrop(art, trim, aspect);
+    rmSetCoverCrop(art, trim, aspect, crop ? gTheme->coverCrop / 100.0f : 1.0f);
 }
 
 void thmCoverCropEnd(void)
 {
-    rmSetCoverCrop(NULL, NULL, 0.0f);
+    rmSetCoverCrop(NULL, NULL, 0.0f, 1.0f);
 }
 
 // AttributeImage ///////////////////////////////////////////////////////////////////////////////////////////////////////////

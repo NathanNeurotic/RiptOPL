@@ -1461,6 +1461,19 @@ int texDiscoverArt(GSTEXTURE *texture, const char *path)
     int result;
 
     LOG("texDiscoverArt(%s)\n", path);
+    // Cover Art PSBBN asked for "<folder>/<id>_PSBBN": the picture is "<folder>/PSBBN/<id>", and it has no other name.
+    const char *base = strrchr(path, '/'), *back = strrchr(path, '\\'); // SMB paths use '\\'
+    if (back != NULL && (base == NULL || back > base))
+        base = back;
+    size_t len = strlen(path), tail = sizeof("_" ART_PSBBN_SUFFIX) - 1;
+    if (base != NULL && len > tail && (size_t)(path + len - base) > tail + 1 && !strcmp(path + len - tail, "_" ART_PSBBN_SUFFIX)) {
+        int dirLen = (int)(base - path);
+        if (snprintf(filePath, sizeof(filePath), "%.*s%c" ART_PSBBN_SUFFIX "%c%.*s", dirLen, path, *base, *base, (int)(len - tail - dirLen - 1), base + 1) >=
+            (int)sizeof(filePath))
+            return ERR_BAD_FILE;
+        result = texFindArt(texture, filePath);
+        return (result >= 0) ? 0 : result;
+    }
     result = texFindArt(texture, path);
     if (result != ERR_BAD_FILE || texLoadAbortRequested())
         return (result >= 0) ? 0 : result;
