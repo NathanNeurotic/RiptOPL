@@ -956,7 +956,7 @@ static void udpfsLaunchOplCore(item_list_t *itemList, base_game_info_t *game, co
 
     layer1_start = sbGetISO9660MaxLBA(partname);
     settings->common.mediaLsnCount = sbGetMediaLsnCount(partname, isoBytes);
-    if (sbProbeISO9660(partname, game, layer1_start) != 0) {
+    if (sbProbeISO9660(partname, game, layer1_start, 0) != 0) {
         layer1_start = 0;
         LOG("DVD detected.\n");
     } else {
