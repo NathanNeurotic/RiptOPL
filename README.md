@@ -10,17 +10,15 @@
 <p align="center"><b><a href="https://nathanneurotic.github.io/RiptOPL/theme-creator.html">Open the Theme Creator</a></b> · <a href="https://nathanneurotic.github.io/RiptOPL-Themes/">Browse community themes</a></p>
 <!-- theme-creator-banner:end -->
 
-> **RiptOPL is affiliated with the [RIPPS2 Project](https://gitlab.com/akilluminati247/RIPPS2) by [Akilluminati47](https://gitlab.com/akilluminati247).**
-
 ## Community Contributors
 
 A heartfelt thank you to developers who have contributed pull requests directly to this fork. Anyone who opens a pull request against RiptOPL is featured here at the top of the README in recognition of their support for the project and solidarity with its maintainer:
-### [@akilluminati47](https://gitlab.com/akilluminati247) ([AK](https://gitlab.com/akilluminati247)), [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) developer
-### [@oMrRexD](https://github.com/oMrRexD) (MrRexD)
+### [@akilluminati47](https://gitlab.com/akilluminati247) of [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
+### [@oMrRexD](https://github.com/oMrRexD) (MrRexD) of [sd2cloud](https://github.com/oMrRexD/sd2cloud)
 - **[#702](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/702)–[#705](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/705)** (`RetroAchievements`): the real-hardware RA stabilization pass. Fixed the ee_core stack squeeze, the MMCE DEV9 path, cold-launch networking and RA settings placement.
 - **[#789](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/789)** (`Font lock`): holds the font lock across draw, measure and load, ending the boot-freeze race on real hardware.
 - **[#795](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/795)** (`MMCE music`): reopens the background-music file when its descriptor dies mid-stream.
-### [@dnunezx](https://github.com/dnunezx) (darkladark)
+### [@dnunezx](https://github.com/dnunezx) (darkladark) of [LUNA](https://github.com/dnunezx/LUNA)
 - **[#733](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733)** (`Cover art flow`): **PSBBN Flow** — Contributed [LUNA](https://github.com/dnunezx/LUNA)'s Collection display and its perspective cover animation (`src/opluna_collection.c`) to the legacy Open-PS2-Loader edition. RiptOPL's built-in PSBBN Flow theme (`src/gfx/psbbnflow.cpp`) is his work, ported from that PR; the regular Coverflow is [KrahJohlito](https://github.com/KrahJohlito)'s.
 
 # RiptOPL
