@@ -288,49 +288,263 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 #define ATA_DIR_READ 0
-static unsigned char disk_lba0[512];
-static int reads, read_fails;
+static unsigned char disk_table[1024]; /* LBA 0-1 */
+static unsigned char disk_bs[512];
+static u64 disk_bs_lba;
+static int reads, read_fails, bs_read_fails;
 static int ata_device_sector_io64(int device, void *buf, u64 lba, u32 nsectors, int dir)
 {
     (void)device;
-    assert(dir == ATA_DIR_READ && lba == 0 && nsectors == 1);
+    assert(dir == ATA_DIR_READ);
     reads++;
-    if (read_fails)
+    if (lba == 0) {
+        assert(nsectors == 2);
+        if (read_fails)
+            return -5;
+        memcpy(buf, disk_table, 1024);
+        return 0;
+    }
+    assert(nsectors == 1);
+    if (bs_read_fails)
         return -5;
-    memcpy(buf, disk_lba0, 512);
+    if (lba == disk_bs_lba)
+        memcpy(buf, disk_bs, 512);
+    else
+        memset(buf, 0, 512);
     return 0;
 }
 '''
 
 BD_HARNESS_MAIN = r'''
+static void put32(unsigned char *p, u32 v)
+{
+    p[0] = v & 0xFF;
+    p[1] = (v >> 8) & 0xFF;
+    p[2] = (v >> 16) & 0xFF;
+    p[3] = v >> 24;
+}
+
+static u32 header_sum(void)
+{
+    u32 sum = 0;
+    int i;
+    for (i = 1; i < 256; i++)
+        sum += (u32)disk_table[i * 4] | ((u32)disk_table[i * 4 + 1] << 8) | ((u32)disk_table[i * 4 + 2] << 16) | ((u32)disk_table[i * 4 + 3] << 24);
+    return sum;
+}
+
+static void set_entry(int i, u8 status, u8 type, u32 start, u32 size)
+{
+    unsigned char *e = disk_table + 446 + i * 16;
+    memset(e, 0, 16);
+    e[0] = status;
+    e[4] = type;
+    put32(e + 8, start);
+    put32(e + 12, size);
+}
+
+/* An APA header with a correct checksum (a real APA disk, or APA-Jail when an MBR is added). */
+static void apa_header(int with_mbr)
+{
+    memset(disk_table, 0, sizeof(disk_table));
+    put32(disk_table + 4, 0x00415041);
+    memcpy(disk_table + 0x10, "__mbr", 6);
+    memcpy(disk_table + 0x100, "Sony Computer Entertainment Inc.", 32);
+    if (with_mbr) {
+        disk_table[510] = 0x55;
+        disk_table[511] = 0xAA;
+    }
+}
+
+static void seal(int valid)
+{
+    put32(disk_table, header_sum() + (valid ? 0 : 1));
+}
+
+static void exfat_bs(u64 lba, u64 sectors, u8 shift)
+{
+    memset(disk_bs, 0, sizeof(disk_bs));
+    disk_bs[0] = 0xEB;
+    disk_bs[1] = 0x76;
+    disk_bs[2] = 0x90;
+    memcpy(disk_bs + 3, "EXFAT   ", 8);
+    put32(disk_bs + 72, (u32)sectors);
+    put32(disk_bs + 76, (u32)(sectors >> 32));
+    disk_bs[108] = shift;
+    disk_bs[510] = 0x55;
+    disk_bs[511] = 0xAA;
+    disk_bs_lba = lba;
+}
+
+/* lilkuz2005's kind of disk: once APA, then an MBR and exFAT from a PC tool that kept the APA bytes,
+   so the old header no longer checksums. */
+static void stale_disk(u32 start, u32 size, u64 volume)
+{
+    apa_header(1);
+    set_entry(0, 0x00, 0x07, start, size);
+    seal(0);
+    exfat_bs(start, volume, 9);
+}
+
+#define REFUSED(s, c) assert(ata_bd_write_hits_apa_reserved(0, (s), (c)))
+#define ALLOWED(s, c) assert(!ata_bd_write_hits_apa_reserved(0, (s), (c)))
+
 int main(void)
 {
-    /* An APA disk: nothing below the first user partition, including the whole table sector. */
-    memset(disk_lba0, 0, sizeof(disk_lba0));
-    memcpy(disk_lba0 + 4, "APA", 4);
-    assert(ata_bd_write_hits_apa_reserved(0, 0, 1));
-    assert(ata_bd_write_hits_apa_reserved(0, 7, 1));
-    assert(ata_bd_write_hits_apa_reserved(0, 0x3FFFF, 1));
-    assert(ata_bd_write_hits_apa_reserved(0, 2048, 64));
-    assert(!ata_bd_write_hits_apa_reserved(0, 0x40000, 1));
-    assert(!ata_bd_write_hits_apa_reserved(0, 0x12345678, 8));
+    /* A real APA disk (valid header, no MBR): nothing below the first user partition. */
+    apa_header(0);
+    seal(1);
+    REFUSED(0, 1);
+    REFUSED(7, 1);
+    REFUSED(0x3FFFF, 1);
+    REFUSED(2048, 64);
+    ALLOWED(0x40000, 1);
+    ALLOWED(0x12345678, 8);
+    /* The bare magic with garbage after it is refused too: no MBR signature. */
+    memset(disk_table + 8, 0xA5, 1016);
+    disk_table[510] = 0;
+    REFUSED(2048, 64);
+
+    /* A real APA disk keeps its protection even when every other condition holds: a valid header
+       with an MBR, an exFAT entry and a matching boot sector (APA-Jail's sector 0, or a crafted one). */
+    apa_header(1);
+    set_entry(0, 0x00, 0x07, 2048, 1000000);
+    seal(1);
+    exfat_bs(2048, 1000000, 9);
+    REFUSED(2048, 8);
+    REFUSED(4096, 64);
+
+    /* APA-Jail as PSBBN builds it: valid header, exFAT entry past the reserved area. Its exFAT writes
+       are above the fence and never read LBA 0; nothing below it is writable. */
+    apa_header(1);
+    set_entry(0, 0x00, 0x07, 0x200000, 0x1000000);
+    seal(1);
+    exfat_bs(0x200000, 0x1000000, 9);
+    reads = 0;
+    ALLOWED(0x200000, 8);
+    assert(reads == 0);
+    REFUSED(2048, 8);
+    REFUSED(0x3FFFF, 1);
+
+    /* The stale-APA disk: writes inside the exFAT volume go through. */
+    stale_disk(2048, 1000000, 1000000);
+    ALLOWED(2048, 1);
+    ALLOWED(2048 + 100, 8);
+    ALLOWED(0x3FFFF, 1);
+    ALLOWED(0x3FFF0, 0x20);
+    /* ...and nothing outside it: the table sectors, the gap before the partition. */
+    REFUSED(0, 1);
+    REFUSED(1, 1);
+    REFUSED(6, 2);
+    REFUSED(63, 1);
+    REFUSED(2047, 1);
+    REFUSED(2047, 2);
+
+    /* Bounded by the entry and by the volume, whichever ends first. */
+    stale_disk(2048, 4096, 4000);
+    ALLOWED(2048 + 3999, 1);
+    REFUSED(2048 + 3999, 2);
+    REFUSED(2048 + 4000, 1);
+    REFUSED(2048 + 4095, 2);
+    stale_disk(2048, 4096, 4096);
+    ALLOWED(2048 + 4095, 1);
+    REFUSED(2048 + 4095, 2);
+    stale_disk(2048, 4096, 4097); /* volume larger than its entry: refused outright */
+    REFUSED(2048, 1);
+
+    /* No MBR signature. */
+    stale_disk(2048, 1000000, 1000000);
+    disk_table[511] = 0;
+    REFUSED(4096, 8);
+
+    /* Not a FAT/exFAT entry, or an invalid status byte. */
+    stale_disk(2048, 1000000, 1000000);
+    set_entry(0, 0x00, 0x17, 2048, 1000000);
+    REFUSED(4096, 8);
+    set_entry(0, 0x00, 0x00, 2048, 1000000);
+    REFUSED(4096, 8);
+    set_entry(0, 0x05, 0x07, 2048, 1000000);
+    REFUSED(4096, 8);
+    set_entry(0, 0x80, 0x07, 2048, 1000000);
+    ALLOWED(4096, 8);
+
+    /* A partition starting inside LBA 0-7 (the physical sector of the table) is never trusted. */
+    stale_disk(1, 0x50000, 0x50000);
+    REFUSED(1, 1);
+    REFUSED(8, 1);
+    stale_disk(8, 0x50000, 0x50000);
+    ALLOWED(8, 1);
+
+    /* Overlapping entries: the table cannot be trusted at all. */
+    stale_disk(2048, 1000000, 1000000);
+    set_entry(1, 0x00, 0x0C, 500000, 100000);
+    REFUSED(4096, 8);
+    set_entry(1, 0x00, 0x0C, 2048 + 1000000, 100000); /* touching, not overlapping */
+    ALLOWED(4096, 8);
+    set_entry(1, 0x00, 0x05, 100, 2000); /* any entry type counts */
+    REFUSED(4096, 8);
+
+    /* The boot sector must be FAT/exFAT of 512-byte sectors. */
+    stale_disk(2048, 1000000, 1000000);
+    exfat_bs(2048, 1000000, 12);
+    REFUSED(4096, 8);
+    exfat_bs(2048, 1000000, 9);
+    memcpy(disk_bs + 3, "NTFS    ", 8);
+    REFUSED(4096, 8);
+    exfat_bs(2048, 1000000, 9);
+    disk_bs[511] = 0;
+    REFUSED(4096, 8);
+    exfat_bs(4096, 1000000, 9); /* boot sector not where the entry starts */
+    REFUSED(4096, 8);
+    exfat_bs(2048, 0, 9);
+    REFUSED(4096, 8);
+
+    /* FAT32 inside a 0x0C entry. */
+    stale_disk(2048, 1000000, 1000000);
+    set_entry(0, 0x00, 0x0C, 2048, 1000000);
+    memset(disk_bs, 0, sizeof(disk_bs));
+    disk_bs[0] = 0xEB;
+    disk_bs[12] = 0x02;
+    put32(disk_bs + 32, 1000000);
+    memcpy(disk_bs + 82, "FAT32   ", 8);
+    disk_bs[510] = 0x55;
+    disk_bs[511] = 0xAA;
+    ALLOWED(4096, 8);
+    disk_bs[12] = 0x10; /* 4096-byte sectors */
+    REFUSED(4096, 8);
+    disk_bs[12] = 0x02;
+    put32(disk_bs + 32, 1000001);
+    REFUSED(4096, 8);
+
+    /* Two entries both holding the write cannot happen without overlap; one entry, two disjoint
+       volumes: only the one that holds the write counts. */
+    stale_disk(2048, 100000, 100000);
+    set_entry(1, 0x00, 0x07, 200000, 100000);
+    REFUSED(150000, 1);
+    ALLOWED(2048, 1);
+
+    /* Read failures refuse: LBA 0-1, and the boot sector. */
+    stale_disk(2048, 1000000, 1000000);
+    bs_read_fails = 1;
+    REFUSED(4096, 8);
+    bs_read_fails = 0;
+    read_fails = 1;
+    REFUSED(4096, 8);
+    REFUSED(6, 1);
+    read_fails = 0;
 
     /* A plain MBR/exFAT disk (or a superfloppy) keeps full write access. */
-    memset(disk_lba0, 0, sizeof(disk_lba0));
-    memcpy(disk_lba0 + 3, "EXFAT   ", 8);
-    disk_lba0[510] = 0x55;
-    disk_lba0[511] = 0xAA;
-    assert(!ata_bd_write_hits_apa_reserved(0, 1, 1));
-    assert(!ata_bd_write_hits_apa_reserved(0, 2048, 8));
-
-    /* LBA 0 unreadable: the disk cannot be proven non-APA, so low writes are refused. */
-    read_fails = 1;
-    assert(ata_bd_write_hits_apa_reserved(0, 6, 1));
+    memset(disk_table, 0, sizeof(disk_table));
+    memcpy(disk_table + 3, "EXFAT   ", 8);
+    disk_table[510] = 0x55;
+    disk_table[511] = 0xAA;
+    ALLOWED(1, 1);
+    ALLOWED(2048, 8);
 
     /* Writes above the reserved area never pay for the probe read, and zero-length writes do nothing. */
     reads = 0;
-    assert(!ata_bd_write_hits_apa_reserved(0, 0x40000, 1));
-    assert(!ata_bd_write_hits_apa_reserved(0, 0, 0));
+    ALLOWED(0x40000, 1);
+    ALLOWED(0, 0);
     assert(reads == 0);
 
     puts("bdm fence: all cases passed");
@@ -489,7 +703,7 @@ def run_bd_harness():
     atad = text(root / 'modules/hdd/atad/src/ps2atad.c')
     check('lba += chunk;' in atad and 'nsectors -= chunk;' in atad,
           'ps2atad.c: the 65536-sector zero-progress loop fix (upstream f30f05eba) is gone')
-    match = re.search(r'#define ATA_BD_APA_RESERVED_SECTORS[^\n]*\n\s*static int ata_bd_write_hits_apa_reserved\(.*?\n\}\n',
+    match = re.search(r'#define ATA_BD_APA_RESERVED_SECTORS.*?\nstatic int ata_bd_write_hits_apa_reserved\(.*?\n\}\n',
                       atad, re.S)
     if match is None:
         failures.append('ps2atad.c: the BDM APA reserved-area guard is missing')
