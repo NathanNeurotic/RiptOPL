@@ -57,6 +57,8 @@ typedef struct { u8 data[32]; } SMBHeader_t;
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40
 #endif
+#define SMB_RECV_WAIT_MS 100
+static int smb_recv_waits; /* these cases drive the polling path; test_net_recv_poll.py drives the waits */
 
 static uint64_t virtual_us;
 static int socket_calls, connect_calls, close_calls, recv_calls, body_calls, send_calls;
@@ -95,8 +97,12 @@ static int fake_socket(int domain, int type, int protocol)
 }
 static int fake_setsockopt(int fd, int level, int option, const void *value, socklen_t size)
 {
-    assert(fd == 7 && level == IPPROTO_TCP && option == TCP_NODELAY);
-    assert(size == sizeof(int) && *(const int *)value == 1);
+    assert(fd == 7 && size == sizeof(int));
+    if (level == SOL_SOCKET && option == SO_RCVTIMEO) {
+        assert(*(const int *)value == SMB_RECV_WAIT_MS);
+        return -1; /* a stack without SO_RCVTIMEO: receives poll */
+    }
+    assert(level == IPPROTO_TCP && option == TCP_NODELAY && *(const int *)value == 1);
     return 0;
 }
 static int fake_connect(int fd, struct sockaddr *addr, socklen_t size)

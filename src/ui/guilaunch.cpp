@@ -55,7 +55,8 @@ static const int LAUNCH_IN = 10, LAUNCH_HOLD = 10, LAUNCH_OUT = 8;
 void Gui::playLaunchCover()
 {
     for (int frame = 1; frame <= LAUNCH_IN + LAUNCH_HOLD + LAUNCH_OUT; ++frame) {
-        const float in = frame < LAUNCH_IN ? plasma_.ease((float)frame / LAUNCH_IN) : 1.0f;
+        // Frame 1 draws the page undimmed: with no cover in memory it is the first frame of the plain fade.
+        const float in = frame == 1 ? 0.0f : frame < LAUNCH_IN ? plasma_.ease((float)frame / LAUNCH_IN) : 1.0f;
         startFrame();
         gScreens.holdContentFade((u8)((1.0f - in) * 0x80));
         show();

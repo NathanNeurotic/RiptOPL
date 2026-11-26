@@ -189,6 +189,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_CLOCK_ZONE, &gClockZone, CLOCK_ZONE_CONSOLE), // the console's own zone, as before the setting existed
     intSetting(CONFIG_OPL_CLOCK_SUMMER, &gClockSummer, 0),
     intSetting(CONFIG_OPL_GAME_LIST_CACHE, &gGameListCache, 0), // one bit per device (GLC_*), all off
+    intSetting(CONFIG_OPL_COVER_SHAPE, &gCoverShape, COVER_SHAPE_MIXED),
 };
 
 } // namespace

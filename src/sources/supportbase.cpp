@@ -825,7 +825,7 @@ u32 sbGetISO9660MaxLBA(const char *path)
     return maxLBA;
 }
 
-int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
+int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset, u64 imageBytes)
 {
     int result = -1, fd;
     char buffer[6];
@@ -838,7 +838,7 @@ int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
                     ((IOBuffer[0x00] == 1) && (!strncmp((char *)(&IOBuffer[0x01]), "CD001", 5)))) {
                     result = 0;
                 }
-            } else {
+            } else if (imageBytes == 0 || (u64)layer1_offset * 2048 + sizeof(buffer) <= imageBytes) {
                 if (lseek64(fd, (u64)layer1_offset * 2048, SEEK_SET) == (u64)layer1_offset * 2048) {
                     if ((read(fd, buffer, sizeof(buffer)) == sizeof(buffer)) &&
                         ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5)))) {
@@ -2569,6 +2569,8 @@ static const char *sbProbeNeutrinoMc(void)
         "mc1:/neutrino/NEUTRINO.ELF",
         "mc0:NEUTRINO/NEUTRINO.ELF",
         "mc1:/NEUTRINO/NEUTRINO.ELF",
+        "mc0:/APPS/neutrino/neutrino.elf", // NHDDL's first memory-card spot
+        "mc1:/APPS/neutrino/neutrino.elf",
     };
     for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0])); i++) {
         if (sbFileExists(candidates[i]) && sbNeutrinoInstallComplete(candidates[i]))
@@ -2599,7 +2601,8 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
     // One deterministic policy for every launch:
     //   1) user-entered full path,
     //   2) the active game's device,
-    //   3) mc0:/mc1:.
+    //   3) mc0:/mc1:,
+    //   4) any other mounted BDM device, then mmce0:/mmce1: (not for an MX4SIO game).
     // A Memory Card or HDD (APA) choice from the retired picker was migrated into gNeutrinoPath at
     // config load; while that path is untouched, tier 1 also repeats the old picker's case variants.
     if (gNeutrinoPath[0] != '\0' &&
@@ -2625,7 +2628,33 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
             return mcHit;
     }
 
-    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1)\n");
+    // 4) Any other mounted BDM device, as NHDDL does (massX:/neutrino/neutrino.elf). Without it a game
+    // on MX4SIO with Neutrino only on the USB stick fell back to the OPL core. Mounted roots only: no
+    // device is started here. The handoff keeps this device's mount too (deinitEx's second mode).
+    for (int mode = BDM_MODE; mode <= BDM_MODE_LAST; mode++) {
+        const char *root = bdmModeMountedRoot(mode);
+        if (root == NULL || (activePrefix != NULL && !strncmp(activePrefix, root, strlen(root))))
+            continue; // not mounted, or the game's own device (tier 2 already looked there)
+        char rootDir[BDM_DEVICE_ROOT_MAX + 2]; // "massN:/", the form NHDDL probes
+        snprintf(rootDir, sizeof(rootDir), "%s/", root);
+        const char *otherHit = sbNeutrinoProbeGameDevice(rootDir);
+        if (otherHit != NULL)
+            return otherHit;
+    }
+    // ...and an MMCE card's own file system, as NHDDL does, except for a game on MX4SIO: NHDDL and NULD
+    // never use MMCE alongside MX4SIO (both on SIO2).
+    if (!bdmModeIsSIO2(host::app().pathToMode(activePrefix))) {
+        static const char *mmceRoots[] = {"mmce0:/", "mmce1:/"};
+        for (int i = 0; i < 2; i++) {
+            if (activePrefix != NULL && !strncmp(activePrefix, mmceRoots[i], 5))
+                continue; // the game's own card: tier 2 already looked there
+            const char *mmceHit = sbNeutrinoProbeGameDevice(mmceRoots[i]);
+            if (mmceHit != NULL)
+                return mmceHit;
+        }
+    }
+
+    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1 -> other devices)\n");
     return NULL;
 }
 

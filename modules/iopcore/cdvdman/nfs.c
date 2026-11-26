@@ -14,8 +14,8 @@
     repeated, so a server that closes a connection left idle while the game plays does not end it.
   - One request in flight at a time, as smb.c. A READ or WRITE moves at most 8192 bytes, for the
     reason of smb.c's CLIENT_MAX_RECV_SIZE (the IOP TCP window).
-  - The socket is polled with MSG_DONTWAIT, as smb2.c's: SMSTCPIP has no SO_RCVTIMEO and its
-    select is a stub. A reply that stays silent for NFS_RECV_TIMEOUT_MS fails the call.
+  - A receive waits at most NFS_RECV_WAIT_MS (SO_RCVTIMEO, as smb.c and smb2.c), or polls with
+    MSG_DONTWAIT if that cannot be set. A reply that stays silent for NFS_RECV_TIMEOUT_MS fails the call.
   - Writes come from smb_mcemu only. The menu launches a VMC on NFS only while NFS Writes is On.
 
   Return values match smb.c: smb_ReadFile returns the byte count, a short count at end of file,
@@ -40,10 +40,17 @@
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40 // SMSTCPIP's lwip/sockets.h, as in smb2.c
 #endif
+#ifndef SOL_SOCKET
+#define SOL_SOCKET 0xfff // SMSTCPIP/include/lwip/sockets.h, as MSG_DONTWAIT
+#endif
+#ifndef SO_RCVTIMEO
+#define SO_RCVTIMEO 0x1006
+#endif
 
 #define NFS_PORT                2049
 #define NFS_IO_CHUNK            8192
 #define NFS_RECV_TIMEOUT_MS     10000
+#define NFS_RECV_WAIT_MS        100 // one wait of a receive (SO_RCVTIMEO); the timeout is checked between waits
 #define NFS_CONNECT_ATTEMPTS    3
 #define NFS_CONNECT_RETRY_DELAY 500000
 #define NFS_MAX_FILES           (ISO_MAX_PARTS + 2) // the image's parts and the two VMCs
@@ -66,14 +73,18 @@ extern struct cdvdman_settings_nfs cdvdman_settings;
 // unfs4's socket calls. A read returns what has come, waiting up to NFS_RECV_TIMEOUT_MS for the first
 // byte; 0 (the server closed the connection) and -1 both fail unfs4's call, which then closes the socket
 // (fd -1), and the rest of that call fails at once.
+static int nfs_recv_waits; // the socket's SO_RCVTIMEO is set: receives wait instead of polling
+
 static int nfs_sock_read(int fd, void *buf, int len)
 {
     int result, polls, us, waited_us;
 
     for (polls = 0, waited_us = 0; fd >= 0 && waited_us < NFS_RECV_TIMEOUT_MS * 1000; polls++, waited_us += us) {
-        result = plwip_recv(fd, buf, len, MSG_DONTWAIT);
+        result = plwip_recv(fd, buf, len, nfs_recv_waits ? 0 : MSG_DONTWAIT);
         if (result >= 0)
             return result;
+        if (nfs_recv_waits) // the receive has already waited; the short sleep below only stops an instant error spinning
+            waited_us += NFS_RECV_WAIT_MS * 1000;
         /* A reply comes as several TCP segments a fraction of a millisecond apart, and a 1 ms sleep before
            every retry added about a millisecond to each read (#399). Poll every 100 us for the first 2 ms,
            then every 1 ms; the timeout is unchanged. */
@@ -156,6 +167,8 @@ static int nfs_connect(void)
     sin.sin_port = htons(local_port);
     plwip_bind(fd, (struct sockaddr *)&sin, sizeof(sin));
     plwip_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&opt, sizeof(opt));
+    opt = NFS_RECV_WAIT_MS; // a receive wakes as data arrives, as smb.c's
+    nfs_recv_waits = plwip_setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&opt, sizeof(opt)) == 0;
 
     sin.sin_addr = server_addr;
     sin.sin_port = htons(server_port);

@@ -580,4 +580,11 @@ BLURT output char blurttext[128];
     delay(10);
 #define BLURT snprintf(blurttext, sizeof(blurttext), "%s(%d)", blurttext, __LINE__);
 */
+// Cover Shape: 0 Mixed (each cover in its own kind's box), else every cover in one box, its art cropped to it.
+#define COVER_SHAPE_MIXED 0
+#define COVER_SHAPE_PS2   1
+#define COVER_SHAPE_PS1   2
+#define COVER_SHAPE_APP   3
+extern int gCoverShape;
+
 #endif

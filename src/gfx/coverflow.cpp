@@ -343,6 +343,8 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         posX = (int)box.x, posY = (int)box.y, drawW = (int)box.w, drawH = (int)box.h;
         coverColor = (coverColor & ~(0xffULL << 24)) | ((u64)glideAlpha << 24);
 
+        if (hasArt)
+            thmCoverCropBegin(menu, covers[i], texture, thmCoverAspect(coverElem));
         if (cimg->overlayTexture) {
             // Scale the inlay (cover) corner offsets to the drawn overlay size so the case
             // window tracks the cover at every scale. HW-verify alignment with real case art.
@@ -355,6 +357,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         } else {
             rmDrawPixmap(texture, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor, elem->reflection);
         }
+        thmCoverCropEnd();
         thmDrawDiscDecorator(elem, menu, covers[i], posX, posY, drawW, drawH, 4, coverColor);
     }
 
