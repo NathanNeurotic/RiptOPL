@@ -19,7 +19,7 @@ fallback — the same external-beats-embedded order POPSLoader ships.
 | usbd.irx.ata | 42749 | 4e1d39365854747117a08f8a8d843937614590ea072cf2b70f6e4c2ebbf3c6ee |
 | usbhdfsd.irx.ata | 21837 | 1cc865cd09997bd708e9e102c0f0f1f17f352b7844b282fcfa6a00f38609db9c |
 | usbd.irx.ilink | 48500 | 5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369 |
-| usbhdfsd.irx.ilink | 27833 | a5c741565a9015283610e400401c3bbdea94d3e9c54ce483897f6dba725ab544 |
+| usbhdfsd.irx.ilink | 27833 | 9d68cb935444805ad75d6de1a95fc31b2a44b66723587749ae3e88fdb87ffdd9 |
 
 **Dedupe (verified by sha256):** `usbd.irx.mx4sio` and `usbd.irx.ilink` are byte-identical to
 `usbd.irx.usbexfat` (all are copies of `bdm_assault.irx`).
@@ -94,6 +94,9 @@ fallback — the same external-beats-embedded order POPSLoader ships.
   The configuration ROM retry fix extends the same discovery retry to read failures before LOGIN.
   The pinned build from [PR #484 CI](https://github.com/NathanNeurotic/RiptOPL/actions/runs/44939370040)
   is 27833 bytes, SHA-256 `a5c741565a9015283610e400401c3bbdea94d3e9c54ce483897f6dba725ab544`.
+  A drive that reports a speed above S400 (a FireWire 800 bridge) is no longer skipped: like the
+  SDK driver, it is attached and iLinkman caps the transfer speed at S400. Same size, 27833 bytes,
+  SHA-256 `9d68cb935444805ad75d6de1a95fc31b2a44b66723587749ae3e88fdb87ffdd9`.
   **Rebuilt from source:** the bytes above are the output of `make` in that directory inside
   `ps2dev/ps2dev@sha256:8fba50ecc2229acd7f8da63d34302f12939b7d4fa6848dda1e6a0ce083321a11` (the
   PS2DEVPINNED container), which also reproduces the 21609-byte build from its source exactly. CI
