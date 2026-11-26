@@ -97,11 +97,15 @@ void rmReleaseTexture(GSTEXTURE *txt);
 
 void rmDrawQuad(rm_quad_t *q);
 
-/** Queues a specified pixmap (tinted with colour) to be rendered on specified position */
-void rmDrawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection);
+/** Queues a specified pixmap (tinted with colour) to be rendered on specified position.
+ * Place and size are in 640x480 design units. A fractional value lands on the nearest display pixel below it, so
+ * something moving in a 720p or 1080i mode steps one display pixel at a time instead of one design unit (2 or 3
+ * display pixels); whole values are drawn exactly where they always were. */
+void rmDrawPixmap(GSTEXTURE *txt, float x, float y, short aligned, float w, float h, short scaled, u64 color, int reflection);
 
-void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color,
-                         GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection);
+void rmDrawOverlayPixmap(GSTEXTURE *overlay, float x, float y, short aligned, float w, float h, short scaled, u64 color,
+                         GSTEXTURE *inlay, float ulx, float uly, float urx, float ury, float blx, float bly, float brx, float bry,
+                         int reflection);
 
 /** Cover Shape: crops the art of the cover texture `cover` in the draws that follow until rmSetCoverCrop(NULL, ...).
  * trim = left, top, right, bottom fractions cut off the art, then the rest is centre-cropped to `aspect` (the box's

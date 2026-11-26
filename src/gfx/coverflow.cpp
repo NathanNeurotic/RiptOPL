@@ -147,7 +147,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
     // shifted +right and eases to 0 (i.e. slides LEFT), and the OUTGOING old-center (now at centerIdx-dir)
     // is the cover that shrinks. The prior (eased-1.0f) / centerIdx+dir convention slid the opposite way.
     float eased = 1.0f;
-    int animOffset = 0;
+    float animOffset = 0.0f; // kept fractional: the renderer places it on a display pixel (rmDrawPixmap)
     if (gCoverflowAnimSpeed <= 0) {
         cfIsAnimating = 0;
     } else if (cfIsAnimating) {
@@ -169,7 +169,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         }
         cfAnimFrameCount++;
         eased = 1.0f - powf(1.0f - t, 3.0f);
-        animOffset = (int)(cfAnimDirection * coverDistance * (1.0f - eased));
+        animOffset = cfAnimDirection * coverDistance * (1.0f - eased);
     }
     int leavingIndex = centerIdx - cfAnimDirection; // the OUTGOING old-center shrinks (opposite the slide-in side)
 
@@ -322,7 +322,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
             recenterY = csh / 2 - (ovc->upperLeft_y + ovc->lowerLeft_y) / 2;
         }
 
-        int posX = basePosX + (i - COVERFLOW_PAD) * coverDistance + animOffset + recenterX * drawW / csw;
+        int posX = basePosX + (i - COVERFLOW_PAD) * coverDistance + recenterX * drawW / csw;
         // Covers stand on a common BASELINE: each cover's bottom edge sits where a cover of the PAGE
         // element's own shape (elem, not this row's coverElem) would end at this width. On a mixed shelf
         // (Favourites "All", Mixed device pages) portrait and square covers therefore rest on one floor
@@ -338,9 +338,18 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         u64 coverColor = (gCoverflowDimCovers && i != centerIdx) ? GS_SETREG_RGBA(0x40, 0x40, 0x40, 0x80) : gDefaultCol;
 
         // Hold L3 layout switch: where the cover is on its way here (coverglide.h).
-        glide_box_t box = {(float)posX, (float)posY, (float)drawW, (float)drawH};
+        glide_box_t box = {(float)posX + animOffset, (float)posY, (float)drawW, (float)drawH};
         int glideAlpha = coverGlide(covers[i]->item.text, covers[i]->item.id, abs(i - centerIdx), &box);
+        // The draws take the box as it is (fractions included); the frame's corners at rest keep the whole numbers
+        // they always had.
         posX = (int)box.x, posY = (int)box.y, drawW = (int)box.w, drawH = (int)box.h;
+        const int whole = box.w == (float)drawW && box.h == (float)drawH;
+        auto cornerX = [&](int v) {
+            return whole ? (float)(v * drawW / csw) : v * box.w / csw;
+        };
+        auto cornerY = [&](int v) {
+            return whole ? (float)(v * drawH / csh) : v * box.h / csh;
+        };
         coverColor = (coverColor & ~(0xffULL << 24)) | ((u64)glideAlpha << 24);
 
         if (hasArt)
@@ -349,16 +358,16 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
             // Scale the inlay (cover) corner offsets to the drawn overlay size so the case
             // window tracks the cover at every scale. HW-verify alignment with real case art.
             image_texture_t *ov = cimg->overlayTexture;
-            rmDrawOverlayPixmap(&ov->source, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor,
-                                texture, ov->upperLeft_x * drawW / csw, ov->upperLeft_y * drawH / csh, ov->upperRight_x * drawW / csw, ov->upperRight_y * drawH / csh,
-                                ov->lowerLeft_x * drawW / csw, ov->lowerLeft_y * drawH / csh, ov->lowerRight_x * drawW / csw, ov->lowerRight_y * drawH / csh, elem->reflection);
+            rmDrawOverlayPixmap(&ov->source, box.x, box.y, ALIGN_CENTER, box.w, box.h, SCALING_RATIO, coverColor,
+                                texture, cornerX(ov->upperLeft_x), cornerY(ov->upperLeft_y), cornerX(ov->upperRight_x), cornerY(ov->upperRight_y),
+                                cornerX(ov->lowerLeft_x), cornerY(ov->lowerLeft_y), cornerX(ov->lowerRight_x), cornerY(ov->lowerRight_y), elem->reflection);
             if (cimg->overlayTexture2)
-                rmDrawPixmap(&cimg->overlayTexture2->source, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor, elem->reflection);
+                rmDrawPixmap(&cimg->overlayTexture2->source, box.x, box.y, ALIGN_CENTER, box.w, box.h, SCALING_RATIO, coverColor, elem->reflection);
         } else {
-            rmDrawPixmap(texture, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor, elem->reflection);
+            rmDrawPixmap(texture, box.x, box.y, ALIGN_CENTER, box.w, box.h, SCALING_RATIO, coverColor, elem->reflection);
         }
         thmCoverCropEnd();
-        thmDrawDiscDecorator(elem, menu, covers[i], posX, posY, drawW, drawH, 4, coverColor);
+        thmDrawDiscDecorator(elem, menu, covers[i], box.x, box.y, drawW, drawH, 4, coverColor);
     }
 
     rmSetReflectionYOffset(0); // don't leak the offset to any other reflection draw

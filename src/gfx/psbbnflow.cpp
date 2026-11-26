@@ -171,8 +171,8 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
             x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
             color = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
             if (!image->overlayTexture) { // a framed cover keeps its frame below
-                thmCoverCropBegin(menu, item, art, h > 0 ? (float)w / (float)h : 0.0f);
-                rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                thmCoverCropBegin(menu, item, art, box.h > 0.0f ? box.w / box.h : 0.0f);
+                rmDrawPixmap(texture, box.x, box.y, ALIGN_CENTER, box.w, box.h, SCALING_RATIO, color, 0); // its fractions: whole display pixels
                 thmCoverCropEnd();
                 return;
             }

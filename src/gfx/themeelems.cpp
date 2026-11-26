@@ -1097,7 +1097,7 @@ void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_eleme
     theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
 }
 
-void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, float x, float y, int coverW, int coverH, int inset, u64 color)
 {
     if (gTheme == NULL || gTheme->discCache == NULL || menu == NULL || menu->item == NULL || item == NULL)
         return;
@@ -1117,10 +1117,10 @@ void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, s
         side = coverH / 2;
     if (side < 4)
         return;
-    int left = x - rmWideScale(coverW) / 2;
-    int bottom = y + coverH / 2;
-    int cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
-    int cy = bottom - side / 2 - inset;
+    float left = x - rmWideScale(coverW) / 2; // a moving cover's fractions kept: the disc stays on its case
+    float bottom = y + coverH / 2;
+    float cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
+    float cy = bottom - side / 2 - inset;
     rmDrawPixmap(disc, cx, cy, ALIGN_CENTER, side, side, SCALING_RATIO, color, 0);
 }
 
@@ -1504,7 +1504,9 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
             glide_box_t to = at;
             int alpha = coverGlide(item->item.text, item->item.id, 0, &at);
             if (alpha < 0x80 || at.x != to.x || at.y != to.y || at.w != to.w || at.h != to.h) {
-                int x = (int)at.x, y = (int)at.y, w = (int)at.w, h = (int)at.h, ew = drawElem->width, eh = drawElem->height;
+                // Drawn at its box as it is, fractions included: the renderer puts it on whole display pixels.
+                float x = at.x, y = at.y, w = at.w, h = at.h;
+                int ew = drawElem->width, eh = drawElem->height;
                 u64 color = (gDefaultCol & ~(0xffULL << 24)) | ((u64)alpha << 24);
                 image_texture_t *ov = gameImage->overlayTexture;
                 if (ov) {

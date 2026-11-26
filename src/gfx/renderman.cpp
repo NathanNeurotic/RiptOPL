@@ -410,22 +410,25 @@ void Renderer::end(void)
 }
 
 // Scale from the 640x480 design grid to the live display. Generic on purpose: callers pass ints and floats.
+//
+// The place and size are scaled first and only then cut to whole display pixels. They used to arrive as whole
+// design units, so in 720p a moving cover stepped 2 display pixels at a time and in 1080i 3 across (2.25 down):
+// the slow end of every ease (a layout switch's flying covers, Coverflow's slide, the Grid page turn) went in
+// visible jumps. A whole value gives the same pixel as the integer maths did (the product is exact in a float and
+// the quotient is never within rounding distance of the next whole number), so nothing at rest moves.
 /** If txt is null, don't use DIM_UNDEF size */
-void Renderer::setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q)
+void Renderer::setupQuad(GSTEXTURE *txt, float fx, float fy, short aligned, float fw, float fh, short scaled, u64 color, rm_quad_t *q)
 {
-    if (w == DIM_UNDEF)
-        w = txt->Width;
-    if (h == DIM_UNDEF)
-        h = txt->Height;
+    if (fw == DIM_UNDEF)
+        fw = txt->Width;
+    if (fh == DIM_UNDEF)
+        fh = txt->Height;
 
     // Legacy scaling
-    x = scaleX(x);
-    y = scaleY(y);
-    if (scaled & SCALING_RATIO)
-        w = scaleX(w * aspectWidth_) >> 2;
-    else
-        w = scaleX(w);
-    h = scaleY(h);
+    int x = displayX(fx);
+    int y = displayY(fy);
+    int w = displayW(fw, scaled);
+    int h = displayY(fh);
 
     // Align LEFT/HCENTER/RIGHT
     if (aligned & ALIGN_HCENTER)
@@ -602,7 +605,7 @@ static void cropQuad(GSTEXTURE *txt, rm_quad_t *q)
     }
 }
 
-void Renderer::drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
+void Renderer::drawPixmap(GSTEXTURE *txt, float x, float y, short aligned, float w, float h, short scaled, u64 color, int reflection)
 {
     rm_quad_t quad;
     setupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
@@ -612,21 +615,23 @@ void Renderer::drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, in
         drawReflection(txt, &quad, quad.br.y, quad.br.v); // plain pixmap: the whole texture is the cover
 }
 
-void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color,
-                                 GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection)
+void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, float x, float y, short aligned, float w, float h, short scaled, u64 color,
+                                 GSTEXTURE *inlay, float fulx, float fuly, float furx, float fury, float fblx, float fbly, float fbrx,
+                                 float fbry, int reflection)
 {
     rm_quad_t quad;
     setupQuad(overlay, x, y, aligned, w, h, scaled, color, &quad);
-    color = faded(color); // the inlay's; drawQuad fades the frame's own
-    int origBly = bly, origBry = bry; // unscaled inlay lower corners (element/texture space) for the reflection
-    ulx = scaleX(ulx * aspectWidth_) >> 2;
-    urx = scaleX(urx * aspectWidth_) >> 2;
-    blx = scaleX(blx * aspectWidth_) >> 2;
-    brx = scaleX(brx * aspectWidth_) >> 2;
-    uly = scaleY(uly);
-    ury = scaleY(ury);
-    bly = scaleY(bly);
-    bry = scaleY(bry);
+    color = faded(color);                 // the inlay's; drawQuad fades the frame's own
+    float origBly = fbly, origBry = fbry; // unscaled inlay lower corners (element/texture space) for the reflection
+    // The inlay's corners, cut to whole display pixels the same way as the frame (setupQuad).
+    int ulx = displayW(fulx, SCALING_RATIO);
+    int urx = displayW(furx, SCALING_RATIO);
+    int blx = displayW(fblx, SCALING_RATIO);
+    int brx = displayW(fbrx, SCALING_RATIO);
+    int uly = displayY(fuly);
+    int ury = displayY(fury);
+    int bly = displayY(fbly);
+    int bry = displayY(fbry);
 
     int inlayHasAlpha = (inlay->PSM == GS_PSM_CT32) || (inlay->Clut && inlay->ClutPSM == GS_PSM_CT32);
     u8 inlayPrimAlpha = (u8)((color >> 24) & 0xff);
@@ -664,9 +669,9 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
         // Anchor the mirror to the cover's VISIBLE bottom (the inlay's lower corner), not
         // the padded element bottom, and sample only the frame's texture rows -- so the
         // case art's transparent bottom padding can't open a gap above the reflection.
-        int coverBottomOff = (bly > bry) ? bly : bry;              // scaled, screen space
-        int frameBottom = (origBly > origBry) ? origBly : origBry; // unscaled, element space
-        float botV = (h > 0) ? (float)frameBottom * overlay->Height / h : overlay->Height;
+        int coverBottomOff = (bly > bry) ? bly : bry;                // scaled, screen space
+        float frameBottom = (origBly > origBry) ? origBly : origBry; // unscaled, element space
+        float botV = (h > 0) ? frameBottom * overlay->Height / h : overlay->Height;
         float waterline = quad.ul.y + coverBottomOff;
         // Mirror the INLAY (the actual game cover art) too -- previously only the case FRAME was
         // reflected, so the cover box mirrored but the artwork inside it had no reflection at all
@@ -1011,12 +1016,12 @@ void rmSetReflectionYOffset(int yoff)
     gRenderer.setReflectionYOffset(yoff);
 }
 
-void rmDrawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
+void rmDrawPixmap(GSTEXTURE *txt, float x, float y, short aligned, float w, float h, short scaled, u64 color, int reflection)
 {
     gRenderer.drawPixmap(txt, x, y, aligned, w, h, scaled, color, reflection);
 }
 
-void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color, GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection)
+void rmDrawOverlayPixmap(GSTEXTURE *overlay, float x, float y, short aligned, float w, float h, short scaled, u64 color, GSTEXTURE *inlay, float ulx, float uly, float urx, float ury, float blx, float bly, float brx, float bry, int reflection)
 {
     gRenderer.drawOverlayPixmap(overlay, x, y, aligned, w, h, scaled, color, inlay, ulx, uly, urx, ury, blx, bly, brx, bry, reflection);
 }
