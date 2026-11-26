@@ -93,7 +93,7 @@ int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *di
    that runtime. HandRA writes the watch file and ript-ra.toml beside the cheats file and arms
    -cfg=ript-ra -ra=... for startup's launch: 0 = armed, -1 = could not; NULL startup only disarms. */
 int sysNeutrinoRARuntime(const char *neutrinoPath, const char *extraArgs);
-int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char *extraArgs, int networkGame,
+int sysNeutrinoHandRA(const char *startup, const char *neutrinoPath, const char *extraArgs, int networkGame, int hddGame,
                       const unsigned char *ip, const unsigned char *peer, const void *watch, int size);
 /* The menu network shutdown an RA launch runs right before the Neutrino handoff (NULD parity). */
 void sysNeutrinoSetRANetDown(void (*netDown)(void));

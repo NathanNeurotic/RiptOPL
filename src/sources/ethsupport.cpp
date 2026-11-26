@@ -1269,7 +1269,7 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
         return 1;
 #ifdef RETROACHIEVEMENTS
     // Not carried on SMB or NFS yet: the fhi module's ministack owns the adapter in the game. Disarm any earlier hand-over.
-    sysNeutrinoHandRA(NULL, NULL, NULL, 0, NULL, NULL, NULL, 0);
+    sysNeutrinoHandRA(NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, 0);
 #endif
     if (sysNeutrinoArgsPreflight(driver, partname, game->startup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc) < 0)
         return 1;

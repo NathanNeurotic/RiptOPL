@@ -68,7 +68,7 @@ static int gNeutrinoElfArg = 1, gEnableDebug, gLaunchDiag;
 static int lastWarning, raWarnings, loads, refuses, lastArgc;
 #ifdef RETROACHIEVEMENTS
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32]; /* set by sysNeutrinoHandRA */
-static int sysNeutrinoRANetworkGame;
+static int sysNeutrinoRANetworkGame, sysNeutrinoRAHddGame;
 static void (*sysNeutrinoRANetDown)(void); /* the RA-only pre-handoff network release (unset here) */
 static int sysNeutrinoRADirOnNetwork(const char *p, const char *a) { (void)p; (void)a; return 0; }
 #endif

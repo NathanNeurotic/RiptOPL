@@ -1918,7 +1918,7 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
     unsigned char ip[4], mask[4], gateway[4], peer[4];
     int networkGame;
 
-    sysNeutrinoHandRA(NULL, NULL, NULL, 0, NULL, NULL, NULL, 0);
+    sysNeutrinoHandRA(NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, 0);
     // Both modes: Caduceus's engine receives the same wire protocol as the xeRAbora PC.
     if (!gRATelemetry || (gRAMode != RA_MODE_XERABORA && gRAMode != RA_MODE_CADUCEUS) || prefix == NULL ||
         startup == NULL || driver == NULL || neutrinoPath == NULL)
@@ -1926,6 +1926,12 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
     // No saved watch list: nothing to track, so launch quietly before any runtime check could warn.
     if (sbReadWatchList(prefix, startup) <= 0)
         return;
+    // NULD parity (launcher.c ra_game_ok): achievements through Neutrino never run for HD Loader games.
+    if (!strcmp(driver, "apa")) {
+        LOG("[RA] HD Loader game %s: Neutrino launch stays untracked (NULD parity)\n", startup);
+        host::ui().warningId(_STR_RA_NEUTRINO_HDL_UNTRACKED, 6);
+        return;
+    }
     // raagent sends each snapshot in ONE packet and skips anything larger. It reads the direct entries
     // only and ignores a pointer-chain tail (xeRAbora PROTOCOL.md), so chain-based achievements do not
     // track; the hand-over below carries the direct entries.
@@ -1979,7 +1985,7 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
         memcpy(file, &header, sizeof(header));
         memcpy(file + sizeof(header), GetWatchList(), size - sizeof(header));
         sysNeutrinoSetRANetDown(ethDeinitModules); // the platform layer cannot name the network stack itself
-        int result = sysNeutrinoHandRA(startup, neutrinoPath, extraArgs, networkGame, ip, peer, file, size);
+        int result = sysNeutrinoHandRA(startup, neutrinoPath, extraArgs, networkGame, !strcmp(driver, "ata"), ip, peer, file, size);
         free(file);
         if (result == 0)
             return;
@@ -2891,7 +2897,7 @@ int sbGameRAOff(config_set_t *configSet)
 
     if (!configGetInt(configSet, CONFIG_ITEM_RA_DISABLE, &off) || !off)
         return 0;
-    sysNeutrinoHandRA(NULL, NULL, NULL, 0, NULL, NULL, NULL, 0);
+    sysNeutrinoHandRA(NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, 0);
     ClearWatchList();
     sbRaHuntCount = sbRaHuntBytes = sbRaHuntTotal = sbRaHuntUnlocked = 0;
     LOG("RA: off for this game, launching without achievements\n");
