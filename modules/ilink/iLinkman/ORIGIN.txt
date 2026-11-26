@@ -27,3 +27,9 @@ October 22 follow-up:
 SBP-2 resident request storage and bounded completion polling are implemented in
 ../IEEE1394_bd; an uncertain pending request is retained, never freed on timeout.
 Physical-console acceptance is still required.
+November 25 follow-up: the response, write-request and read-request handlers read
+each packet by its own length again, as the SDK does. Their nQuads argument is the
+receive FIFO level the UBUF thread sampled before calling them, not the packet length;
+the October checks dropped a packet that was still arriving and then parsed its
+remaining quadlets as a new packet. test_ilink_manager_safety.py now feeds a level
+smaller than the packet and requires the whole packet to be handled.

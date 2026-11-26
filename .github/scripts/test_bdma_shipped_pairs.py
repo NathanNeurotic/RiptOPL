@@ -54,7 +54,7 @@ int main() {
         assert(!vcdBdmaEnvironmentValid(VCD_BDMA_ILINK));
         markerExists=false;assert(!vcdBdmaManualPairMatches(VCD_BDMA_ILINK));
     }
-    assert(!vcdBdmaPairMatches(-1,48500,27833)&&!vcdBdmaPairMatches(7,48500,27833));
+    assert(!vcdBdmaPairMatches(-1,48500,27593)&&!vcdBdmaPairMatches(7,48500,27593));
     pairSize[0]=pairSize[1]=-1;assert(vcdBdmaEnvironmentValid(0));
     pairSize[0]=48500;assert(!vcdBdmaEnvironmentValid(0));
     /* No POPSTARTER folder: no external pair, which is exactly the FAT32 environment (and reading never makes one). */

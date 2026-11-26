@@ -165,7 +165,7 @@ re-registers the selected device driver as bare `mass:` before it resolves that 
 > a drive that never attaches gets 8 more tries (32 s) while another drive is attached, then waits
 > for a bus reset, so it stops stalling the attached drive's reads.
 > The driver also retries configuration ROM reads that fail before it can recognize the storage unit.
-> The current build is **27,833 bytes**. Earlier builds, including the 27,769-byte build, are treated as stale.
+> The current build is **27,593 bytes**. Earlier builds, including the 27,769- and 27,833-byte builds, are treated as stale.
 > Copy this release's whole `POPS/` folder to the iLink drive: with **VCD BDMA Apply on Launch** on,
 > a card still holding an old driver then gets the new one at the next iLink launch, because the
 > size no longer matches. If the drive's `POPS/` still has an old file, RiptOPL does not copy it: it
@@ -534,7 +534,7 @@ Work down this ladder; each step isolates a different stage (from the #154 foren
 7. **iLink returns to wLaunchELF?** Inspect the card after the attempt. A successful RiptOPL equip
    leaves `mc?:/POPSTARTER/bdma_config.txt` containing exactly `ilink`, plus `usbd.irx` (48,500 bytes;
    SHA-256 `5EA4818BA1CF5207F6D7CADB4C13B5AFA88C37C260750C21155B079A8C18F369`) and `usbhdfsd.irx`
-   (27,833 bytes; SHA-256 `A5C741565A9015283610E400401C3BBDEA94D3E9C54CE483897F6DBA725AB544`). Missing or different files
+   (27,593 bytes; SHA-256 `871BC500168ECF80DD1F9D80837AB75B5FDD3A8D4DFD09819AB6EFDC45AD043D`). Missing or different files
    put the defect on RiptOPL's external-equip side; exact files narrow it to POPSTARTER/BDMA runtime
    reinitialization after the handoff.
 8. **UDPFS Files shows Ember but no VCDs?** Check server `POPS/*.VCD` with uppercase `.VCD`, and
