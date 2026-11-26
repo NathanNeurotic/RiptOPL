@@ -1827,3 +1827,12 @@ footer {
   box-shadow: 0 16px 40px rgba(0, 0, 0, .6), 0 0 0 2px rgba(127, 154, 200, .55); }
 .tc-ad:focus-visible { outline: none; }
 @media (max-width: 700px) { .tc-ad { max-width: 400px; padding: 0 12px; margin-top: 12px; } }
+
+/* Site strip: one slim line under the top bar on every page, linking the RiptOPL Themes gallery
+   and the Theme Creator. The same block sits between <!-- site-strip:start/end --> on each page. */
+.site-strip { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 18px;
+  padding: 6px 16px; font-size: 13px; line-height: 1.4; background: var(--bg-fog); border-bottom: 1px solid var(--line); }
+.site-strip-label { color: var(--ink3); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.site-strip a { color: var(--ink-bright); text-decoration: none; font-weight: 600; }
+.site-strip a:hover, .site-strip a:focus-visible { text-decoration: underline; }
+.site-strip a[aria-current="page"] { color: var(--ink3); }
