@@ -370,7 +370,9 @@ static void exfat_bs(u64 lba, u64 sectors, u8 shift)
     memcpy(disk_bs + 3, "EXFAT   ", 8);
     put32(disk_bs + 72, (u32)sectors);
     put32(disk_bs + 76, (u32)(sectors >> 32));
+    disk_bs[105] = 1; /* revision 1.00 */
     disk_bs[108] = shift;
+    disk_bs[110] = 1; /* one FAT */
     disk_bs[510] = 0x55;
     disk_bs[511] = 0xAA;
     disk_bs_lba = lba;
@@ -497,6 +499,16 @@ int main(void)
     exfat_bs(4096, 1000000, 9); /* boot sector not where the entry starts */
     REFUSED(4096, 8);
     exfat_bs(2048, 0, 9);
+    REFUSED(4096, 8);
+    exfat_bs(2048, 1000000, 9);
+    ALLOWED(4096, 8);
+    disk_bs[110] = 0; /* no FAT */
+    REFUSED(4096, 8);
+    disk_bs[110] = 3;
+    REFUSED(4096, 8);
+    disk_bs[110] = 2;
+    ALLOWED(4096, 8);
+    disk_bs[105] = 0; /* revision 0.x */
     REFUSED(4096, 8);
 
     /* FAT32 inside a 0x0C entry. */

@@ -1640,7 +1640,9 @@ static u64 ata_bd_fat_volume_sectors(const u8 *bs)
     if (bs[510] != 0x55 || bs[511] != 0xAA)
         return 0;
     if (memcmp(bs + 3, "EXFAT   ", 8) == 0)
-        return (bs[108] == 9) ? ((u64)ata_bd_le32(bs + 72) | ((u64)ata_bd_le32(bs + 76) << 32)) : 0;
+        return (bs[108] == 9 && bs[105] == 1 && (bs[110] == 1 || bs[110] == 2)) ? // 512-byte sectors, revision 1.x, 1 or 2 FATs
+                   ((u64)ata_bd_le32(bs + 72) | ((u64)ata_bd_le32(bs + 76) << 32)) :
+                   0;
     if ((bs[0] == 0xEB || bs[0] == 0xE9) && bs[11] == 0x00 && bs[12] == 0x02 &&
         (memcmp(bs + 54, "FAT", 3) == 0 || memcmp(bs + 82, "FAT32   ", 8) == 0)) {
         u32 total = (u32)bs[19] | ((u32)bs[20] << 8);
