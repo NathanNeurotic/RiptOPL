@@ -2664,16 +2664,16 @@ int menuRenderLaunchCover(float in)
         if (cover != NULL && cover->Height > 0) {
             // 45% of the screen's height when in, growing from nine tenths of that.
             int h = (int)(gGuiScreenHeight * 0.45f * (0.9f + 0.1f * in)), w = h * (int)cover->Width / (int)cover->Height;
-            if (w > gGuiScreenWidth - 80) { // wide art (an app banner): fit the screen's width instead
-                h = h * (gGuiScreenWidth - 80) / w;
-                w = gGuiScreenWidth - 80;
-            }
-            int x = gGuiScreenWidth / 2, y = gGuiScreenHeight * 42 / 100;
             // Cover Shape: the art cropped as the page draws it, in the built-in theme's PS2 case (184 by 256) or square.
             float uv[4] = {0.0f, 0.0f, (float)cover->Width, (float)cover->Height};
             thmCoverCropBegin(selected_item, selected_item->item->current, cover, gCoverShape == COVER_SHAPE_PS2 ? 184.0f / 256.0f : 1.0f);
             if (rmCoverCropUV(cover, uv) && uv[3] > uv[1])
                 w = (int)(h * (uv[2] - uv[0]) / (uv[3] - uv[1]));
+            if (w > gGuiScreenWidth - 80) { // wide art (an app banner): fit the screen's width instead
+                h = h * (gGuiScreenWidth - 80) / w;
+                w = gGuiScreenWidth - 80;
+            }
+            int x = gGuiScreenWidth / 2, y = gGuiScreenHeight * 42 / 100;
             rmSetFade((u8)(in * 0x80), 0.0f);
             rmDrawPixmap(cover, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, gDefaultCol, 0);
             thmCoverCropEnd();
