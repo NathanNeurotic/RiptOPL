@@ -183,6 +183,12 @@ static int SendData(int sock, char *buf, int size)
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40 // SMSTCPIP/include/lwip/sockets.h, not menu ps2ip's value
 #endif
+#ifndef SOL_SOCKET
+#define SOL_SOCKET 0xfff // SMSTCPIP/include/lwip/sockets.h, as MSG_DONTWAIT
+#endif
+#ifndef SO_RCVTIMEO
+#define SO_RCVTIMEO 0x1006
+#endif
 #define SMB_REPLY_TIMEOUT_TICKS    368640000U // 10 seconds at the IOP 36.864 MHz clock
 // Negotiation at launch: up to 4 attempts of 10 s, 1 s apart (about 43 s) before smbinit fails.
 #define SMB_CONNECT_ATTEMPTS       4

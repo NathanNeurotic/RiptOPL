@@ -44,18 +44,25 @@
 #define SMB2_TI_MAX      512   // NTLM target info we keep for the AUTHENTICATE message
 #define SMB2_MAX_FILES   (ISO_MAX_PARTS + 4)
 
-/* SMSTCPIP has no SO_RCVTIMEO and its lwip_select is a stub, so a blocking plwip_recv waits
-   forever -- and at boot RecvData runs inside smbinit's synchronous module load, where one
-   reply that never arrives wedges the whole launch on a black screen. Poll with MSG_DONTWAIT
-   instead and give up on a connection that stays silent. The flag is 0x40 as in
+/* A plain blocking plwip_recv waits forever -- and at boot RecvData runs inside smbinit's
+   synchronous module load, where one reply that never arrives wedges the whole launch on a
+   black screen. So a receive waits at most SMB2_RECV_WAIT_MS (SO_RCVTIMEO, as smb.c), and a
+   connection that stays silent is given up on. Without SO_RCVTIMEO, MSG_DONTWAIT is polled. The flag is 0x40 as in
    SMSTCPIP's lwip/sockets.h (smstcpip.h declares the imports but not the flag); it matches
    the host's MSG_DONTWAIT in the live harness too. The negotiate retry count is also bounded:
    reconnecting forever would still hold the synchronous module load open forever. */
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40
 #endif
+#ifndef SOL_SOCKET
+#define SOL_SOCKET 0xfff // SMSTCPIP/include/lwip/sockets.h, as MSG_DONTWAIT
+#endif
+#ifndef SO_RCVTIMEO
+#define SO_RCVTIMEO 0x1006
+#endif
 
 #define SMB2_RECV_TIMEOUT_MS          10000      // longest wire silence tolerated before the connection is declared dead
+#define SMB2_RECV_WAIT_MS             100        // one wait of a receive (SO_RCVTIMEO); deadlines are checked between waits
 #define SMB2_POLL_SHORT_US            100        // retry delay for the first SMB2_POLL_SHORT_COUNT polls of a silence
 #define SMB2_POLL_SHORT_COUNT         20         // 2 ms of short polls, then 1 ms
 #define SMB2_NEGOTIATE_TIMEOUT_TICKS  368640000U // ten seconds at the IOP's 36.864 MHz system clock
@@ -284,6 +291,8 @@ static int NegotiateTimedOut(void)
  * Read exactly size bytes, returning -1 if the peer closes, stays silent, or
  * the active negotiation attempt reaches its deadline.
  */
+static int smb2_recv_waits; // the socket's SO_RCVTIMEO is set: receives wait instead of polling
+
 static int RecvData(int sock, void *buf, int size)
 {
     u8 *ptr = (u8 *)buf;
@@ -293,7 +302,7 @@ static int RecvData(int sock, void *buf, int size)
         // A stream of keep-alives or STATUS_PENDING replies must not reset the attempt budget.
         if (NegotiateTimedOut())
             return -1;
-        result = plwip_recv(sock, ptr, remaining, MSG_DONTWAIT);
+        result = plwip_recv(sock, ptr, remaining, smb2_recv_waits ? 0 : MSG_DONTWAIT);
         if (result > 0) {
             ptr += result;
             remaining -= result;
@@ -305,6 +314,8 @@ static int RecvData(int sock, void *buf, int size)
         // (would-block and harder errors alike -- the caller reconnects either way).
         if (result == 0 || waited_us >= SMB2_RECV_TIMEOUT_MS * 1000)
             return -1;
+        if (smb2_recv_waits) // the receive has already waited; the short sleep below only stops an instant error spinning
+            waited_us += SMB2_RECV_WAIT_MS * 1000;
         /* A blocking receive wakes when the next segment arrives; a read reply comes as several TCP segments
            a fraction of a millisecond apart, and a 1 ms sleep before every retry added about a millisecond to
            each 8 KB read (#399). Poll every 100 us for the first 2 ms of a silence, then every 1 ms. */
@@ -345,6 +356,8 @@ static int OpenTCPSession(void)
 
     opt = 1;
     plwip_setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char *)&opt, sizeof(opt));
+    opt = SMB2_RECV_WAIT_MS; // a receive wakes as data arrives, as smb.c's
+    smb2_recv_waits = plwip_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&opt, sizeof(opt)) == 0;
 
     memset(&sock_addr, 0, sizeof(sock_addr));
     sock_addr.sin_addr = server_addr;

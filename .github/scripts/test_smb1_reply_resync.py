@@ -257,7 +257,7 @@ static void new_connection(void)
     wire_len = wire_pos = nsegs = seg_pos = request_len = 0;
 }
 static int fake_socket(int d, int t, int p) { (void)d; (void)t; (void)p; new_connection(); live_socket = 10 + ++sockets; return live_socket; }
-static int fake_setsockopt(int s, int l, int o, const void *v, socklen_t n) { (void)s; (void)l; (void)o; (void)v; (void)n; return 0; }
+static int fake_setsockopt(int s, int l, int o, const void *v, socklen_t n) { (void)s; (void)v; (void)n; return (l == SOL_SOCKET && o == SO_RCVTIMEO) ? -1 : 0; } /* no SO_RCVTIMEO: receives poll */
 static int fake_connect(int s, struct sockaddr *a, socklen_t n) { (void)a; (void)n; assert(s == live_socket); return 0; }
 static int fake_close(int s) { assert(s == live_socket); live_socket = -1; closes++; return 0; }
 static u32 fake_inet_addr(const char *cp) { (void)cp; return 0x0164a8c0; }
