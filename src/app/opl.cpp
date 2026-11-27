@@ -702,20 +702,22 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     // the list (#589). Keyed on the game's startup id, not its row index: a rescan is exactly
     // the thing that renumbers rows. Folder rows have no startup and are skipped.
     //
-    // Favourites and All Games are keyed on the row's source device and its shown text instead
-    // (#565). A row there reaches its startup through its source's list by the id it was gathered
-    // with, and this rebuild runs right AFTER that source rescanned, so the old id can name another
-    // game by now. All Games also lists one game once per device, all with the same startup, and
-    // the last copy appended used to win. The shown text is unique per device: a title on two
-    // devices carries its device name.
+    // Favourites and All Games are keyed on the row's source device, kind (PS2, PS1, app) and
+    // name instead (#565). A row there reaches its startup through its source's list by the id it
+    // was gathered with, and this rebuild runs right AFTER that source rescanned, so the old id can
+    // name another game by now. All Games also lists one game once per device, all with the same
+    // startup, and the last copy appended used to win. The plain name is used, not the shown text:
+    // the "(device)" tag comes and goes as another device with the same title appears.
     char keepStartup[128] = {0};
     char keepText[256] = {0};
-    int keepMode = -1;
+    int keepMode = -1, keepKind = -1;
     const int favPage = (mdl->support->mode == FAV_MODE);
     if (mdl->menuItem.current != NULL && !mdl->menuItem.current->item.isFolder) {
         if (favPage) {
-            const char *t = mdl->menuItem.current->item.text;
-            keepMode = favGetItemSourceMode(mdl->menuItem.current->item.id);
+            const int id = mdl->menuItem.current->item.id;
+            const char *t = gsOf(mdl->support)->name(mdl->support, id);
+            keepMode = favGetItemSourceMode(id);
+            keepKind = favGetItemKind(id);
             if (t != NULL)
                 snprintf(keepText, sizeof(keepText), "%s", t);
         } else {
@@ -799,8 +801,9 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
             if (!gShowHidden && hiddenRow(mdl->support, i))
                 continue; // not listed, so not where the cursor can go
             if (favPage) {
-                const char *t = favGetItemDisplay(i);
-                if (keepText[0] && t != NULL && favGetItemSourceMode(i) == keepMode && strcmp(keepText, t) == 0)
+                const char *t = gsOf(mdl->support)->name(mdl->support, i);
+                if (keepText[0] && t != NULL && favGetItemSourceMode(i) == keepMode && favGetItemKind(i) == keepKind &&
+                    strcmp(keepText, t) == 0)
                     keepRow = i;
             } else if (keepStartup[0]) {
                 const char *st = gsOf(mdl->support)->startup(mdl->support, i);
