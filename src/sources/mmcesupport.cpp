@@ -1103,6 +1103,7 @@ void MmceSource::deleteGame(item_list_t *itemList, int id)
     id = sourceId(itemList, id);
     sbDelete(&slot->games, slot->prefix, "/", slot->gameCount, id);
     slot->ulSizePrev = -2;
+    slot->isoScanRetries = 0; // a fresh rescan, even if the last retry budget ran out
 }
 
 void MmceSource::rename(item_list_t *itemList, int id, char *newName)
@@ -1130,6 +1131,7 @@ void MmceSource::rename(item_list_t *itemList, int id, char *newName)
     sbSetBrowseSub(folderGetSub(itemList->mode));
     sbRename(&slot->games, slot->prefix, "/", slot->gameCount, id, newName);
     slot->ulSizePrev = -2;
+    slot->isoScanRetries = 0; // a fresh rescan, even if the last retry budget ran out
 }
 
 void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)

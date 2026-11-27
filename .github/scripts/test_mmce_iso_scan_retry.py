@@ -33,7 +33,9 @@ if 'unsigned char isoScanRetries = 0;' not in hdr:
     failures.append('MmceSlotState must carry isoScanRetries')
 for where, needle in (('resetState', '    ulSizePrev = -2;\n    isoScanRetries = 0;'),
                       ('card removal', '        slot->ps1ScanRetries = 0;\n        slot->isoScanRetries = 0;\n        slot->themesLoaded = 0;'),
-                      ('Refresh/L3', '        slot->ps1ScanRetries = 0;\n        slot->isoScanRetries = 0;\n        slot->folderRetries = 0;')):
+                      ('Refresh/L3', '        slot->ps1ScanRetries = 0;\n        slot->isoScanRetries = 0;\n        slot->folderRetries = 0;'),
+                      ('delete', 'slot->gameCount, id);\n    slot->ulSizePrev = -2;\n    slot->isoScanRetries = 0;'),
+                      ('rename', 'slot->gameCount, id, newName);\n    slot->ulSizePrev = -2;\n    slot->isoScanRetries = 0;')):
     if needle not in src:
         failures.append('isoScanRetries must be re-armed on %s' % where)
 
