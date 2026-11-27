@@ -7,7 +7,8 @@ startup, the cursor jumped to another copy or another game on every rebuild.
 
 The cursor is now kept by the row's source device, kind and plain name on those pages (not the
 shown text, whose "(device)" tag comes and goes as devices appear), by the startup elsewhere, and
-the first matching row wins instead of the last.
+the first matching row wins instead of the last. The startup still picks between two games of one name
+on one device.
 
 This compiles the row pick from updateMenuFromGameList (src/app/opl.cpp) on the host against stubs.
 """
@@ -28,7 +29,7 @@ if start < 0 or end < 0:
 pick = opl[start:end]
 
 keep = opl[opl.find('    char keepStartup[128] = {0};'):opl.find('    cfgTitleForget(mdl->support);')]
-for needle in ('keepMode = favGetItemSourceMode(id)', 'keepKind = favGetItemKind(id)', 'gsOf(mdl->support)->name(mdl->support, id)'):
+for needle in ('keepMode = favGetItemSourceMode(id)', 'keepKind = favGetItemKind(id)', 'gsOf(mdl->support)->name(mdl->support, id)', 'gsOf(mdl->support)->startup(mdl->support, id)'):
     if needle not in keep:
         failures.append('the remembered Favourites/All Games row must be keyed on %s' % needle)
 if 'keepCursor && i == keepRow' not in opl:
@@ -88,6 +89,16 @@ int main(void)
     // The kept game is gone: no row is picked (the list opens at its top, as before).
     r = pick(1, 4, "", "Other", 2);
     if (r != -1) { printf("FAIL: All Games: a missing game picked row %d\n", r); bad = 1; }
+    // Two games of one name on one device (old-style SLUS_210.41.Game.iso and SLUS_210.44.Game.iso):
+    // the kept startup picks between them; a stale startup matches neither, so the first wins.
+    gStartups[4] = "SLUS_210.41"; gTexts[4] = "Twin"; gModes[4] = 2; gKinds[4] = 0; gHidden[4] = 0;
+    gStartups[5] = "SLUS_210.44"; gTexts[5] = "Twin"; gModes[5] = 2; gKinds[5] = 0; gHidden[5] = 0;
+    r = pick(1, 6, "SLUS_210.44", "Twin", 2);
+    if (r != 5) { printf("FAIL: All Games: cursor on row %d, want the second game of that name (5)\n", r); bad = 1; }
+    r = pick(1, 6, "SLUS_210.41", "Twin", 2);
+    if (r != 4) { printf("FAIL: All Games: cursor on row %d, want the first game of that name (4)\n", r); bad = 1; }
+    r = pick(1, 6, "SLUS_999.99", "Twin", 2);
+    if (r != 4) { printf("FAIL: All Games: stale startup put the cursor on row %d, want the first copy (4)\n", r); bad = 1; }
     // A device page: by startup, first visible match.
     gHidden[0] = 1;
     r = pick(0, 3, "SLUS_123.45", "", -1);
@@ -115,4 +126,4 @@ if failures:
     for f in failures:
         print('FAIL:', f)
     sys.exit(1)
-print('PASS: a rebuild keeps the cursor on its own row: All Games by device, kind and name, the first match wins')
+print('PASS: a rebuild keeps the cursor on its own row: All Games by device, kind and name (startup between same-named games), the first match wins')
