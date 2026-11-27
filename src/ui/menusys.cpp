@@ -2118,7 +2118,8 @@ static constexpr int listPageMinRows = 3; // a shorter list pages as the flow vi
 // L1 (dir < 0) / R1 (dir > 0): `step` titles back or on, the page of `rows` titles moving with the cursor, so the
 // cursor keeps its row on screen: a whole page in a list, 15 titles where one title shows (Coverflow, PSBBN Flow).
 // A jump that would pass the first or last title stops on it; the next press wraps to the other end. A page never
-// moves past the last title, so a short list keeps all its rows (#48).
+// moves past the last title, so a short list keeps all its rows (#48). Only a fresh press wraps: the key repeats
+// about every 0.1 s, so a held L1/R1 used to stop on the end and wrap round on the very next repeat.
 static void menuPageJump(int dir, int step, int rows)
 {
     menu_item_t *page = selected_item->item;
@@ -2132,7 +2133,9 @@ static void menuPageJump(int dir, int step, int rows)
         top = cur;
     for (bottom = top, i = 1; i < rows && bottom->next != NULL; i++)
         bottom = bottom->next;
-    if ((dir > 0 ? cur->next : cur->prev) == NULL) { // at an end: wrap
+    if ((dir > 0 ? cur->next : cur->prev) == NULL) { // at an end: wrap, on a fresh press only
+        if (!getKeyOn(dir > 0 ? KEY_R1 : KEY_L1))
+            return;
         if (dir > 0)
             cur = top = page->submenu;
         else {
@@ -2777,6 +2780,8 @@ static void menuGridPage(int dir)
         if (dir < 0 ? index > 0 : index < count - 1)
             target = dir < 0 ? 0 : count - 1;
         else {
+            if (!getKeyOn(dir < 0 ? KEY_L1 : KEY_R1))
+                return; // a held key stops on the end; a fresh press wraps (menuPageJump)
             if (dir < 0)
                 menuLastPage();
             else

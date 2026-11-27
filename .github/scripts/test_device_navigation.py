@@ -37,7 +37,7 @@ input_program = r'''
 #include <cstdio>
 #include <cstring>
 typedef unsigned long long u64;
-enum { KEY_LEFT=1, KEY_RIGHT=2, KEY_UP=4, KEY_DOWN=8, KEY_CROSS=16, KEY_CIRCLE=32, KEY_START=64 };
+enum { KEY_LEFT=1, KEY_RIGHT=2, KEY_UP=4, KEY_DOWN=8, KEY_CROSS=16, KEY_CIRCLE=32, KEY_START=64, KEY_L1=128, KEY_R1=256 };
 enum { SFX_CURSOR=1, GUI_SCREEN_MENU=1 };
 struct submenu_list;
 struct menu_item;
@@ -80,8 +80,9 @@ struct theme { int gridDevices; int gridColumns; int gridRows; void *coverflow; 
 static theme *gTheme = &themeStore;
 static int gridRowStep(int, int, int, int) { return -1; }
 static int gridPageStep(int, int, int, int, int) { return -1; }
-static void menuFirstPage() {}
-static void menuLastPage() {}
+static int firstPages, lastPages;
+static void menuFirstPage() { firstPages++; }
+static void menuLastPage() { lastPages++; }
 @ACTIVATE_FALLBACK@
 @NEXT@
 @PREV@
@@ -184,6 +185,29 @@ int main() {
     selected_item = &pages[1];
     menuGridPage(1);
     CHECK(selected_item == &pages[2]);
+
+    // At the last / first cover a held L1/R1 (a repeat, not a fresh press) stops there; a fresh press wraps.
+    resetInput(); selected_item = &pages[1];
+    submenu_list covers[3];
+    covers[0].next = &covers[1]; covers[1].next = &covers[2]; covers[2].next = nullptr;
+    pages[1].item->submenu = &covers[0];
+    for (int dir = -1; dir <= 1; dir += 2) {
+        submenu_list *end = dir > 0 ? &covers[2] : &covers[0];
+        int key = dir > 0 ? KEY_R1 : KEY_L1;
+        firstPages = lastPages = 0;
+        pages[1].item->current = end;
+        keys = 0; // held: getKeyOn reports no new press
+        menuGridPage(dir);
+        CHECK(firstPages == 0 && lastPages == 0 && pages[1].item->current == end && selected_item == &pages[1]);
+        keys = key; // fresh press
+        menuGridPage(dir);
+        CHECK(dir > 0 ? (firstPages == 1 && lastPages == 0) : (lastPages == 1 && firstPages == 0));
+    }
+    pages[1].item->current = &covers[1]; // away from an end a held key still jumps to the end cover
+    keys = 0; firstPages = lastPages = 0;
+    menuGridPage(1);
+    CHECK(pages[1].item->current == &covers[2] && firstPages == 0);
+    pages[1].item->submenu = nullptr; pages[1].item->current = nullptr;
     return failures ? 1 : 0;
 }
 '''

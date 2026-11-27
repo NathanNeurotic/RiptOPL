@@ -28,6 +28,10 @@ static menu_item item;
 static struct menu_list_t {menu_item *item;} selection = {&item};
 static menu_list_t *selected_item = &selection;
 #define SFX_CURSOR 0
+#define KEY_R1 13
+#define KEY_L1 14
+static int fresh = 1; /* getKeyOn: 1 a new press, 0 a held key's repeat */
+static int getKeyOn(int id) {(void)id;return fresh;}
 static int sounds;
 static void sfxPlay(int id) {(void)id;sounds++;}
 static int menuSemaId, semaDepth;
@@ -158,6 +162,20 @@ int main(void) {
     int pages[]={13,23,33,39,0}, back[]={39,29,19,9,0,39};
     for (int target:pages) {menuNextPage();assert(item.current==&nodes[target]);}
     for (int target:back) {menuPrevPage();assert(item.current==&nodes[target]);}
+    /* A held key (a repeat, not a new press) stops on the end and does not wrap; the next fresh press wraps.
+       Every view: one-title-row carousel, a multi-row list and a hidden list. */
+    for (int rows=1;rows<=10;rows++) for (int hidden=0;hidden<=1;hidden++) {
+        list.displayedItems=rows;list.hidden=hidden;theme.coverflow=rows==1;
+        setup(40,39,rows>1 ? 40-rows : 39);fresh=0;
+        menuNextPage();assert(item.current==&nodes[39] && !sounds && !animations);
+        setup(40,0);
+        menuPrevPage();assert(item.current==&nodes[0] && !sounds && !animations);
+        setup(40,30);menuNextPage();assert(item.current==&nodes[rows<3||hidden ? 39 : (30+rows<40 ? 30+rows : 39)]); /* a repeat still moves */
+        fresh=1;setup(40,39,rows>1 ? 40-rows : 39);
+        menuNextPage();assert(item.current==&nodes[0]);
+        setup(40,0);menuPrevPage();assert(item.current==&nodes[39]);
+    }
+    list.hidden=0;fresh=1;
     /* Empty and one-title libraries stay silent and do not animate. */
     for (int rows=1;rows<=4;rows++) {
         list.displayedItems=rows;setup(0,0);
