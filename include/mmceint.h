@@ -13,6 +13,10 @@ struct MmceSlotState
     char prefix[40] = {0};
     char artPrimary[40] = {0};
     int ulSizePrev = -2; // -2 = first ISO scan not yet successful (contended-bus retry sentinel)
+    // Rescans of a -2 card, bounded like the PS1 retry below (#565): a card whose CD and DVD folders
+    // never open kept -2 forever and was rescanned on every idle poll, and each pass also rebuilt
+    // Apps, Favourites and All Games. Re-armed by success, a card change, Refresh and L3.
+    unsigned char isoScanRetries = 0;
     // VCD-scan self-heal (HW batch S6): bounded retry (~15 passes at the ~2s cadence), re-armed by
     // a fresh L3 toggle, self-quiescing on success/expiry.
     unsigned char ps1Scanned = 0;
