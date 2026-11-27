@@ -2251,19 +2251,19 @@ struct UIItem diaAbout[] = {
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Blade1984 - bodvenomz - CosmicScale - crazyc - danielnuld", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Blade1984 - bodvenomz - classiphil - CosmicScale - crazyc", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"darkladark - Davood TiTaN - dlanor - Docmine17 - doctorxyz", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"danielnuld - darkladark - Davood TiTaN - dlanor - Docmine17", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"El_Patas - eliminator1403 - EP - Eric Young - Ethyls", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"doctorxyz - El_Patas - eliminator1403 - EP - Eric Young", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Eugene Plotnikov - FifthFox - fjtrujy - freergam3r", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Ethyls - Eugene Plotnikov - FifthFox - fjtrujy - freergam3r", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
@@ -2295,7 +2295,7 @@ struct UIItem diaAbout[] = {
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"shaan - ShaolinAssassin - SP193 - techwritescode", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"seaweedflow - shaan - ShaolinAssassin - SP193 - techwritescode", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},

@@ -185,6 +185,15 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
 
         gameIdTargetMask |= (1 << slot);
         diagLog("gameid %s (%s): sent", startup, mmceDevice);
+
+        // Neutrino loads from this card's own file system (mmceN:) next: wait the switch out so neutrino.elf and
+        // its modules are not read while the card swaps. Bounded (the switch window, then the card-ready wait).
+        // START ends this wait only: the caller's own look (waitSwapDone) still waits if the card is silent or busy.
+        if (protectMcPath != NULL && !strncmp(protectMcPath, mmceDevice, 5) &&
+            waitHistorySwitch(mmceDevice, "Game ID, Neutrino on this card")) {
+            gameIdSwitchSeenMask |= (1 << slot);
+            settleDeviceFs(mmceDevice);
+        }
     }
 
     if (gameIdTargetMask == 0)

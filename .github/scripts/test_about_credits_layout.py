@@ -43,7 +43,7 @@ izdubar jimmikaelkael KrahJohlito kr_ps2 Maximus32 misfire Polo35 reprep saildot
 belomaxorka darkladark mihhru danielnuld sahlberg techwritescode zokzot fjtrujy Gageformer krHACKen Okeanos israpps
 algol Berion Blade1984 El_Patas EP gledson999 jolek lee4 Vapor LocalH RandQalan ShaolinAssassin yoshi314 zero35
 zackcage6 CosmicScale eliminator1403 TnA V3ditata AcidReach Aerosol Aislinn AndrewBento bodvenomz Ethyls FifthFox
-jennyjan107-web lucaslmgv nuno6573 Volventura icyson55
+jennyjan107-web lucaslmgv nuno6573 Volventura icyson55 classiphil seaweedflow
 Wolf3s mystyq Jay-Jay-OPL pcm720 Docmine17 AdityaKumar7209 Irfanlesnar YouKnow-sys Luden shaan
 TheRealNextria AKuHAK freergam3r""".split()
 expected += ["Eugene Plotnikov", "Marcus R. Brown", "Eric Young", "L. Peter Deutsch", "Davood TiTaN"]

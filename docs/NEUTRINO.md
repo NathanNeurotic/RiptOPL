@@ -120,7 +120,9 @@ directly.
 
 A custom Neutrino path on the MMCE **mass-storage surface** (`mmceN:`) remains available when MMCE
 switches its emulated memory-card GameID, so a cross-device HDD/USB game can still use MMCE-hosted
-Neutrino while receiving its per-game card switch.
+Neutrino while receiving its per-game card switch. When Neutrino is on the `mmceN:` of the slot that
+switches, the launch first waits for that switch to finish (START skips the wait), so neutrino.elf is not
+read while the card swaps.
 
 Putting Neutrino on the emulated `mcN:` surface of the same MMCE slot is fundamentally different:
 the GameID operation replaces that memory-card view. The existing safety guard remains for that
