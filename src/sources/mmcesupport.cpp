@@ -185,6 +185,17 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
 
         gameIdTargetMask |= (1 << slot);
         diagLog("gameid %s (%s): sent", startup, mmceDevice);
+
+        // Neutrino loads from this card's own file system (mmceN:) next: wait the switch out so neutrino.elf and
+        // its modules are not read while the card swaps. A repeat of the Game ID this card already has does not
+        // switch it, so that case is not waited for. Bounded (the switch window, then the card-ready wait).
+        int repeat = !strcmp(lastGameId[slot], startup);
+        snprintf(lastGameId[slot], sizeof(lastGameId[slot]), "%s", startup);
+        if (!repeat && protectMcPath != NULL && !strncmp(protectMcPath, mmceDevice, 5) &&
+            waitHistorySwitch(mmceDevice, "Game ID, Neutrino on this card")) {
+            gameIdSwitchSeenMask |= (1 << slot);
+            settleDeviceFs(mmceDevice);
+        }
     }
 
     if (gameIdTargetMask == 0)
@@ -417,6 +428,7 @@ int MmceSupport::resetCards(void)
 
     gameIdTargetMask = 0;
     gameIdSwitchSeenMask = 0;
+    memset(lastGameId, 0, sizeof(lastGameId)); // the reset puts the cards back on their default channel
 
     if (!modLoaded)
         loadModules();
