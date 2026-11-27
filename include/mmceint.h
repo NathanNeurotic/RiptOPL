@@ -85,8 +85,6 @@ public:
     int modLoaded = 0;            // latched by loadModules; read by sendGameID's arm check
     int gameIdTargetMask = 0;     // bit N = GameID 0x8 was sent to mmceN:/ on this launch
     int gameIdSwitchSeenMask = 0; // bit N = mmceN:/ was seen switching for our GameID send
-    // The Game ID last sent to mmceN:/ (a repeat does not switch the card).
-    char lastGameId[MMCE_MODE_COUNT][GAME_STARTUP_MAX + 1] = {};
 };
 
 extern MmceSupport gMmceSupport;
