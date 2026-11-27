@@ -522,6 +522,7 @@ void MmceSlotState::resetState(int slot)
     prefix[0] = '\0';
     artPrimary[0] = '\0';
     ulSizePrev = -2;
+    isoScanRetries = 0;
     modifiedCDPrev = 0;
     modifiedDVDPrev = 0;
     if (games != NULL) {
@@ -830,6 +831,7 @@ int MmceSource::needsUpdate(item_list_t *itemList)
         slot->ps1Scanned = 0;
         slot->ps1ScanFailed = 0;
         slot->ps1ScanRetries = 0;
+        slot->isoScanRetries = 0;
         slot->themesLoaded = 0;
         slot->languagesLoaded = 0;
         return (slot->gameCount > 0 || slot->ps1GameCount > 0);
@@ -852,6 +854,7 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     // VCD view: force a rescan once on toggle, then skip the disc heuristics while showing VCDs.
     if (host::library().consumeDirty(itemList->mode)) {
         slot->ps1ScanRetries = 0;
+        slot->isoScanRetries = 0;
         slot->folderRetries = 0; // Refresh also retries a still-missing CFG folder.
         result = 1;
     }
@@ -880,9 +883,19 @@ int MmceSource::needsUpdate(item_list_t *itemList)
         result = 1;
     }
 
-    if (slot->ulSizePrev == -2) {
+    // A card whose ISO list has not been read yet is rescanned, but only so many times: with CD and
+    // DVD both unreadable the list never gets read, and an unbounded retry rebuilt this page, Apps,
+    // Favourites and All Games every ~2 s for as long as the card stayed in (#565). The card stays
+    // polled after that, so the folders appearing (their dates below), a removal, Refresh, L3 or a
+    // card change still retries it, as on BDM (#186); only the rebuilds stop.
+    if (slot->ulSizePrev != -2)
+        slot->isoScanRetries = 0;
+    else {
         itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
-        result = 1;
+        if (slot->isoScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
+            slot->isoScanRetries++;
+            result = 1;
+        }
     }
 
     snprintf(path, sizeof(path), "%sCD", slot->prefix);
@@ -903,8 +916,8 @@ int MmceSource::needsUpdate(item_list_t *itemList)
         result = 1;
     }
 
-    if (!sbIsSameSize(slot->prefix, slot->ulSizePrev))
-        result = 1;
+    if (slot->ulSizePrev != -2 && !sbIsSameSize(slot->prefix, slot->ulSizePrev))
+        result = 1; // (-2 never matches a size: the budget above is its only retry)
 
     if (slot->folderRetries < MMCE_FOLDER_RETRY_MAX && strcmp(slot->foldersCreatedFor, slot->prefix) != 0) {
         sbCreateFolders(slot->prefix, 1);
@@ -1093,6 +1106,7 @@ void MmceSource::deleteGame(item_list_t *itemList, int id)
     id = sourceId(itemList, id);
     sbDelete(&slot->games, slot->prefix, "/", slot->gameCount, id);
     slot->ulSizePrev = -2;
+    slot->isoScanRetries = 0; // a fresh rescan, even if the last retry budget ran out
 }
 
 void MmceSource::rename(item_list_t *itemList, int id, char *newName)
@@ -1120,6 +1134,7 @@ void MmceSource::rename(item_list_t *itemList, int id, char *newName)
     sbSetBrowseSub(folderGetSub(itemList->mode));
     sbRename(&slot->games, slot->prefix, "/", slot->gameCount, id, newName);
     slot->ulSizePrev = -2;
+    slot->isoScanRetries = 0; // a fresh rescan, even if the last retry budget ran out
 }
 
 void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
