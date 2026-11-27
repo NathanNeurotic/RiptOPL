@@ -60,6 +60,10 @@ int main(void)
     for (int i = 0; i < 100; i++)
         rescans += poll(&s, &l);
     if (rescans != MMCE_VCD_SCAN_RETRY_MAX) { printf("FAIL: an unreadable card was rescanned %d times in 100 polls, want %d\n", rescans, MMCE_VCD_SCAN_RETRY_MAX); bad = 1; }
+    // Past the budget the card is still polled (folder dates, removal), it just stops rebuilding.
+    l.updateDelay = -1;
+    poll(&s, &l);
+    if (l.updateDelay != MMCE_MODE_UPDATE_DELAY) { printf("FAIL: an unreadable card stopped being polled once its rescans ran out\n"); bad = 1; }
     // A successful scan re-arms the budget; a later delete/rename (-2 again) gets its rescan.
     s.ulSizePrev = -1;
     if (poll(&s, &l) != 0) { printf("FAIL: a read card was rescanned by the retry block\n"); bad = 1; }

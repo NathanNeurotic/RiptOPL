@@ -885,14 +885,17 @@ int MmceSource::needsUpdate(item_list_t *itemList)
 
     // A card whose ISO list has not been read yet is rescanned, but only so many times: with CD and
     // DVD both unreadable the list never gets read, and an unbounded retry rebuilt this page, Apps,
-    // Favourites and All Games every ~2 s for as long as the card stayed in (#565). The folders
-    // appearing (their dates below), Refresh, L3 or a card change retries it again, as on BDM (#186).
+    // Favourites and All Games every ~2 s for as long as the card stayed in (#565). The card stays
+    // polled after that, so the folders appearing (their dates below), a removal, Refresh, L3 or a
+    // card change still retries it, as on BDM (#186); only the rebuilds stop.
     if (slot->ulSizePrev != -2)
         slot->isoScanRetries = 0;
-    else if (slot->isoScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
-        slot->isoScanRetries++;
+    else {
         itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
-        result = 1;
+        if (slot->isoScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
+            slot->isoScanRetries++;
+            result = 1;
+        }
     }
 
     snprintf(path, sizeof(path), "%sCD", slot->prefix);
