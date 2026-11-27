@@ -344,6 +344,8 @@ jobs:
         run: python3 .github/scripts/test_bdm_keep_page_on_reapply.py
       - name: Check the IO worker skips duplicate module passes and APPS rebuilds on L3
         run: python3 .github/scripts/test_io_queue_trims.py
+      - name: Check a list rebuild keeps the cursor on its own row in All Games (#565)
+        run: python3 .github/scripts/test_cursor_keep_all_games.py
       - name: Check the selected cover is read first and an abandoned background is aborted (#772)
         run: python3 .github/scripts/test_art_queue_order.py
       - name: Check Ember settings are only written once changed in RiptOPL
