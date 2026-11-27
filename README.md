@@ -14,6 +14,15 @@
 
 A heartfelt thank you to developers who have contributed pull requests directly to this fork. Anyone who opens a pull request against RiptOPL is featured here at the top of the README in recognition of their support for the project and solidarity with its maintainer:
 ### [@akilluminati47](https://gitlab.com/akilluminati247) of [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
+### [@techwritescode](https://github.com/techwritescode)
+- **[#9](https://github.com/NathanNeurotic/RiptOPL/pull/9), [#10](https://github.com/NathanNeurotic/RiptOPL/pull/10)** (`ps2build`): two steps of the ps2build port, game sources as classes with the Settings shell, and the SourceRegistry.
+- **[#18](https://github.com/NathanNeurotic/RiptOPL/pull/18)** (`Toolchain`): builds with clang as well as GCC.
+### [@belomaxorka](https://github.com/belomaxorka) of [YAOPL](https://github.com/yaopl/yaopl)
+- **[#563](https://github.com/NathanNeurotic/RiptOPL/pull/563)** (`Updater`): fixes the RiptOPLite updater's release asset names.
+### [@sahlberg](https://github.com/sahlberg) (Ronnie Sahlberg)
+- **[#564](https://github.com/NathanNeurotic/RiptOPL/pull/564)** (`Game music`, open): per-game background music from `ART/<name>_BGM.ogg`, with pop-fe installing it.
+### [@seaweedflow](https://github.com/seaweedflow)
+- **[#461](https://github.com/NathanNeurotic/RiptOPL/pull/461)** (`HDD PS1 list`, closed): a cached PS1 list for the internal HDD, so L3 flips stop rescanning the drive.
 ### [@oMrRexD](https://github.com/oMrRexD) (MrRexD) of [sd2cloud](https://github.com/oMrRexD/sd2cloud)
 - **[#702](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/702)–[#705](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/705)** (`RetroAchievements`): the real-hardware RA stabilization pass. Fixed the ee_core stack squeeze, the MMCE DEV9 path, cold-launch networking and RA settings placement.
 - **[#789](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/789)** (`Font lock`): holds the font lock across draw, measure and load, ending the boot-freeze race on real hardware.
@@ -1083,6 +1092,9 @@ work it is built on:
 
 ### Real-hardware testing (this fork)
 
+- **[classiphil](https://github.com/classiphil)** — traced the MMCE Game ID skip with Neutrino on the card's own
+  `mmceN:` storage to its two causes, then wrote and tested on a real PS2 the fix in
+  [#570](https://github.com/NathanNeurotic/RiptOPL/issues/570) ([#571](https://github.com/NathanNeurotic/RiptOPL/pull/571), [#572](https://github.com/NathanNeurotic/RiptOPL/pull/572)).
 - **Aerosol** — isolated a UDPFS connection setup issue and confirmed that CRLF config output
   could leave a carriage return in a VMC filename; converting the config to LF restored VMC loading.
 
