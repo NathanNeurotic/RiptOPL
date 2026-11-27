@@ -1,0 +1,68 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-08.b",
+  "coverage": [
+    {"path": "src/app/opl.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "opl.cpp is the menu ELF's entry module: it defines most global settings variables, wires each device page (opl_io_module_t in gSourceRegistry) to its GameSource, and rebuilds a page's rows on the IO worker (updateMenuFromGameList, menuDeferredUpdate). menuUpdateHook is the per-frame GUI hook that throttles background device rescans; the error-message helpers publish IO-thread errors to the GUI through a frame hook and a generation counter. deinit/deinitEx/miniDeinit tear everything down for a launch or exit, setDefaults/init/deferredInit run the boot sequence (pads, config, video peek, device init, default page), miniInit is the GUI-less autolaunch init, and setBootDir/normalizeMcBootDir/main resolve the boot folder and dispatch argv autolaunch.",
+  "reusable_helpers": [
+    {"name": "formatErrorMessage", "path": "src/app/opl.cpp", "line": 1082, "what": "expands only %s/%d/%i/%% from a translated format string into a fixed buffer without passing it to printf"},
+    {"name": "bootPeekKey", "path": "src/app/opl.cpp", "line": 1616, "what": "matches one 'key=value' or 'key = value;' settings line and returns the integer value"},
+    {"name": "setBootDir", "path": "src/app/opl.cpp", "line": 2019, "what": "normalises backslashes and splits a boot path into folder and ELF basename (device root kept for 'mass0:X.ELF')"},
+    {"name": "resolveMcWildcardBootDir", "path": "src/app/opl.cpp", "line": 1979, "what": "replaces 'mc?:' in the boot folder with the card slot that actually holds the booted ELF or folder"},
+    {"name": "oplPath2Mode", "path": "src/app/opl.cpp", "line": 631, "what": "maps a device path prefix (mmce, smb/nfs, udpfs, pfs/hdd, http, massN) to its IO mode"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "init() starts the pads twice at every boot: startPads() result at line 1686 is discarded and the wait loop calls it again",
+      "category": 5,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 1668, "end": 1668},
+        {"path": "src/app/opl.cpp", "start": 1686, "end": 1686},
+        {"path": "src/app/opl.cpp", "start": 1699, "end": 1708},
+        {"path": "src/core/pad.cpp", "start": 1155, "end": 1191},
+        {"path": "src/core/pad.cpp", "start": 1136, "end": 1151},
+        {"path": "src/core/pad.cpp", "start": 171, "end": 186},
+        {"path": "src/core/pad.cpp", "start": 263, "end": 294}
+      ],
+      "problem": "padStatus is initialised to 0 (1668) and the startPads() at 1686 ignores its return, so the while (!padStatus) loop always runs startPads() a second time even when the first call opened every port. PadManager::start() resets padCount_ and, for every port/slot, calls padPortOpen again without a close and re-runs initialize(): mode-table RPCs, padSetMainMode, press mode, actuator align, and up to six waitReady() polls of 25 x 1 ms each. All of that is repeated on the boot path before the config even loads.",
+      "fix": "Keep the result of the first call: make line 1686 assign padStatus = startPads() (and drop the separate = 0 initialisation at 1668), so the loop only retries when no port opened.",
+      "justification": "",
+      "benefit": "One full pad bring-up (padPortOpen + initialize) per port saved on every boot; initialize can wait up to 6 x 25 ms per DualShock and ~25 ms per empty port, so roughly 50-300 ms of boot time (INFERRED from PAD_WAIT_POLLS=25, PAD_WAIT_POLL_US=1000, not measured)",
+      "benefit_rank": 2,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read opl.cpp:1661-1709 (padStatus=0 at 1668, bare startPads() at 1686, loop 1701-1708 calls startPads() until non-zero). Read pad.cpp start() 1155-1200 (padCount_=0, startOne per port/slot), startOne 1136-1151 (padPortOpen then initialize then waitReady), initialize 188-297 (waitReady at 207/266/270/274/286/294), waitReady 171-186 with PAD_WAIT_POLLS=25 and PAD_WAIT_POLL_US=1000 (pad.cpp:111-112). grep padPortClose: only unloadOne (pad.cpp:1107), so the first session's ports are never closed before the reopen. The time saved is inferred from the poll constants; whether padman's second open is otherwise harmless was not verified on hardware (boot works today, so it does not fail)."
+    },
+    {
+      "n": 2,
+      "title": "IO drains poll once per ~0.25 s delay(1) spin: launch/exit sees an empty queue up to 0.25 s late; lwnbdctl's 1000-tick bound is ~4 min",
+      "category": 5,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 1269, "end": 1277},
+        {"path": "src/app/opl.cpp", "start": 1328, "end": 1328},
+        {"path": "src/app/opl.cpp", "start": 1422, "end": 1422},
+        {"path": "src/app/opl.cpp", "start": 1962, "end": 1962},
+        {"path": "src/platform/ioman.cpp", "start": 380, "end": 386},
+        {"path": "src/platform/util.cpp", "start": 941, "end": 950},
+        {"path": "src/app/lwnbdctl.cpp", "start": 78, "end": 78},
+        {"path": "src/app/lwnbdctl.cpp", "start": 150, "end": 154}
+      ],
+      "problem": "deinitEx, deinit and miniDeinit drain through IoQueue::blockOps, which re-checks hasPending() only after each delay(1), a 0x01000000-iteration NOP spin that opl.cpp:1269-1272 itself puts at about a quarter second. A queued request that ends just after a check is noticed up to ~0.25 s later, on a black Please Wait screen, on every launch or exit that finds the queue busy. The same tick unit makes LWNBD_IO_DRAIN_TICKS = 1000 a ~250 s bound, so a stuck request freezes NBD start for minutes instead of failing it.",
+      "fix": "In IoQueue::blockOps replace delay(1) with DelayThread(10000) (10 ms, yields the CPU) and restate the budgets in that unit: EXIT_IO_DRAIN_TICKS 100, LAUNCH_IO_DRAIN_TICKS 1000, and LWNBD_IO_DRAIN_TICKS at the intended bound. Update the unit comment at opl.cpp:1269-1275 to match.",
+      "justification": "",
+      "benefit": "Up to ~0.24 s less black screen per launch/exit whenever IO is still queued (INFERRED: delay(1) = 16.8M x 4 NOPs ~ 0.25 s at 294 MHz, poll step becomes 10 ms); NBD preflight bound drops from ~250 s to the intended value; no change when the queue is empty",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read opl.cpp:1257-1277 (budgets 4 and 40 ticks, comment that one tick is ~0.25 s), callers 1328, 1422, 1962. Read ioman.cpp:360-398 (while hasPending(): delay(1), count down timeoutTicks) and 467-476; hasPending() is head_ != NULL (include/ioqueue.h:31) and head_ is unlinked only after the handler returns (ioman.cpp:140-156), so completion is seen only at the next tick. Read util.cpp:941-950 (delay = count x 0x01000000 loops of 4 NOPs). grep ioBlockOpsTimed(1: opl.cpp x3, lwnbdctl.cpp:150 with LWNBD_IO_DRAIN_TICKS=1000 (lwnbdctl.cpp:78); menusys.cpp:248 passes 0 and is unaffected. autolaunch.cpp:204 also states delay() ticks are ~0.25 s. Tick length is arithmetic, not measured."
+    }
+  ]
+}

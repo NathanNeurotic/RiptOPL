@@ -1,0 +1,175 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-13.b",
+  "coverage": [
+    {"path": "src/core/vmc_groups.cpp", "status": "read_full", "note": ""},
+    {"path": "include/vmcsaves.h", "status": "read_full", "note": ""},
+    {"path": "src/core/vmcsaves.cpp", "status": "read_full", "note": ""},
+    {"path": "include/xparam.h", "status": "read_full", "note": ""},
+    {"path": "src/core/xparam.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "vmc_groups.cpp is upstream Open PS2 Loader data: 97 shared memory-card groups (XEBP_100.xx, XEBP_000.xx) listing 1046 title IDs, with getGroupIdForTitleId doing a linear exact strcmp search; guigame.cpp uses it to name VMCs and for auto-VMC at launch. vmcsaves.cpp (first-party, ported from RIPPS2) treats a VMC image as a folder: it parses the superblock, indirect FAT and FAT, lists root saves with their icon.sys titles, copies a save between a card image, a save folder on the drive and a .psu file, and deletes a save, writing in a power-cut-safe order; it is driven synchronously by the VMC > Saves dialog (guigame.cpp) and the File Manager PSU paste (guifilemgr.cpp). xparam.cpp (upstream, krat0s) applies DECKARD (slim PS2) XPARAM emulation parameters by loading rom0:XPARAM or rom0:XPARAM2 with argument strings, once at boot (defaults) and once per game launch.",
+  "reusable_helpers": [
+    {"name": "vsReadAll", "path": "src/core/vmcsaves.cpp", "line": 145, "what": "reads exactly size bytes from an fd in 64 KB pieces, 0 on a short read"},
+    {"name": "vsWriteAll", "path": "src/core/vmcsaves.cpp", "line": 158, "what": "writes exactly size bytes to an fd in 64 KB pieces, 0 on a short write"},
+    {"name": "vsStamp", "path": "src/core/vmcsaves.cpp", "line": 119, "what": "time_t to an 8-byte memory-card date stamp (sceMcStDateTime, Japan time)"},
+    {"name": "vmcSavesTitle", "path": "src/core/vmcsaves.cpp", "line": 1056, "what": "icon.sys header to its two-line title as plain ASCII (Shift-JIS full-width letters and punctuation mapped)"},
+    {"name": "vsU32", "path": "src/core/vmcsaves.cpp", "line": 112, "what": "little-endian u32 from a byte pointer"},
+    {"name": "vsIsPsuName", "path": "src/core/vmcsaves.cpp", "line": 1211, "what": "case-insensitive .psu file-name suffix test"},
+    {"name": "getGroupIdForTitleId", "path": "src/core/vmc_groups.cpp", "line": 1452, "what": "title ID to shared VMC group ID, or the input pointer when none"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "vmcsaves: names read from a VMC image are not validated before vsWriteFolder joins them into a path, so an export can write outside SAVES/",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/vmcsaves.cpp", "start": 453, "end": 453},
+        {"path": "src/core/vmcsaves.cpp", "start": 469, "end": 469},
+        {"path": "src/core/vmcsaves.cpp", "start": 727, "end": 727},
+        {"path": "src/core/vmcsaves.cpp", "start": 739, "end": 740},
+        {"path": "src/core/vmcsaves.cpp", "start": 867, "end": 868}
+      ],
+      "problem": "vsLoadVmc copies the save name (453) and every file name (469) straight from the card's directory entries, and vsWriteFolder joins them into parent + save + '/' + file (727, 739) and opens that with O_CREAT|O_TRUNC (740). vsLoadPsu checks the same names with vsNameOk (796, 822) and vsWritePsu checks the save name (867), but the VMC-to-folder export (vmcSavesExport, guigame.cpp:442) checks nothing. A crafted VMC whose save holds a file named like '../../../X' makes the export create or truncate X outside the save folder on a device whose path layer resolves '..'.",
+      "fix": "Check the names where they enter, as vsLoadPsu does: in vsLoadVmc fail with VMCSAVES_ERR_NAME when vsNameOk(s->name) or vsNameOk(f->name) is false. The save-name check in vsWritePsu (867-868) then covers every source (folder and PSU sources are already checked) and can be deleted.",
+      "justification": "Adds two checks with an existing helper: they close a path traversal from untrusted VMC images (shared save cards) into the rest of the drive, and the now-redundant check in vsWritePsu goes, so the net change is about one line.",
+      "benefit": "Closes an overwrite-outside-the-folder path on VMC export (HDD/SMB/NFS); net about +1 line (INFERRED: +3 in vsLoadVmc, -2 in vsWritePsu).",
+      "benefit_rank": 3,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read vmcsaves.cpp 440-491 (vsLoadVmc, no name check), 720-751 (vsWriteFolder joins s->name and f->name), 766-770 (vsNameOk), 780-843 (vsLoadPsu checks at 796 and 822), 860-868 (vsWritePsu: comment says a card name like ../x never leaves the folder). Caller guigame.cpp:442 vmcSavesExport(card, vmcSavesCard[pick].name, folder) with folder = <card dir>SAVES/ built at guigame.cpp:420. USB/MX4SIO go through FatFs with FF_FS_RPATH 0 (modules/bdm/bdmfs_fatfs/fatfs/include/ffconf.h:156), which rejects '..', so the exposed devices are pfs (HDD), SMB and NFS: INFERRED that those resolve '..' (pfs keeps '..' directory entries; its source is not in this repo)."
+    },
+    {
+      "n": 2,
+      "title": "vmcSavesDelete frees at most 64 file chains, leaking card space for bigger saves; its files[] buffer is not needed",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/vmcsaves.cpp", "start": 1181, "end": 1182},
+        {"path": "src/core/vmcsaves.cpp", "start": 1192, "end": 1195},
+        {"path": "src/core/vmcsaves.cpp", "start": 1202, "end": 1204}
+      ],
+      "problem": "vmcSavesDelete collects file chains into u32_t files[SAVE_FILES] and stops at 64 (1181-1182, 1193); files past the 64th, and sub-folders inside the save (only MC_FILE is taken, 1194), are never freed, so once the root entry is hidden (1197-1198) their clusters stay marked used with nothing naming them. The buffer exists to free chains after the entry is hidden, but vsFreeChain and vsSetFat (300-304, 406-415) only change the in-memory FAT until vsFlushFat (1205), so freeing inside the scan keeps the same on-disk order.",
+      "fix": "Call vsFreeChain(&v, e.cluster) inside the scan loop for every existing file with length > 0 (keep the length test: an empty file's cluster field is 0, vsWriteVmc line 585), and delete files[], nfiles, the 64 cap and the second loop. Sub-folders inside a save stay unsupported, as they already are for export.",
+      "justification": "",
+      "benefit": "Deleting a save with more than 64 files no longer loses VMC space until a reformat; ~5 lines and a 256 B stack array removed (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read vmcsaves.cpp 1176-1208, 275-304 and 406-415: vsFreeChain edits only v->fat and fatDirty; the only disk write before vsFlushFat is the hidden root entry at 1198, and an error return before the flush discards in-memory changes in vsClose. vsLoadVmc refuses saves over 64 files (464-467), so such saves can be deleted but not exported. Caller: guigame.cpp:467 after a confirm box. How often real saves exceed 64 files is not verified (INFERRED rare), hence Med confidence."
+    },
+    {
+      "n": 3,
+      "title": "vsIo seeks and transfers each 512-byte page separately even on images without ECC, doubling the I/O calls of every card-image access on the GUI thread",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/vmcsaves.cpp", "start": 173, "end": 184}
+      ],
+      "problem": "vsIo issues one lseek plus one read or write per page, ppc times per cluster. Without the ECC spare (raw == pageLen, the only kind that can be written, 238-241) a cluster's pages are contiguous, so one lseek and one transfer of csize bytes does the same. Every directory entry (vsEnt 316-329), FAT cluster (vsOpen 265, vsFlushFat 281) and data cluster (vsReadChain 366, vsWriteVmc 553 and 589) goes through it, synchronously from the VMC Saves dialog loop (guigame.cpp:435-474) on the GUI thread, which shows nothing while a copy runs.",
+      "fix": "In vsIo, when v->ecc is 0, do one lseek to abs * csize and one read or write of csize bytes; keep the per-page loop only for ECC images.",
+      "justification": "Adds one branch: it halves the lseek/read/write calls (each a fileXio RPC on the PS2, INFERRED) for standard 2-page clusters, which is the main cost of copying a large save while the UI is frozen; it adds no state.",
+      "benefit": "Calls per 1 KB cluster 4 -> 2: an 8 MB save export drops from ~32 K to ~16 K calls (INFERRED: 8192 clusters x 2 pages x 2 calls); listing and FAT loads halve too.",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read vmcsaves.cpp 173-184, 198-273, 316-329, 358-374, 494-629: page p of cluster abs is at offset (abs*ppc+p)*raw, contiguous when raw == pageLen; ECC images are refused for writing at 238-241. Callers: guigame.cpp:377, 422, 439-467 call vmcSaves* inside the diaExecuteDialog loop at 435 (GUI thread). That each newlib call is one fileXio RPC, and its cost, is INFERRED, not measured."
+    },
+    {
+      "n": 4,
+      "title": "vmcsaves holds 4.9 KB of .bss for the whole run: vsCopy's static vs_save_t and vsWritePsu's static pad",
+      "category": 4,
+      "locations": [
+        {"path": "src/core/vmcsaves.cpp", "start": 1123, "end": 1123},
+        {"path": "src/core/vmcsaves.cpp", "start": 862, "end": 862}
+      ],
+      "problem": "vsCopy's static vs_save_t s (1123; 3896 B, not the ~2.5 KB its comment says) and vsWritePsu's static pad[1024] (862) are used only during one copy but stay in .bss for the whole run; vmcsaves.o has 4924 B of .bss. Both run on GUI code paths whose thread stack is 128 KB.",
+      "fix": "Drop the two static keywords so both live on the stack during the copy (the memsets at 1127 and 881 already initialise them) and correct the size in the comment.",
+      "justification": "",
+      "benefit": "4920 B of RAM freed (MEASURED: riptopl-per-object.tsv vmcsaves.o bss 4924; nm sizes vsCopy::s 0xf38, vsWritePsu::pad 0x400); peak stack grows by 4.9 KB of 128 KB.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt: _ZZL6vsCopyiPKcS0_iS0_E1s size 0xf38 and _ZZL10vsWritePsuPK9vs_save_tPKcE3pad size 0x400; riptopl-per-object.tsv: vmcsaves.o bss 4924; riptopl-stack-heap.txt: main ELF _stack_size 0x20000. Callers: VMC Saves dialog (guigame.cpp:439-467) and File Manager paste (guifilemgr.cpp:448, 452, 559), INFERRED main thread. Deepest path: vsCopy (s) -> vsWriteVmc (about 2 KB of entries and first[]) or vsWritePsu (pad, two path buffers)."
+    },
+    {
+      "n": 5,
+      "title": "vsLoadFolder stats every file twice and keeps a separate malloc'd name list",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/vmcsaves.cpp", "start": 636, "end": 636},
+        {"path": "src/core/vmcsaves.cpp", "start": 645, "end": 647},
+        {"path": "src/core/vmcsaves.cpp", "start": 660, "end": 667},
+        {"path": "src/core/vmcsaves.cpp", "start": 702, "end": 705}
+      ],
+      "problem": "The readdir pass stats each entry (660) and copies its name into a malloc'd list (645-647, 667); the second pass rebuilds the same path and stats it again only for st_mtime (702-705). On a real memory card (File Manager Paste as PSU, guifilemgr.cpp:448) each stat is a card directory lookup. The list also costs a malloc and eight free(list) calls on the error paths.",
+      "fix": "In the first pass write the name, and the stamp from the stat already made, straight into s->files[names] (count still advances only once data is allocated, so vsSaveFree is unaffected; set s->created before the loop for the fallback), then delete list, its malloc, its frees and the second stat.",
+      "justification": "",
+      "benefit": "One stat per file saved (up to 64 per save); ~13 lines removed (INFERRED from lines 636, 645-647, eight free(list) lines and 702-705, minus 2 added).",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read vmcsaves.cpp 633-716 and 136-143 (vsSaveFree frees files[0..count-1] only). free(list) at 651, 664, 672, 683, 689, 697, 709, 714. Callers: vmcSavesImport (guigame.cpp:457) and vmcSavesFolderToPsu (guifilemgr.cpp:448)."
+    },
+    {
+      "n": 6,
+      "title": "vmc_groups: eight malformed title IDs never match, and groups XEBP_100.72 and XEBP_000.12 are unreachable duplicates",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/vmc_groups.cpp", "start": 443, "end": 444},
+        {"path": "src/core/vmc_groups.cpp", "start": 464, "end": 465},
+        {"path": "src/core/vmc_groups.cpp", "start": 472, "end": 473},
+        {"path": "src/core/vmc_groups.cpp", "start": 498, "end": 498},
+        {"path": "src/core/vmc_groups.cpp", "start": 614, "end": 614},
+        {"path": "src/core/vmc_groups.cpp", "start": 1149, "end": 1153},
+        {"path": "src/core/vmc_groups.cpp", "start": 1271, "end": 1276},
+        {"path": "src/core/vmc_groups.cpp", "start": 936, "end": 939}
+      ],
+      "problem": "getGroupIdForTitleId compares exact strings (1465) with IDs like SLUS_207.54 passed by guigame.cpp:493, 529 and 702, but lines 443-444, 464-465, 472-473, 498 and 614 hold SLUS_20754, SLUS_20824, SCES_50422, SLES_50422, SCES_51154, SLES_51154, SLES-5350 and SSCES_540.95, so those games get their own VMC name instead of their series card. Group 100.72 (1149-1152) repeats 100.71 (1143-1146), and all four titles of 000.12 (1272-1275) are also in 100.53 (936-939); the first match wins, so 100.72 and 000.12 are never returned.",
+      "fix": "Correct the eight strings to the 11-character form (SLUS_207.54, SLUS_208.24, SCES_504.22, SLES_504.22, SCES_511.54, SLES_511.54, most likely SLES_535.06, SCES_540.95). Delete group 100.72 (1149-1153 and its row at 1424), and either delete 000.12 (1271-1276 and row 1439) or move its four titles out of 100.53, whichever upstream intended. The table is upstream Open PS2 Loader data, so the fix belongs upstream too.",
+      "justification": "",
+      "benefit": "Eight title IDs regain their series VMC name in the VMC dialog and auto-VMC; 13 lines removed with the two unreachable groups (no behaviour change for those).",
+      "benefit_rank": 2,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "awk over vmc_groups.cpp for title strings not shaped XXXX_NNN.NN: only the eight lines cited. Duplicate scan: 1150-1152 equal 1144-1146, 1272-1275 equal 936-939, plus five harmless repeats inside one group (665/668, 675/676, 1028/1029, 1053/1057, 1222/1226). tests/host/test_vmc_groups.cpp:15-17 calls these a known data issue and does not assert them. git log --follow: from upstream 48da113d (VMC Group Support, #1547) and e53edb28 (#1594). Callers pass the startup ID copied from config or the game list (guigame.cpp:521-529, 696-702)."
+    },
+    {
+      "n": 7,
+      "title": "vmc_groups: 1046 per-title pointers cost 4184 B of .data; fixed-width char arrays make them unnecessary",
+      "category": 4,
+      "locations": [
+        {"path": "src/core/vmc_groups.cpp", "start": 5, "end": 10},
+        {"path": "src/core/vmc_groups.cpp", "start": 14, "end": 14},
+        {"path": "src/core/vmc_groups.cpp", "start": 1346, "end": 1346}
+      ],
+      "problem": "Each of the 97 groups is a static const char *titles_*[] array (first at line 14, last at 1346), so every title costs a 4-byte pointer in .data on top of its 12-byte string: vmc_groups.o has 4184 B of .data = 1046 x 4. Every ID is 11 characters (once SSCES_540.95 at 614 is fixed, finding 6), so the pointers carry no information.",
+      "fix": "Declare each group as static const char titles_*[][12] with the same initialiser lists and make MemoryCardGroup.titleIds a const char (*)[12]; the count expressions, the strcmp lookup and the host test keep working. A mechanical edit of 97 declarations and one struct field.",
+      "justification": "",
+      "benefit": "~4 KB of ELF and RAM (MEASURED 4184 B .data in riptopl-per-object.tsv; strings move from .rodata.str into the arrays at the same 12 B, minus ~144 B of string merging lost for 12 repeated IDs, INFERRED).",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "evidence/RiptOPL/raw/riptopl-per-object.tsv: vmc_groups.o text 224, rodata 1164 (allMemoryCardGroups, nm size 0x48c = 97 x 12), data 4184. grep -cE over indented string lines of vmc_groups.cpp: 1046 titles. tests/host/test_vmc_groups.cpp:22-28 reads g.titleIds[j] into a const char *, which an array row decays to. The 12-character SSCES_540.95 would not fit a [12] row, so finding 6 comes first."
+    }
+  ]
+}

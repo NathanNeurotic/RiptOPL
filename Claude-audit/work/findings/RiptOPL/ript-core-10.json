@@ -1,0 +1,243 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-10",
+  "coverage": [
+    {"path": "include/OSDHistory.h", "status": "read_full", "note": ""},
+    {"path": "src/core/OSDHistory.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/bgm.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cheatconfig.h", "status": "read_full", "note": ""},
+    {"path": "src/core/cheatconfig.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cheatman.h", "status": "read_full", "note": ""},
+    {"path": "src/core/cheatman.cpp", "status": "read_full", "note": ""},
+    {"path": "include/config.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "OSDHistory.h/.cpp write the Sony OSD play-history record (mc?:/<region>DATA-SYSTEM/history) on launch, ported from upstream OPL; system.cpp:1343-1378 is the only caller. bgm.cpp is the theme background-music player: an Ogg/Vorbis decode thread and an audsrv feeder thread around a 768 KB static ring, with a reopening read layer for SD2PSX descriptor loss and an on-the-fly Ogg serial/CRC fix; its state lives in a single-instance BgmPlayer class (include/bgmplayer.h) behind the C-style bgm* API of sound.h. cheatman.cpp (PS2rd-derived) parses .cht text into a lazily allocated ~1 MB cheat table, flattens it for ee_core, and packs the in-game-menu cheats page; cheatconfig.cpp stores Select-mode picks by name in the game CFG. config.h is the config API: file/key name macros for every setting plus thin NULL-guarded inline wrappers over ConfigSet.",
+  "reusable_helpers": [
+    {"name": "read_text_file", "path": "src/core/cheatman.cpp", "line": 393, "what": "reads a whole file into a malloc'd NUL-terminated buffer (open/lseek/read)"},
+    {"name": "trim_str", "path": "src/core/cheatman.cpp", "line": 261, "what": "trims leading and trailing white space in place"},
+    {"name": "is_empty_str", "path": "src/core/cheatman.cpp", "line": 246, "what": "1 when a string holds only white space"},
+    {"name": "chr_idx", "path": "src/core/cheatman.cpp", "line": 214, "what": "index of a character in a string or -1 (strchr equivalent)"},
+    {"name": "cheatConfigNormalize", "path": "src/core/cheatconfig.cpp", "line": 18, "what": "lower-cases a string and collapses/trims white space for name comparison"},
+    {"name": "oggCrcDelta", "path": "src/core/bgm.cpp", "line": 361, "what": "Ogg CRC-32 (poly 0x04C11DB7) table build and CRC delta for a flipped header bit"},
+    {"name": "bgmSourceReopen", "path": "src/core/bgm.cpp", "line": 314, "what": "reopens a FILE* by path and seeks back to the saved position, with bounded retries"},
+    {"name": "osdHistorySetDate", "path": "include/OSDHistory.h", "line": 86, "what": "packs year/month/day into the 16-bit OSD datestamp"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "BgmPlayer: single-instance class reached only through two thread trampolines and five one-line forwarding wrappers",
+      "category": 3,
+      "locations": [
+        {"path": "include/bgmplayer.h", "start": 1, "end": 50},
+        {"path": "src/core/bgm.cpp", "start": 56, "end": 66},
+        {"path": "src/core/bgm.cpp", "start": 903, "end": 928}
+      ],
+      "problem": "BgmPlayer has exactly one instance, the file-static gBgm (bgm.cpp:56), and no code outside bgm.cpp names the class (include/bgmplayer.h is included only by bgm.cpp:14). Every outside use goes through the C-style sound.h functions, which only forward (bgm.cpp:905-928), and the thread bodies need two static trampolines (bgm.cpp:58-66) because they are member functions. The ring buffer and the running flags already had to stay file-static outside the class (bgm.cpp:72-73).",
+      "fix": "Make the BgmPlayer members file-static variables in bgm.cpp and the member functions static functions, name the public ones directly bgmStart/bgmStop/bgmQuiesce/isBgmPlaying/bgmDiscretionaryIoAllowed, pass the thread functions to CreateThread directly, and delete include/bgmplayer.h.",
+      "justification": "",
+      "benefit": "~55 lines removed (50-line header replaced by ~15 static declarations, 9 trampoline lines, ~20 forwarding lines). No ELF change expected beyond a few bytes of call indirection (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 55,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "grep BgmPlayer|bgmplayer.h over the repo: code hits only in include/bgmplayer.h and src/core/bgm.cpp; other hits are docs/CPP-CONVERSION-PLAN.md:388-396 (the conversion that introduced it) and .github/scripts/test_audio_threads.py / test_bgm_source.py, which locate functions by the text 'BgmPlayer::waitForRoom(' etc. and would need their anchors updated. Callers of the sound.h API: sound.cpp:50, textures.cpp:933 (gBgmInRead). Confidence Med because the class form follows the repo's own C++ conversion plan."
+    },
+    {
+      "n": 2,
+      "title": "OSDHistory: unused date getters, no-op DEBUG_PRINTF calls, commented-out loop and three stray includes of OSDHistory.h",
+      "category": 1,
+      "locations": [
+        {"path": "include/OSDHistory.h", "start": 83, "end": 85},
+        {"path": "src/core/OSDHistory.cpp", "start": 33, "end": 33},
+        {"path": "src/core/OSDHistory.cpp", "start": 134, "end": 134},
+        {"path": "src/core/OSDHistory.cpp", "start": 139, "end": 139},
+        {"path": "src/core/OSDHistory.cpp", "start": 145, "end": 149},
+        {"path": "src/core/OSDHistory.cpp", "start": 155, "end": 162},
+        {"path": "src/core/OSDHistory.cpp", "start": 217, "end": 223},
+        {"path": "src/core/OSDHistory.cpp", "start": 45, "end": 58},
+        {"path": "src/platform/sysvmc.cpp", "start": 41, "end": 41},
+        {"path": "src/platform/sysneutrino.cpp", "start": 42, "end": 42},
+        {"path": "src/platform/sysdisc.cpp", "start": 43, "end": 43}
+      ],
+      "problem": "osdHistoryGetYear/Month/Date have no use anywhere. DEBUG_PRINTF is defined empty at :33 and never redefined, so its 8 calls compile to nothing. :217-223 is a commented-out loop from the original. The three switch arms at :45-58 all set the same size. sysvmc.cpp, sysneutrino.cpp and sysdisc.cpp include OSDHistory.h but use nothing from it (only system.cpp:1350,1378 calls AddHistoryRecordUsingFullPath).",
+      "fix": "Delete the three getters, the DEBUG_PRINTF define and its calls, and the commented-out loop; set size once after the switch (or pick only the icon pointer in it); drop the OSDHistory.h include from sysvmc.cpp, sysneutrino.cpp and sysdisc.cpp.",
+      "justification": "",
+      "benefit": "~25 lines removed; no ELF change (constexpr getters and empty macros generate no code) (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 25,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep osdHistoryGet(Year|Month|Date) whole repo: only OSDHistory.h:83-85 and a docs mention. grep DEBUG_PRINTF in src/: only OSDHistory.cpp:33 (define) and its 8 calls; other hits are in .github/scripts tests and IOP modules with their own defines. grep MAX_HISTORY_ENTRIES|HistoryEntry|osdHistorySetDate in src/: only OSDHistory.cpp. grep AddHistoryRecord in src/: system.cpp:1350,1378 only. sysvmc.cpp:41, sysneutrino.cpp:42, sysdisc.cpp:43 are bare includes."
+    },
+    {
+      "n": 3,
+      "title": "OSDHistory.h carries a 79-line block of disassembly notes from the original OSDSYS",
+      "category": 7,
+      "locations": [
+        {"path": "include/OSDHistory.h", "start": 3, "end": 81}
+      ],
+      "problem": "Lines 3-73 are reverse-engineering notes (hex dumps of record bytes and a pseudo-C transcription of OSDSYS 1.00 code at fixed addresses) that the ported implementation in OSDHistory.cpp:126-264 already embodies; only the 'Conclusion' field layout at :74-80 documents the struct below it. The block is upstream-derived (INFERRED: same notes as upstream OPL).",
+      "fix": "Keep the 6-line field layout (:74-80) next to struct HistoryEntry and delete the rest of the comment.",
+      "justification": "",
+      "benefit": "~72 comment lines removed; no binary effect.",
+      "benefit_rank": 1,
+      "lines_removed": 72,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read OSDHistory.h:1-101 and OSDHistory.cpp:1-298; the logic of :28-72 is the loop at OSDHistory.cpp:173-260. Upstream origin of the comment not checked (no upstream checkout in scope): INFERRED."
+    },
+    {
+      "n": 4,
+      "title": "cheatman parser: parse_line wrapper re-tests is_cheat_code, make_code has a redundant zero branch, term_str callback has one caller",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/cheatman.cpp", "start": 149, "end": 158},
+        {"path": "src/core/cheatman.cpp", "start": 184, "end": 208},
+        {"path": "src/core/cheatman.cpp", "start": 224, "end": 240},
+        {"path": "src/core/cheatman.cpp", "start": 341, "end": 355}
+      ],
+      "problem": "parse_buf already calls is_cheat_code (:346) and enters the parser branch for code lines and empty lines; parse_line (:187-200) runs is_cheat_code again only to return a zero code for the empty-line case, plus a per-line LOG. make_code pre-zeroes address/value and then has a failure branch that zeroes again (:149-153). term_str (:227-240) is a generic callback walker with a NULL check whose only caller passes is_cmt_str, which re-runs strlen at every character.",
+      "fix": "In parse_buf, call make_code directly when is_cheat_code(line) is true and skip the line otherwise; delete parse_line. Assign code.addr/val from the sscanf results unconditionally (they stay 0 on a short parse). Replace term_str+is_cmt_str with one inline scan that cuts the line at the first '#' or '//'.",
+      "justification": "",
+      "benefit": "~30 lines removed; a few hundred bytes of .text at most (INFERRED; static functions, likely inlined already).",
+      "benefit_rank": 2,
+      "lines_removed": 30,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "All five functions are static in cheatman.cpp; grep term_str|is_cmt_str|parse_line|make_code in src: only cheatman.cpp. term_str called only at :342; parse_line only at :354. is_cheat_code returns 0 for an empty string (i==0 != CODE_DIGITS), so the zero code from parse_line for non-code lines is the only thing it adds. Note: the per-line LOG at :193 goes away with parse_line."
+    },
+    {
+      "n": 5,
+      "title": "load_cheats: read_text_file's maxsize option is never used and the parse tail duplicates load_cheats_buf",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/cheatman.cpp", "start": 387, "end": 393},
+        {"path": "src/core/cheatman.cpp", "start": 411, "end": 415},
+        {"path": "src/core/cheatman.cpp", "start": 467, "end": 507}
+      ],
+      "problem": "read_text_file's only caller passes maxsize 0 (:476), so the size-limit branch (:411-415) is dead. load_cheats (:467-489) repeats load_cheats_buf's ensureCheatTable/parse_buf/mode-return sequence (:495-507).",
+      "fix": "Drop the maxsize parameter and its branch; make load_cheats read the file, call load_cheats_buf(buf), free the buffer and return that result.",
+      "justification": "",
+      "benefit": "~12 lines removed; no measurable ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep read_text_file in src: cheatman.cpp:388,393,476 only. load_cheats called at supportbase.cpp:1811, load_cheats_buf at supportbase.cpp:1779; both return values are used the same way (>=0 then sbCheatsSelect). Order change (table allocated after the read instead of before) does not change results: a failed read returns -1 either way."
+    },
+    {
+      "n": 6,
+      "title": "parse_buf computes each cheat's Select-mode default that cheatConfigLoadSelections always recomputes",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/cheatman.cpp", "start": 27, "end": 27},
+        {"path": "src/core/cheatman.cpp", "start": 367, "end": 369},
+        {"path": "src/core/cheatconfig.cpp", "start": 71, "end": 73}
+      ],
+      "problem": "parse_buf sets enabled = (gCheatMode == 0) || cheatConfigIsMasterCode(name) for every cheat. In Select mode (load returns 1) both load paths call sbCheatsSelect (supportbase.cpp:1785,1840), whose cheatConfigLoadSelections first resets every entry to cheatConfigIsMasterCode(name) (cheatconfig.cpp:72-73). The parser's master-code test is therefore overwritten every time, and it is the only reason cheatman.cpp includes cheatconfig.h.",
+      "fix": "Set enabled = 1 in parse_buf (Auto mode runs every cheat; Select mode is reset by cheatConfigLoadSelections) and drop the cheatconfig.h include from cheatman.cpp.",
+      "justification": "",
+      "benefit": "~3 lines and one header dependency removed; saves one name normalisation (2 x 129-byte buffers) per parsed cheat (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read supportbase.cpp:1730-1840: sbCheatsSelect(cheatMode,...) calls cheatConfigLoadSelections when cheatMode==1, after both load_cheats_buf (:1779-1785) and load_cheats (:1811, :1840). load_cheats/load_cheats_buf have no other callers. grep cheatConfig in cheatman.cpp: only :27 (include) and :369. Med: relies on every future Select-mode path going through sbCheatsSelect."
+    },
+    {
+      "n": 7,
+      "title": "cheatman.h: CHEAT_VERSION, CR and SPACE are never used",
+      "category": 1,
+      "locations": [
+        {"path": "include/cheatman.h", "start": 37, "end": 37},
+        {"path": "include/cheatman.h", "start": 48, "end": 49}
+      ],
+      "problem": "No C/C++ source uses CHEAT_VERSION, CR or SPACE from this header; NUL and LF (:46-47) are the only character constants the cheat code uses. CHEAT_VERSION's only other mention is a text anchor in .github/scripts/test_cheat_capacity.py:24.",
+      "fix": "Delete the three definitions and move the test's slice anchor to the next line (for example 'constexpr int MAX_HOOKS').",
+      "justification": "",
+      "benefit": "3 lines removed; no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep CHEAT_VERSION|\\bCR\\b|\\bSPACE\\b over *.c,*.cpp,*.h,*.py,*.yaml: definitions at cheatman.h:37,48-49; test_cheat_capacity.py:24 (index anchor); test_neutrino_cheats.py:49 defines its own SPACE; other CR/SPACE hits are comments or unrelated locals in IOP modules (smb.c:830, smbman-ra smb.c:1207) that do not include cheatman.h."
+    },
+    {
+      "n": 8,
+      "title": "Dead setting key CONFIG_OPL_ENABLE_ANALOG_NAV and its dialog id UICFG_ENABLE_ANALOG_NAV",
+      "category": 1,
+      "locations": [
+        {"path": "include/config.h", "start": 114, "end": 114},
+        {"path": "include/dialogs.h", "start": 27, "end": 27}
+      ],
+      "problem": "The Left Stick Navigation option was removed (dialogs.cpp:2263-2268 says it is never coming back), but its config key and its UI id remain. Neither name, nor the key string enable_analog_nav, is used anywhere else.",
+      "fix": "Delete both lines.",
+      "justification": "",
+      "benefit": "2 lines removed; no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep ENABLE_ANALOG_NAV|enable_analog_nav|AnalogNav whole repo: config.h:114, dialogs.h:27 and the comment at dialogs.cpp:2266 only. Removing the enum member renumbers the later UICFG_* ids; grep shows they are used only symbolically in dialogs tables (INFERRED from the UI_ITEMS enum being a plain id list)."
+    },
+    {
+      "n": 9,
+      "title": "config.h comments point to files that no longer exist (src/libview.c, opl.c, src/config.c)",
+      "category": 7,
+      "locations": [
+        {"path": "include/config.h", "start": 125, "end": 125},
+        {"path": "include/config.h", "start": 168, "end": 168},
+        {"path": "include/config.h", "start": 311, "end": 311}
+      ],
+      "problem": "The comments name libViewStoreToConfig in src/libview.c, readConfigPathRedirect() in opl.c and src/config.c; the code now lives in src/ui/libview.cpp:351, src/app/settingsio.cpp:296 and src/core/config.cpp, and none of the named .c files exists.",
+      "fix": "Correct the three paths.",
+      "justification": "",
+      "benefit": "Cosmetic; 0 lines removed.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Glob src/{config,opl,libview}.c: no files. grep readConfigPathRedirect|libViewStoreToConfig in src: settingsio.cpp:296, libview.cpp:351."
+    },
+    {
+      "n": 10,
+      "title": "bgm.cpp: stale section banner, orphaned member comment and two unused includes",
+      "category": 7,
+      "locations": [
+        {"path": "src/core/bgm.cpp", "start": 8, "end": 8},
+        {"path": "src/core/bgm.cpp", "start": 19, "end": 19},
+        {"path": "src/core/bgm.cpp", "start": 21, "end": 22},
+        {"path": "src/core/bgm.cpp", "start": 116, "end": 120}
+      ],
+      "problem": "The 'Theme Sound Effects' banner (:21-22) heads nothing: sound effects moved to sfx.cpp. :116-120 describes bytesPerMs_ and roomTarget_, which now live in include/bgmplayer.h:46-47, and sits above an unrelated function. Nothing in bgm.cpp calls a pad.h function, and the only timer-like call, SetAlarm, is a kernel.h syscall that opl.h:5 already brings in (INFERRED for timer.h).",
+      "fix": "Delete the banner, move or delete the orphaned comment, and drop the timer.h and pad.h includes.",
+      "justification": "",
+      "benefit": "~9 lines removed; no binary effect.",
+      "benefit_rank": 1,
+      "lines_removed": 9,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bgm.cpp:1-928 and include/bgmplayer.h; compared against include/pad.h prototypes (startPads, readPads, getKey, padRumble...): none appears in bgm.cpp. timer.h contents not read (SDK header), so the timer.h part is INFERRED."
+    }
+  ]
+}

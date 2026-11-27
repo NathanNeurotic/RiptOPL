@@ -1,0 +1,126 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-07.b",
+  "coverage": [
+    {"path": "include/raii.h", "status": "read_full", "note": ""},
+    {"path": "include/renderer.h", "status": "read_full", "note": ""},
+    {"path": "include/selfupdate.h", "status": "read_full", "note": ""},
+    {"path": "include/sema_lock.h", "status": "read_full", "note": ""},
+    {"path": "include/settingshell.h", "status": "read_full", "note": ""},
+    {"path": "include/soundeffects.h", "status": "read_full", "note": ""},
+    {"path": "include/soundint.h", "status": "read_full", "note": ""},
+    {"path": "include/sourceregistry.h", "status": "read_full", "note": ""},
+    {"path": "include/supportbaseint.h", "status": "read_full", "note": ""},
+    {"path": "include/texcacheint.h", "status": "read_full", "note": ""},
+    {"path": "include/themecatalog.h", "status": "read_full", "note": ""},
+    {"path": "include/themeint.h", "status": "read_full", "note": ""},
+    {"path": "include/utf8.h", "status": "read_full", "note": ""},
+    {"path": "include/util.h", "status": "read_full", "note": ""},
+    {"path": "src/app/autolaunch.cpp", "status": "read_full", "note": ""},
+    {"path": "include/host.h", "status": "read_full", "note": ""},
+    {"path": "src/app/host.cpp", "status": "read_full", "note": ""},
+    {"path": "src/app/lwnbdctl.cpp", "status": "read_full", "note": ""},
+    {"path": "include/opl.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "Mostly headers for the C++ menu ELF: RAII helpers (UniqueFd, UniquePtr/makeUnique in malloc memory, ScopeExit, SemaLock), class declarations for the GS renderer, sound effects, the Settings shell, the source registry, the theme catalog and internal constants shared by texcache/themes, the Hoehrmann UTF-8 DFA decoder, util.h prototypes and opl.h (the global settings variables and IO request ids). host.h/host.cpp define the four service interfaces (UI, app, library, launch) the support backends call instead of opl.cpp/gui.cpp, with OplLaunch filling the feature-derived ee_core config (cheats, PS2RD image, GSM, IGR menu, RetroAchievements work area). autolaunch.cpp handles argv-driven HDL and BDM autolaunch before the menu exists, and lwnbdctl.cpp tears the menu down to run the lwNBD server and restores it afterwards.",
+  "reusable_helpers": [
+    {"name": "raii::UniqueFd", "path": "include/raii.h", "line": 19, "what": "file descriptor closed on scope exit, release()/reset() like unique_ptr"},
+    {"name": "raii::makeUnique", "path": "include/raii.h", "line": 98, "what": "constructs an object in malloc memory without pulling libstdc++ new_handler; empty pointer on OOM"},
+    {"name": "raii::scopeExit", "path": "include/raii.h", "line": 136, "what": "runs a callable on every exit path, dismiss() cancels"},
+    {"name": "raii::SemaLock", "path": "include/sema_lock.h", "line": 12, "what": "scoped WaitSema/SignalSema hold, negative id is a no-op"},
+    {"name": "utf8Decode", "path": "include/utf8.h", "line": 38, "what": "Hoehrmann DFA UTF-8 decoder step"},
+    {"name": "suJoin", "path": "include/selfupdate.h", "line": 27, "what": "bounded dir + '/' + name + suffix path join (no extra slash after a device root)"},
+    {"name": "suLooksLikeElf", "path": "include/selfupdate.h", "line": 30, "what": "checks a buffer for a 32-bit little-endian MIPS executable ELF header"},
+    {"name": "openFileBuffer/readFileBuffer/writeFileBuffer/closeFileBuffer", "path": "include/util.h", "line": 37, "what": "buffered line reader/writer with sticky write error, used by config IO"},
+    {"name": "listDir", "path": "include/util.h", "line": 18, "what": "directory listing with a per-entry callback"},
+    {"name": "sanitizePrefix", "path": "include/util.h", "line": 68, "what": "normalises a user-typed device-relative prefix"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "lwnbdctl.cpp: NBD start/stop 'bounded' waits treat delay() ticks as milliseconds (IO drain ~4 min, pad retries up to ~20 min)",
+      "category": 6,
+      "locations": [
+        {"path": "src/app/lwnbdctl.cpp", "start": 77, "end": 78},
+        {"path": "src/app/lwnbdctl.cpp", "start": 150, "end": 154},
+        {"path": "src/app/lwnbdctl.cpp", "start": 195, "end": 203},
+        {"path": "src/app/lwnbdctl.cpp", "start": 228, "end": 239},
+        {"path": "src/platform/ioman.cpp", "start": 380, "end": 386},
+        {"path": "src/platform/util.cpp", "start": 941, "end": 950}
+      ],
+      "problem": "delay() spins 0x01000000 x 4 nops per tick, ~0.25 s (util.cpp:941-950; the repo records this at opl.cpp:1269-1277). ioBlockOpsTimed spends one delay(1) per tick (ioman.cpp:380-386), so LWNBD_IO_DRAIN_TICKS = 1000, meant to fail a stuck request quickly, spins the GUI thread for ~250 s behind the frozen 'Starting NBD' screen. Both pad-restart loops wait delay(50) (~12.5 s) per failed startPads(), up to 100 times (~20 min), where the comment at 228-231 promises ~5 s. LWNBD_ART_DRAIN_TICKS = 500 next to it is milliseconds (artload.cpp:426-449), so the two *_TICKS constants differ in unit by ~250x.",
+      "fix": "Set LWNBD_IO_DRAIN_TICKS to about 4 (~1 s, the same value opl.cpp:1276 already uses for EXIT_IO_DRAIN_TICKS) and note the unit. In both pad loops replace delay(50) with DelayThread(50000) so 100 tries are the documented ~5 s (move the delaythread.h include out of the __OPLDIAG block), or keep delay() and use delay(1) with 20 tries.",
+      "justification": "",
+      "benefit": "On NBD start/stop failure paths the screen freezes ~1 s / ~5 s as documented instead of ~250 s / up to ~20 min. Timing INFERRED: 16.8M loop iterations per tick at 294.9 MHz is ~0.25 s, the figure opl.cpp:1269-1272 and artload.cpp:426-427 state.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "Read lwnbdctl.cpp:77-78,141-154,192-203,228-239; ioman.cpp:360-398 (blockOps: while hasPending, delay(1), timeoutTicks--) and 467-476; util.cpp:941-950; opl.cpp:1269-1277 (same units trap already fixed there: EXIT 4, LAUNCH 40 ticks); artload.cpp:426-454 and hddsupport.cpp:308-312 (art waits are DelayThread(1000) per tick = ms); pad.cpp:1155-1200 (startPads returns 0 when no port opens, e.g. after a half-done IOP reset as the 228-231 comment anticipates). Caller: menusys.cpp:2380-2382 MENU_NBD on the GUI thread. The tick duration is computed, not measured on hardware."
+    },
+    {
+      "n": 2,
+      "title": "settingshell.h: mmceDialog_ reserves 256 UIItems (10 KB .bss) for a page of at most ~45 rows",
+      "category": 4,
+      "locations": [
+        {"path": "include/settingshell.h", "start": 70, "end": 73},
+        {"path": "src/ui/guisettings.cpp", "start": 377, "end": 377},
+        {"path": "src/ui/guisettings.cpp", "start": 2117, "end": 2129}
+      ],
+      "problem": "SettingsShell holds two UIItem[SETTINGS_DIALOG_CAPACITY=256] arrays. mmceDialog_ is used only by guiShowMmceConfig (guisettings.cpp:377), which composes diaMmceConfig + diaMmceCommConfig + diaMmcePathConfig (dialogs.cpp:816-942, 43 source rows before skips). sizeof(struct UIItem) is 40 bytes (dia.h:72-121), so mmceDialog_ is 10,240 bytes of .bss of which ~8 KB is never used.",
+      "fix": "Size mmceDialog_ to 64 entries and let composeInto bound by the destination size (pass the capacity instead of using SETTINGS_DIALOG_CAPACITY at guisettings.cpp:2117 and 2125).",
+      "justification": "The capacity parameter is the only addition: without it composeInto would check a 64-entry buffer against 256 and could overflow. It costs one argument and saves ~7.7 KB of EE .bss.",
+      "benefit": "~7.7 KB .bss: (256 - 64) x 40 B = 7,680 B. MEASURED total: gSettingsShell is 0x50bc = 20,668 B in evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt:45; the 40 B UIItem size is INFERRED from dia.h.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep mmceDialog over src: settingshell.h:49,73 and guisettings.cpp:377 only. Counted rows in dialogs.cpp:816-850 (23), 854-875 (11), 926-942 (9). Layout of struct UIItem from dia.h:72-121: 16 B header + 20 B union (intvalue: 4 ints + pointer) + 1 B flag, padded to 40. nm: gSettingsShell B 0x50bc."
+    },
+    {
+      "n": 3,
+      "title": "utf8.h: the 400-byte static utf8d table is linked twice (fntsys.cpp and textshape.cpp)",
+      "category": 4,
+      "locations": [
+        {"path": "include/utf8.h", "start": 21, "end": 49},
+        {"path": "src/gfx/fntsys.cpp", "start": 12, "end": 12},
+        {"path": "src/gfx/textshape.cpp", "start": 12, "end": 12}
+      ],
+      "problem": "utf8.h defines utf8d as a static const array and utf8Decode as a static function, so each including translation unit gets its own copy. The shipped ELF holds two 400-byte _ZL5utf8d objects.",
+      "fix": "Define the table and utf8Decode once (for example in fntsys.cpp) and leave only a prototype in utf8.h, or make both inline (inline constexpr table) so the linker keeps one copy.",
+      "justification": "",
+      "benefit": "400 B .rodata. MEASURED: two _ZL5utf8d entries of size 0x190 in evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt:1757-1758.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep 'include.*utf8.h|utf8Decode' over src/RiptOPL (c,cpp,h,py): included only by src/gfx/fntsys.cpp:12 and src/gfx/textshape.cpp:12, both compiled into the main ELF (ps2.yaml src/gfx glob per brief). nm shows 005dc7d0 and 005dceb8, each 00000190 r _ZL5utf8d."
+    },
+    {
+      "n": 4,
+      "title": "autolaunch.cpp: mass0 retry waits delay(6) twice per attempt, so the documented ~12 s bound is ~24 s",
+      "category": 5,
+      "locations": [
+        {"path": "src/app/autolaunch.cpp", "start": 203, "end": 207},
+        {"path": "src/app/autolaunch.cpp", "start": 240, "end": 249}
+      ],
+      "problem": "When mass0: does not open, the retry branch runs delay(6) and i--, and then the loop tail runs delay(6) again, so each of the AUTOLAUNCH_MASS0_RETRIES = 8 attempts (oplint.h:10) costs 12 ticks. The comment at 203-205 sizes the bound as 8 x 6 ticks of ~0.25 s = ~12 s; the real black-screen wait before falling back to the menu is ~24 s plus the initial delay(8).",
+      "fix": "Delete the delay(6) inside the retry branch (line 243); the loop-tail delay(6) already spaces the attempts.",
+      "justification": "",
+      "benefit": "No-device BDM autolaunch falls back to the menu after ~12 s instead of ~26 s (INFERRED: 8 x 12 + 8 = 104 ticks vs 8 x 6 + 8 = 56 ticks at ~0.25 s per tick). 1 line removed.",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "Read autolaunch.cpp:203-250 (control flow: else-branch delay(6); i--; then unconditional delay(6) at 249; break skips it). oplint.h:10 AUTOLAUNCH_MASS0_RETRIES = 8. Tick length from util.cpp:941-950 and the repo note at opl.cpp:1269-1272. Called from opl.cpp:2103-2106 when argv[4] is bdm or ata."
+    }
+  ]
+}

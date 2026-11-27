@@ -1,0 +1,111 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-20.b",
+  "coverage": [
+    {"path": "include/debug.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/debug.cpp", "status": "read_full", "note": ""},
+    {"path": "include/diaglog.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/diaglog.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/elfldr_noreset.cpp", "status": "read_full", "note": ""},
+    {"path": "include/hdd.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/hdd.cpp", "status": "read_full", "note": ""},
+    {"path": "include/httpcatalog.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/httpcatalog.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/httpclient.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ioman.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/ioman.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ioprp.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/ioprp.cpp", "status": "read_full", "note": ""},
+    {"path": "include/launchdiag.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/launchdiag.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/lz4.c", "status": "read_full", "note": ""},
+    {"path": "include/md5.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/md5.c", "status": "read_full", "note": ""},
+    {"path": "include/nbns.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/nbns.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/new.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ps2cnf.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/ps2cnf.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ratls.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "Platform layer of the menu ELF. ioman.cpp is the single IO worker thread and its request queue (put, put-unless-waiting, drain-and-block); diaglog.cpp keeps a 16 KB RAM ring log for DIAG.TXT plus the diagnostic-build boot trace; elfldr_noreset.cpp copies the embedded elfldr child to 0x84000 and ExecPS2s into it so Neutrino/POPSTARTER/apps load through the live IOP mounts; hdd.cpp wraps fileXio devctls for APA/HDL/PFS (HDL game list, POPS/Ember partition walks, partition and VMC inode maps). httpcatalog.cpp parses games.csv rows, httpclient.cpp and nbns.cpp are EE-side SIF RPC clients for the httpclient and nbns IRX, ioprp.cpp builds the IOPRP reset image, ps2cnf.cpp reads BOOT2 from SYSTEM.CNF, md5.c is vendored Aladdin MD5 (RA builds), new.cpp replaces the throwing operator new, debug.cpp loads TTY/debug IRX in debug builds, and launchdiag.cpp is compiled out (LAUNCH_DIAG 0).",
+  "reusable_helpers": [
+    {"name": "ioPutRequest / ioBlockOps", "path": "src/platform/ioman.cpp", "line": 417, "what": "queue work on the IO worker thread; drain and block the queue (timed variant at :467)"},
+    {"name": "diagLog / diagCopy", "path": "src/platform/diaglog.cpp", "line": 19, "what": "time-stamped printf into a 16 KB interrupt-safe RAM ring, copied out newest-last"},
+    {"name": "sysLoadELFCommon", "path": "src/platform/elfldr_noreset.cpp", "line": 150, "what": "ELF handoff without IOP reset: argv budget check, PT_LOAD copy of an embedded loader, ExecPS2"},
+    {"name": "probeDeviceRootOpens", "path": "src/platform/elfldr_noreset.cpp", "line": 104, "what": "derive 'dev:/' from a path and test that the device root opens"},
+    {"name": "hddCollectPartitions", "path": "src/platform/hdd.cpp", "line": 322, "what": "APA partition walk with a name filter, dedupe, grow-on-demand array and sort"},
+    {"name": "hddReadSectors", "path": "src/platform/hdd.cpp", "line": 101, "what": "raw APA sector read through HDIOC_READSECTOR"},
+    {"name": "httpSplitFields", "path": "src/platform/httpcatalog.cpp", "line": 27, "what": "in-place CSV field split with RFC4180 quoting"},
+    {"name": "ps2cnfGetBootFile", "path": "src/platform/ps2cnf.cpp", "line": 70, "what": "read BOOT2 from a SYSTEM.CNF"},
+    {"name": "patch_IOPRP_image", "path": "src/platform/ioprp.cpp", "line": 32, "what": "rebuild an IOPRP romdir image replacing CDVDMAN/CDVDFSV/EESYNC with 16-byte alignment"},
+    {"name": "md5_init / md5_append / md5_finish", "path": "src/platform/md5.c", "line": 314, "what": "vendored Aladdin MD5"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "IoQueue::blockOps polls the drain with delay(1), a ~0.25 s NOP spin, so drains finish late and every bound is in idle-CPU ticks (NBD bound ~4 min)",
+      "category": 5,
+      "locations": [
+        {"path": "src/platform/ioman.cpp", "start": 374, "end": 386},
+        {"path": "src/platform/util.cpp", "start": 941, "end": 949},
+        {"path": "src/app/opl.cpp", "start": 1269, "end": 1277},
+        {"path": "src/app/lwnbdctl.cpp", "start": 78, "end": 78}
+      ],
+      "problem": "blockOps lowers the caller to priority 90 and waits with delay(1), a 0x01000000-iteration NOP spin (util.cpp:941-949; opl.cpp:1269-1271 says about a quarter second per tick). A drain that ends mid-spin is noticed only when the spin ends, so each launch, exit, NBD start and HDD rename/delete with work queued waits up to ~0.25 s more. The spin advances only while every higher-priority thread is blocked, so the timeout counts idle CPU, not time. lwnbdctl.cpp:78 still passes 1000 ticks (~4 min) as its bound; opl.cpp rescaled its own constants but NBD was missed.",
+      "fix": "In IoQueue::blockOps replace delay(1) with DelayThread(10 * 1000) and count the budget in those 10 ms steps. Restate the budgets in that unit: EXIT_IO_DRAIN_TICKS 4 -> 100, LAUNCH_IO_DRAIN_TICKS 40 -> 1000, and LWNBD_IO_DRAIN_TICKS to the bound it was meant to be. menusys.cpp:248 passes 0 and is unaffected.",
+      "justification": "",
+      "benefit": "Drain completion seen within 10 ms instead of up to ~0.25 s per call (INFERRED: 16.7M-iteration spin, repo comment opl.cpp:1269-1271); the NBD bound drops from ~250 s (1000 x ~0.25 s, INFERRED) to a real wall-clock limit; no lines added.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "Read ioman.cpp:360-398 (blockOps: ChangeThreadPriority(90), while(hasPending()) delay(1)) and util.cpp:941-949 (delay = nested NOP spin, no sleep). Worker priority 32 at ioman.cpp:250, so it and any thread above 90 preempt the spin. Callers via grep ioBlockOps: opl.cpp:1328,1422,1962 (LAUNCH/EXIT ticks, constants at :1276-1277 with the units comment :1269-1275), lwnbdctl.cpp:150 (LWNBD_IO_DRAIN_TICKS=1000 at :78, comment :145-149 says a stuck request should fail the start), menusys.cpp:248 (timeout 0), hddsupport.cpp:1971,2184,2260,2273,2319,3367 (unbounded). Timing not measured on hardware."
+    },
+    {
+      "n": 2,
+      "title": "CNFGetKey leaves BOOT2 unterminated at 64 characters; GetStartupExecName's 64-byte buffer is then scanned past its end",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/ps2cnf.cpp", "start": 54, "end": 67},
+        {"path": "src/sources/supportbase.cpp", "start": 116, "end": 144}
+      ],
+      "problem": "CNFGetKey copies up to CNF_PATH_LEN_MAX (64) characters and writes '\\0' only when it meets whitespace. A BOOT2 value of 64+ printable characters fills all of GetStartupExecName's char ps2disc_boot[CNF_PATH_LEN_MAX] (supportbase.cpp:116) with no terminator, and the ':' and ';' scans at supportbase.cpp:127-144 then read past it on the IO worker stack. The input is SYSTEM.CNF inside any user ISO read as iso:/SYSTEM.CNF;1 during the ISO scan (supportbase.cpp:450). The '\\0' branch at ps2cnf.cpp:62-64 is unreachable under the loop condition.",
+      "fix": "Bound the copy loop to CNF_PATH_LEN_MAX - 1 characters and write the terminator once after the loop; delete the unreachable '\\0' branch at lines 62-64.",
+      "justification": "Adds one terminator write after the loop: the only caller's buffer is exactly CNF_PATH_LEN_MAX bytes and the parser can fill it from ISO content, so this closes a stack over-read; deleting the dead branch makes the change net smaller.",
+      "benefit": "Closes a stack over-read on untrusted ISO content; ~2 lines net removed (3-line dead branch out, 1 line in) (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read ps2cnf.cpp:42-68 (loop i < CNF_PATH_LEN_MAX writes key[0..63], terminator only in the isspace branch) and :115 (caller only checks for -1). grep -rn ps2cnfGetBootFile over the repo: only production caller supportbase.cpp:120 with char ps2disc_boot[CNF_PATH_LEN_MAX] = \"\" at :116; GetStartupExecName called at supportbase.cpp:450 with iso:/SYSTEM.CNF;1. The host test tests/host/test_ps2cnf.cpp:25 uses a 65-byte buffer, so it cannot see this; .github/scripts/test_cnf_missing_equals.py:18 uses 64 but only tests a missing '='."
+    },
+    {
+      "n": 3,
+      "title": "httpclient's single RPC client, static buffers and one IOP stream are used by the IO-worker catalog fetch and the GUI-thread launch probe at once",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/httpclient.cpp", "start": 9, "end": 12},
+        {"path": "src/platform/httpclient.cpp", "start": 95, "end": 155},
+        {"path": "src/sources/httpsupport.cpp", "start": 596, "end": 596},
+        {"path": "src/sources/httpsupport.cpp", "start": 794, "end": 797},
+        {"path": "src/ui/menuitems.cpp", "start": 174, "end": 192}
+      ],
+      "problem": "httpclient.cpp has one SifRpcClient, one RpcTxBuffer/RpcRxBuffer and one streamBuffer, and the IOP keeps one live stream (httpclient.h:22-24). HttpSource::update fetches games.csv on the IO worker (httpsupport.cpp:596, via IO_MENU_UPDATE_DEFFERED), while HttpSource::launch runs httpProbeImage on the GUI thread (httpsupport.cpp:794) without blocking IO. menuitems.cpp:174-175 notes that source lists may refresh during the launch hold. A launch pressed while a refresh is in flight (start-up, or a view toggle that marks HTTP dirty) lets the two sessions overwrite each other's RPC arguments and stream. The probe then fails with the range error, or the refresh fails or keeps stale rows.",
+      "fix": "Serialize the probe against the worker the way HddSource does (hddsupport.cpp:2319-2333): ioBlockOps(1) before httpProbeImage in HttpSource::launch and ioBlockOps(0) right after it, including on its failure return.",
+      "justification": "Adds two calls. The race is between the only two users of a single-session RPC client and IOP stream. Blocking the IO queue around the probe reuses an existing pattern and is smaller than locking every Http* call and the Begin/Read/Close sessions in httpsupport.cpp.",
+      "benefit": "Removes an intermittent HTTP launch failure or corrupted refresh when launching during a catalog refresh; +2 lines (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read httpclient.cpp:1-161 (file-scope SifRpcClient, RpcTxBuffer, RpcRxBuffer; function-static streamBuffer; no lock) and modules/network/common/httpclient.h:22-24 (only one stream live). Callers via grep: httpsupport.cpp:266-357 (openRequest/fetchCatalog), :437 (httpTestServer), :596 (update), :681-692 (httpProbeRead), :794 (launch). update runs on the IO worker: opl.cpp:1691 registers menuDeferredUpdate for IO_MENU_UPDATE_DEFFERED. Launch path menuitems.cpp:140-192 has no ioBlockOps. HTTP refresh triggers: httpsupport.cpp:567 (init), :577 consumeDirty(HTTP_MODE). The exact corruption on overlap is INFERRED, not reproduced."
+    }
+  ]
+}

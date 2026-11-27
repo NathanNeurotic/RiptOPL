@@ -1,0 +1,119 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-08",
+  "coverage": [
+    {"path": "src/app/opl.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "opl.cpp is the menu ELF's entry point and glue: it owns the per-mode page table (list_support / gSourceRegistry), registers and refreshes each device source's menu page (initSupport, initAllSupport, menuDeferredUpdate, updateMenuFromGameList), runs the per-frame background-rescan hook (menuUpdateHook), and keeps the shared error-message box state. It also defines most of the program's settings globals, the boot sequence (main, init, deferredInit, setDefaults, bootDisplayPeek, setBootDir), the argv autolaunch setup (miniInit/miniDeinit) and the two teardown paths used before every ELF handoff (deinit and deinitEx).",
+  "reusable_helpers": [
+    {"name": "bootPeekKey", "path": "src/app/opl.cpp", "line": 1616, "what": "matches one 'key=value' or 'key = value;' settings line and returns the integer value"},
+    {"name": "setBootDir", "path": "src/app/opl.cpp", "line": 2019, "what": "splits a launcher boot path into folder and ELF name, normalising backslashes and the device-root case"},
+    {"name": "resolveMcWildcardBootDir", "path": "src/app/opl.cpp", "line": 1979, "what": "turns an mc?: path into mc0:/mc1: by probing which card holds the file or folder"},
+    {"name": "oplPath2Mode", "path": "src/app/opl.cpp", "line": 631, "what": "maps a device path prefix (mass0:, smb, pfs, mmce, http...) to the IO mode"},
+    {"name": "formatErrorMessage", "path": "src/app/opl.cpp", "line": 1082, "what": "safe substitution of %s/%d into a language string without handing it to printf"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "deinit() is a line-for-line copy of deinitEx() with modeSelected2 = -1",
+      "category": 2,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 1373, "end": 1456},
+        {"path": "src/app/opl.cpp", "start": 1279, "end": 1371},
+        {"path": "src/app/opl.cpp", "start": 1254, "end": 1256},
+        {"path": "src/app/opl.cpp", "start": 1310, "end": 1318},
+        {"path": "src/app/opl.cpp", "start": 1404, "end": 1412}
+      ],
+      "problem": "deinit (1373-1456) repeats deinitEx (1279-1371) statement for statement, including its 36 comment lines. The only differences: deinit calls deinitAllSupport where deinitEx runs the same loop with a spared mode (with modeSelected2 = -1 the loop is exactly deinitAllSupport, 608-614), and deinitEx adds launchDiagMark(7)/(8), which are gated on gLaunchDiag (compiled to 0 without LAUNCH_DIAG, armed only by udp-block Neutrino launches). Both copies also carry a stale paragraph saying 'deinitAllSupport below' (1310-1318, wrong in deinitEx) and the deinitEx header comment (1254-1256) is separated from its function by the drain-ticks block.",
+      "fix": "Delete the body of deinit and make it call deinitEx(exception, modeSelected, -1). Keep one copy of the comments, drop the stale first 'JOIN the art worker' paragraph (the join is described again at cacheEnd), and move the deinitEx header comment next to its function. Adjust .github/scripts/test_menu_crash_catcher.py:63-64, which greps both bodies for menuWatchStop().",
+      "justification": "",
+      "benefit": "~80 source lines removed (84-line function becomes a 3-line forwarder); one copy of the teardown code leaves the ELF, a few hundred bytes (INFERRED, not measured); future teardown fixes land once instead of twice.",
+      "benefit_rank": 3,
+      "lines_removed": 80,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read opl.cpp:1254-1456 side by side: identical statements 1281-1349 vs 1375-1443; loop 1350-1355 with modeSelected2<0 gives spared=0 -> moduleCleanup(..., modeSelected), same as deinitAllSupport 608-614; then audioEnd..configEnd identical (1359-1368 vs 1446-1455). launchDiagMark/gLaunchDiag: include/launchdiag.h:52-76 (#define gLaunchDiag 0 and inline no-op when LAUNCH_DIAG is off; armed only by stage 1 in NeutrinoLauncher). Callers: deinit via host.cpp:77 from ~20 call sites (system.cpp:461,665, appsupport.cpp:1073 etc.), deinitEx via host.cpp:78 from Neutrino/POPSTARTER paths. Test test_menu_crash_catcher.py:63-64 asserts menuWatchStop() in both function bodies."
+    },
+    {
+      "n": 2,
+      "title": "SourceRegistry class and two forwarders wrap one plain array",
+      "category": 3,
+      "locations": [
+        {"path": "include/sourceregistry.h", "start": 1, "end": 28},
+        {"path": "src/app/opl.cpp", "start": 128, "end": 157},
+        {"path": "src/sources/appscan.cpp", "start": 76, "end": 82}
+      ],
+      "problem": "The page table is a class with one instance (gSourceRegistry) whose only members return &modules_[mode], the array base, and appImageByMode. opl.cpp then re-exposes it as a list_support pointer (132), forwards module() through oplGetModule (138-141), and appscan.cpp forwards oplGetAppImageByMode to the member (79-82) whose body lives back in opl.cpp (145-157). Its only callers are appsupport.cpp:1389,1391. Nothing else uses SourceRegistry or gSourceRegistry.",
+      "fix": "Delete include/sourceregistry.h and the class. In opl.cpp declare a plain static opl_io_module_t list_support[MODE_COUNT] (the name test_io_queue_trims.py needs), let oplGetModule return &list_support[mode], and make the appImageByMode body the definition of oplGetAppImageByMode in opl.cpp. Delete the forwarder and the include in appscan.cpp. Update docs/CPP-CONVERSION-PLAN.md section 22.",
+      "justification": "",
+      "benefit": "~40 source lines and one header removed (header 28 lines, opl.cpp ~6, appscan.cpp ~7); one call level gone on the per-cover app art lookup; no measurable ELF change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 40,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep gSourceRegistry|sourceregistry.h|SourceRegistry over src/RiptOPL (all file types): only include/sourceregistry.h:11,26, opl.cpp:13,128-145, appscan.cpp:10,78,81 and docs/CPP-CONVERSION-PLAN.md:66,419,454,502-507. Grep appImageByMode|oplGetAppImageByMode: opl.h:70, appscan.cpp:79-81, appsupport.cpp:1389,1391, sourceregistry.h:19-20, opl.cpp:143-145. oplGetModule callers: settingsio.cpp:2530-2542, appscan.cpp:137,195,226 (all through (*oplGetModule(i)).)."
+    },
+    {
+      "n": 3,
+      "title": "Globals gFadeDelay and toggleSfx are never used",
+      "category": 1,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 293, "end": 294}
+      ],
+      "problem": "gFadeDelay and toggleSfx are defined and never read, written or declared anywhere else in the repo.",
+      "fix": "Delete both definitions.",
+      "justification": "",
+      "benefit": "2 lines; 8 bytes of .bss (INFERRED: two int).",
+      "benefit_rank": 1,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep -w gFadeDelay|toggleSfx over the whole of src/RiptOPL (all file types incl. headers, tests, scripts, docs): only opl.cpp:293 and opl.cpp:294. Every other global of opl.cpp:160-339 was checked with git grep -lw outside opl.cpp; only these two had no other mention."
+    },
+    {
+      "n": 4,
+      "title": "RA #ifdef in updateMenuFromGameList duplicates the row-text assignment",
+      "category": 2,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 796, "end": 810}
+      ],
+      "problem": "Both branches of the RETROACHIEVEMENTS #ifdef assign gup->submenu.text with the same expression (801 and 809); only the raText/raBadged lines are RA-specific.",
+      "fix": "Assign submenu.text once before the #ifdef and keep only the badge lines inside it; the #else branch disappears.",
+      "justification": "",
+      "benefit": "~4 lines removed; no ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read opl.cpp:796-810: line 801 and line 809 are the same statement; raBadgeText (800) does not depend on submenu.text."
+    },
+    {
+      "n": 5,
+      "title": "normalizeMcBootDir is a one-caller wrapper for two calls",
+      "category": 3,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 2010, "end": 2017},
+        {"path": "src/app/opl.cpp", "start": 2088, "end": 2088}
+      ],
+      "problem": "normalizeMcBootDir only calls resolveMcWildcardBootDir() and normalizeMcPath(gBootDir, ...) and has a single caller in main.",
+      "fix": "Inline the two calls at main:2088 and delete the wrapper, keeping its comment there.",
+      "justification": "",
+      "benefit": "~5 lines removed; no ELF change, the static wrapper is already inlined (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep -nw normalizeMcBootDir over src include ee_core modules: no match outside opl.cpp; inside opl.cpp only the definition (2013) and the call (2088)."
+    }
+  ]
+}

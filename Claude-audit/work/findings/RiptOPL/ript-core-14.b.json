@@ -1,0 +1,95 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-14.b",
+  "coverage": [
+    {"path": "include/artindex.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/artindex.cpp", "status": "read_full", "note": ""},
+    {"path": "src/gfx/artload.cpp", "status": "read_full", "note": ""},
+    {"path": "include/artqueue.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/artqueue.cpp", "status": "read_full", "note": ""},
+    {"path": "include/artworker.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/artworker.cpp", "status": "read_full", "note": ""},
+    {"path": "include/atlas.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/atlas.cpp", "status": "read_full", "note": ""},
+    {"path": "src/gfx/coverflow.cpp", "status": "read_full", "note": ""},
+    {"path": "include/fntsys.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "The cover-art pipeline of the menu ELF. artload.cpp owns the dedicated art worker thread (priority 72, static 96 KB stack), its start/join/abandon lifecycle, the cancellation paths (stale stamp, view epoch, focus epoch, abort flag, SIO2 filter), the .tar art-pack lookup and the staged load/publish into cache slots; artqueue.cpp is the DIntr/EIntr-guarded intrusive FIFO and artworker.cpp/h hold the worker state and selection-focus epoch. artindex.cpp keeps up to three in-RAM directory listings of ART folders (FNV-1a hashes plus picture names) so a missing cover is answered without a device open, confined to the art worker thread. atlas.cpp is the guillotine glyph atlas used by fntsys.cpp, coverflow.cpp is the carousel theme element (window build, slide animation, lookahead warming), and fntsys.h is the font API header.",
+  "reusable_helpers": [
+    {"name": "ArtIndex::hashName", "path": "src/gfx/artindex.cpp", "line": 54, "what": "FNV-1a hash over an ASCII-uppercased name with an optional length limit"},
+    {"name": "focusHashValue", "path": "src/gfx/artworker.cpp", "line": 13, "what": "plain FNV-1a string hash (same constants as ArtIndex::hashName, no case folding)"},
+    {"name": "ArtIndex::splitPath", "path": "src/gfx/artindex.cpp", "line": 116, "what": "splits a device path into directory and basename, handling both dev:/dir/x and dev:x forms"},
+    {"name": "ArtIndex::pictureExt", "path": "src/gfx/artindex.cpp", "line": 70, "what": "offset of a .png/.jpg/.jpeg extension (case-insensitive), -1 otherwise"},
+    {"name": "Atlas::placeIn", "path": "src/gfx/atlas.cpp", "line": 105, "what": "guillotine rectangle packer for small bitmaps"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Atlas node tree held in nested raii::UniquePtr makes GCC unroll the recursive destructor into ~14 KB of .text",
+      "category": 4,
+      "locations": [
+        {"path": "include/atlas.h", "start": 42, "end": 52},
+        {"path": "src/gfx/atlas.cpp", "start": 42, "end": 47},
+        {"path": "src/gfx/atlas.cpp", "start": 54, "end": 60},
+        {"path": "src/gfx/atlas.cpp", "start": 117, "end": 123},
+        {"path": "include/raii.h", "start": 83, "end": 95}
+      ],
+      "problem": "Atlas::Node owns its children as raii::UniquePtr<Node>, so destroying the tree is a recursive chain of inline templates (unique_ptr dtor -> DestroyFree -> ~Node -> two unique_ptr dtors). At -O2 GCC inlines that recursion several levels deep: nm of the shipped ELF shows Atlas::~Atlas at 0x1958 (6,488 B) and std::unique_ptr<Atlas::Node, raii::DestroyFree>::~unique_ptr at 0x1d10 (7,440 B) plus a 168 B DestroyFree part, i.e. 14,096 of atlas.o's 15,448 text bytes for freeing a binary tree that upstream OPL freed with a ten-line recursive function.",
+      "fix": "Stop the recursive inlining: either give Node plain Node* children and free the tree with one small static recursive (or iterative) free function, as upstream OPL's atlas.c did, or keep UniquePtr and declare Node's destructor out of line with __attribute__((noinline)). Confirm with nm that Atlas::~Atlas and the unique_ptr<Atlas::Node> destructor drop to a few hundred bytes.",
+      "justification": "The fix replaces the template destructor chain with one explicit free routine (or one attribute); source size stays about the same while ~13.8 KB of loaded .text goes away.",
+      "benefit": "~13.8 KB .text: MEASURED 6,488 + 7,440 + 168 = 14,096 B now (riptopl-nm-size-sorted.full.txt:132-133,153-154,3181); a non-inlined free is ~200-300 B (INFERRED). ELF is packed, so on-disk saving is smaller (INFERRED); RAM saving is the full amount.",
+      "benefit_rank": 4,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read atlas.h:42-52 (Node with raii::UniquePtr leaf1/leaf2, root_) and atlas.cpp:42-60,105-139; raii.h:83-95 (DestroyFree calls p->~T() then free, UniquePtr = std::unique_ptr<T, DestroyFree>). evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt:132-133 _ZNSt10unique_ptrIN5Atlas4NodeEN4raii11DestroyFreeEED1/D2Ev size 0x1d10 (same address), :153-154 _ZN5AtlasD1/D2Ev size 0x1958 (same address), :3181 DestroyFree::operator()<Atlas::Node>.part.0 0xa8; other Atlas methods total ~1.3 KB (placeIn 0x26c, create 0x13c, copyData 0xcc, place 0x88). riptopl-per-object.tsv:92 atlas.o text 15448. compile-link-flags.txt:55 riptopl -O2. BUILD-EVIDENCE.md:232 also lists Atlas::~Atlas() at 6,488 B."
+    },
+    {
+      "n": 2,
+      "title": "cacheLoadImage retries every non-ERR_BAD_FILE failure, so an undecodable art file is re-read continuously while it is on screen",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/artload.cpp", "start": 743, "end": 751},
+        {"path": "src/gfx/texcache.cpp", "start": 372, "end": 378},
+        {"path": "src/gfx/textures.cpp", "start": 723, "end": 726},
+        {"path": "src/gfx/textures.cpp", "start": 1035, "end": 1042},
+        {"path": "src/gfx/textures.cpp", "start": 1328, "end": 1334}
+      ],
+      "problem": "The transient branch fires for any result other than ERR_BAD_FILE, including deterministic format failures: ERR_SET_JMP (truncated/corrupt PNG, or any PNG over the 1024x1024 user limit), ERR_BAD_DEPTH (16-bit PNG), ERR_BAD_DIMENSION, and ERR_FILE_IO for a zero-byte file. The slot is cleared, the row re-requests on its next draw, and the 'settle gate' the comment relies on only exists for SIO2, so on USB/HDD/SMB the art worker re-opens and re-reads that file back to back (twice per try, since texLoadArtFile retries a bad .png as a JPG) for as long as the row or selected BG is shown, keeping cacheHasPendingArt() true.",
+      "fix": "Keep the retry lane only for real I/O and allocation failures: retry when the result is ERR_FILE_IO, ERR_READ_STRUCT or ERR_INFO_STRUCT, and park every other negative result exactly like ERR_BAD_FILE (it is re-asked after the next fail-epoch bump). Make the zero-byte case at textures.cpp:723-726 return a format error rather than ERR_FILE_IO so it parks too.",
+      "justification": "",
+      "benefit": "Stops an unbounded read loop (one full file read, often two, per art-worker cycle) for every broken art file on screen; no lines added, one condition changed (INFERRED from the code path; no hardware count).",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "artload.cpp:714-758: result<0 and !abortRequested -> if (result != ERR_BAD_FILE) { transientFail++; cacheClearItem(entry,0); release } with no backoff (grep transientFail|retryFrame|backoff over src/gfx: only artload.cpp:166,747). textures.h:195-207 error codes. textures.cpp:1035-1042 png_set_user_limits(1024,1024) then png_read_info (png_error -> setjmp at 1023-1031 -> ERR_SET_JMP), bitDepth>8 -> ERR_BAD_DEPTH; 1108-1111 ERR_BAD_DIMENSION; 723-726 empty file -> ERR_FILE_IO; 1328-1334 non-PNG .png falls to texLoadJpgFile which re-opens and stages the file again and returns the PNG result. texcache.cpp:245-351: cleared slot (UID 0, key empty) misses both the id path and the key reunion, so the next cacheGetTextureEx claims a slot and enqueues again; texcache.cpp:372-378 idle gate applies only when isSio2."
+    },
+    {
+      "n": 3,
+      "title": "ArtIndex::build allocates 4096-entry hash and picture tables plus a 16 KB name buffer per directory and never trims them",
+      "category": 4,
+      "locations": [
+        {"path": "src/gfx/artindex.cpp", "start": 191, "end": 201},
+        {"path": "src/gfx/artindex.cpp", "start": 275, "end": 286},
+        {"path": "src/gfx/artindex.cpp", "start": 421, "end": 435},
+        {"path": "include/artindexint.h", "start": 29, "end": 38}
+      ],
+      "problem": "Every indexed directory gets hashes = 4096 x 4 B = 16 KB and pics = 4096 x 8 B = 32 KB at full kMaxEntries size, and names starts at 16 KB; the slot keeps these exact sizes until the round-robin rebuilds that slot (invalidate() only marks slots unusable). A 200-entry POPS or ART folder needs about 7 KB but holds 64 KB; a 2000-picture ART folder needs ~72 KB but holds ~112 KB. With three slots that is roughly 120-170 KB of EE heap held for nothing.",
+      "fix": "After the sort and before publishing (lines 275-286), shrink each buffer to what the sweep used: realloc hashes to n entries, pics to picCount entries and names to namesUsed bytes, keeping the original pointer when realloc returns NULL or the count is zero.",
+      "justification": "Adds three or four realloc lines; the concrete problem is 40-57 KB of heap per held directory slot that no code ever reads, and shrinking in place is the smallest change that returns it.",
+      "benefit": "~40-57 KB heap per valid slot, ~120-170 KB with three slots (INFERRED: 16 KB + 32 KB fixed tables and 16 KB name floor vs 12 B per entry + name bytes actually used).",
+      "benefit_rank": 3,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read artindex.cpp:147-290 (malloc(kMaxEntries*sizeof(unsigned int)) at 191, malloc(kMaxEntries*sizeof(Pic)) at 199, namesSize = 16*1024 at 200, growth only by doubling at 230-239, published unchanged at 281-286), release() at 92-102 called only from build() line 154, invalidate() at 421-435 frees nothing. artindexint.h:29-38 kSlots=3, kMaxEntries=4096, kNamesMax=128 KB; Pic is two 4-byte fields (40-44). Directory sizes are examples, not measured."
+    }
+  ]
+}

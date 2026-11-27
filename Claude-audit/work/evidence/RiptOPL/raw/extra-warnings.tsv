@@ -1,0 +1,1054 @@
+# Evidence-only pass (scripts/extra_warnings.py): -fsyntax-only -Wall -Wextra -Wunused -Wunused-macros ...
+# translation units checked: 468   unique sources: 322   failed: 0
+# tus_total is blank for a warning located in a header (it can come from any includer).
+flag	file	line	message	tus_warn	tus_total
+(no flag)	<sdk>/packages/core/ps2ip/include/ps2ip.h	110	'struct pbuf' declared inside parameter list will not be visible outside of this definition or declaration	1	
+-Wcast-function-type	modules/debug/udptty-ingame/udptty.c	182	cast between incompatible function types from 'void * (*)(void *, const char *, void *)' to 'int (*)(void *, const char *, void *)'	1	1
+-Wcast-function-type	modules/network/SMSTCPIP/ps2ip.c	308	cast between incompatible function types from 'int (*)(int)' to 'void (*)(void *)'	1	1
+-Wcomment	<sdk>/packages/core/ps2ip/include/ps2ip.h	32	'/*' within comment	2	
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	113	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	444	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	503	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	562	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	628	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	876	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	989	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wdiscarded-qualifiers	modules/mmce/mmceman/src/mmce_fs.c	997	passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type	1	1
+-Wduplicated-branches	modules/bdm/bdmfs_fatfs/fatfs/ff.c	918	this condition has identical branches	1	1
+-Wduplicated-branches	src/sources/httpsupport.cpp	182	this condition has identical branches	1	1
+-Wduplicated-branches	src/ui/dia.cpp	637	this condition has identical branches	1	1
+-Wempty-body	modules/ds34bt/iop/ds34bt.c	609	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/ds34bt/iop/ds34bt.c	704	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/ds34bt/iop/ds34bt.c	753	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/ds34bt/iop/ds34bt.c	773	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/ds34usb/iop/ds34usb.c	667	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	modules/ds34usb/iop/ds34usb.c	836	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	modules/iopcore/cdvdman/device-udpfs.c	232	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/iopcore/cdvdman/ioops.c	468	suggest braces around empty body in an 'else' statement	12	12
+-Wempty-body	modules/iopcore/cdvdman/ioops.c	470	suggest braces around empty body in an 'else' statement	12	12
+-Wempty-body	modules/iopcore/cdvdman/streaming.c	433	suggest braces around empty body in an 'if' statement	12	12
+-Wempty-body	modules/mmce/mmceman/src/mmceman.c	49	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	modules/network/SMSTCPIP/pbuf.c	740	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/network/SMSTCPIP/pbuf.c	750	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/network/SMSTCPIP/tcp.c	574	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/pademu/ds34bt.c	535	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/pademu/ds34bt.c	630	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/pademu/ds34bt.c	676	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/pademu/ds34bt.c	696	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	modules/pademu/ds34usb.c	518	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/app/autolaunch.cpp	96	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/lwnbdctl.cpp	203	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/lwnbdctl.cpp	239	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/opl.cpp	1826	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	374	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	377	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	686	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	894	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/bgm.cpp	145	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/config.cpp	1415	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/config.cpp	1467	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artindex.cpp	178	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artload.cpp	93	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artload.cpp	117	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/coverflow.cpp	365	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/grid.cpp	688	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	94	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	473	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	628	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	950	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	1350	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	1588	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/platform/ioman.cpp	198	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/sysneutrino.cpp	1431	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1260	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1302	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1466	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/util.cpp	917	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/util.cpp	931	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/appscan.cpp	124	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/appsupport.cpp	837	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmdevices.cpp	362	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmlaunch.cpp	756	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	593	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	607	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	1483	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	2183	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	2309	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	418	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	458	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	792	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	859	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	922	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	303	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	403	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	930	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	1839	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2540	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2690	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2705	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/httpsupport.cpp	234	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/httpsupport.cpp	837	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/mmcesupport.cpp	627	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/mmcesupport.cpp	756	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/netsupport.cpp	217	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/netsupport.cpp	277	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/supportbase.cpp	1859	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/vmcrebuild.cpp	101	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/vmcrebuild.cpp	114	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	234	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	242	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	410	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guimodal.cpp	441	suggest braces around empty body in an 'if' statement	1	1
+-Wextra	src/ui/libview.cpp	110	enumerated and non-enumerated type in conditional expression	1	1
+-Wextra	src/ui/libview.cpp	112	enumerated and non-enumerated type in conditional expression	1	1
+-Wextra	src/ui/libview.cpp	252	enumerated and non-enumerated type in conditional expression	1	1
+-Wextra	src/ui/libview.cpp	253	enumerated and non-enumerated type in conditional expression	1	1
+-Wmissing-declarations	src/sources/hddsupport.cpp	817	no previous declaration for 'int hddDetectNonSonyFileSystem()'	1	1
+-Wmissing-prototypes	<sdk>/packages/core/cglue/include/ps2sdkapi.h	228	no previous prototype for '__libpthreadglue_init'	1	
+-Wmissing-prototypes	<sdk>/packages/core/cglue/include/ps2sdkapi.h	229	no previous prototype for '__libpthreadglue_deinit'	1	
+-Wmissing-prototypes	<sdk>/packages/core/kernel/include/kernel.h	553	no previous prototype for '_ps2sdk_init_timer'	1	
+-Wmissing-prototypes	<sdk>/packages/core/kernel/include/kernel.h	554	no previous prototype for '_ps2sdk_deinit_timer'	1	
+-Wmissing-prototypes	<sdk>/packages/core/kernel/include/kernel.h	557	no previous prototype for 'ForTimer_InitAlarm'	2	
+-Wmissing-prototypes	ee_core/src/cheat_api.c	76	no previous prototype for 'SetupCheats'	1	1
+-Wmissing-prototypes	ee_core/src/main.c	33	no previous prototype for '_ps2sdk_timezone_update'	1	1
+-Wmissing-prototypes	ee_core/src/patches.c	462	no previous prototype for 'Skip_BIK_Videos'	1	1
+-Wmissing-prototypes	ee_core/src/patches.c	487	no previous prototype for 'Skip_Videos_sceMpegIsEnd'	1	1
+-Wmissing-prototypes	ee_core/src/patches.c	910	no previous prototype for 'apply_patches'	1	1
+-Wmissing-prototypes	ee_core/src/syshook.c	50	no previous prototype for 'New_SifSetDma'	1	1
+-Wmissing-prototypes	ee_core/src/syshook.c	189	no previous prototype for 'hook_SetOsdConfigParam'	1	1
+-Wmissing-prototypes	ee_core/src/syshook.c	204	no previous prototype for 'hook_GetOsdConfigParam'	1	1
+-Wmissing-prototypes	elfldr/loader.c	53	no previous prototype for '_libcglue_init'	1	1
+-Wmissing-prototypes	elfldr/loader.c	54	no previous prototype for '_libcglue_deinit'	1	1
+-Wmissing-prototypes	elfldr/loader.c	55	no previous prototype for '_libcglue_args_parse'	1	1
+-Wmissing-prototypes	elfldr/loader.c	80	no previous prototype for '_ps2sdk_fileXio_init'	1	1
+-Wmissing-prototypes	elfldr/loader.c	81	no previous prototype for '_ps2sdk_fileXio_deinit'	1	1
+-Wmissing-prototypes	elfldr/loader.c	82	no previous prototype for '_ps2sdk_fileXio_set_block_size'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/fs_driver.c	414	no previous prototype for 'fs_lseek64'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/fs_driver.c	843	no previous prototype for 'fs_ioctl2'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/fs_driver.c	940	no previous prototype for 'fs_ioctl'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/fs_driver.c	945	no previous prototype for 'fs_rename'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/main.c	27	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/main.c	48	no previous prototype for 'malloc'	1	1
+-Wmissing-prototypes	modules/bdm/bdmfs_fatfs/src/main.c	60	no previous prototype for 'free'	1	1
+-Wmissing-prototypes	modules/bdm/src/bdm.c	229	no previous prototype for 'bdm_init'	1	1
+-Wmissing-prototypes	modules/bdm/src/main.c	18	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/bdm/src/part_driver.c	32	no previous prototype for 'part_disconnect'	1	1
+-Wmissing-prototypes	modules/bdm/src/part_driver.c	114	no previous prototype for 'part_init'	1	1
+-Wmissing-prototypes	modules/bdm/src/part_driver_gpt.c	16	no previous prototype for 'GetGPTPartitionNameAscii'	1	1
+-Wmissing-prototypes	modules/bdm/src/part_driver_mbr.c	12	no previous prototype for 'partitions_sanity_check_mbr'	1	1
+-Wmissing-prototypes	modules/bdmevent/main.c	80	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/debug/udptty-ingame/udptty.c	116	no previous prototype for 'Kprnt'	1	1
+-Wmissing-prototypes	modules/debug/udptty-ingame/udptty.c	186	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/debug/udptty-ingame/udptty.c	216	no previous prototype for '_shutdown'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1449	no previous prototype for 'ds34bt_set_rumble'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1466	no previous prototype for 'ds34bt_set_led'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1485	no previous prototype for 'ds34bt_get_bdaddr'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1495	no previous prototype for 'ds34bt_get_ver'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1509	no previous prototype for 'ds34bt_get_feat'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1519	no previous prototype for 'ds34bt_get_data'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1534	no previous prototype for 'ds34bt_reset'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1559	no previous prototype for 'ds34bt_get_status'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1572	no previous prototype for 'ds34bt_init'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1591	no previous prototype for 'ds34bt_init_charging'	1	1
+-Wmissing-prototypes	modules/ds34bt/iop/ds34bt.c	1675	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	23	no previous prototype for 'ds34usb_init'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	46	no previous prototype for 'ds34usb_deinit'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	52	no previous prototype for 'ds34usb_reinit_ports'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	61	no previous prototype for 'ds34usb_get_status'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	74	no previous prototype for 'ds34usb_get_bdaddr'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	93	no previous prototype for 'ds34usb_set_bdaddr'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	108	no previous prototype for 'ds34usb_set_rumble'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	120	no previous prototype for 'ds34usb_set_led'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	131	no previous prototype for 'ds34usb_get_data'	1	1
+-Wmissing-prototypes	modules/ds34usb/ee/libds34usb.c	147	no previous prototype for 'ds34usb_reset'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	685	no previous prototype for 'ds34usb_set_rumble'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	693	no previous prototype for 'ds34usb_set_led'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	701	no previous prototype for 'ds34usb_get_data'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	729	no previous prototype for 'ds34usb_get_bdaddr'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	802	no previous prototype for 'ds34usb_set_bdaddr'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	841	no previous prototype for 'ds34usb_reset'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	849	no previous prototype for 'ds34usb_get_status'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	863	no previous prototype for 'ds34usb_init'	1	1
+-Wmissing-prototypes	modules/ds34usb/iop/ds34usb.c	935	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/hdd/apa/src/apa-opt.h	46	no previous prototype for '_start'	1	
+-Wmissing-prototypes	modules/hdd/atad/src/ps2atad.c	264	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/hdd/atad/src/ps2atad.c	389	no previous prototype for '_exit'	1	1
+-Wmissing-prototypes	modules/hdd/xhdd/xhdd.c	124	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/ilink/IEEE1394_bd/src/main.c	15	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/ilink/iLinkman/src/iLink.c	77	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/ilink/iLinkman/src/iLink_internal.c	91	no previous prototype for 'iLinkEnableIntr'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdfsv/cdvdfsv.c	57	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/cdvdman.c	139	no previous prototype for 'initCache'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/cdvdman.c	149	no previous prototype for 'oplRegisterShutdownCallback'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/cdvdman.c	467	no previous prototype for 'DeviceReadSectorsCompressed'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/cdvdman.c	1174	no previous prototype for '_start'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/cdvdman.c	1228	no previous prototype for '_shutdown'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/dev9-pccf.c	4	no previous prototype for 'pccfDev9Unavailable'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/dev9-pccf.c	9	no previous prototype for 'pccfAtaInit'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/dev9-pccf.c	15	no previous prototype for 'pccfAtaUnavailable'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-bdm.c	268	no previous prototype for 'bdm_readSector'	4	4
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-bdm.c	289	no previous prototype for 'bdm_writeSector'	4	4
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-hdd.c	141	no previous prototype for 'hdd_vmcDmaTransfer'	2	2
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-mmce.c	225	no previous prototype for 'mmce_read_offset'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-mmce.c	250	no previous prototype for 'mmce_write_offset'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-smb.c	232	no previous prototype for 'smb_vmcReadFile'	3	3
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-smb.c	243	no previous prototype for 'smb_vmcWriteFile'	3	3
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-udpfs.c	236	no previous prototype for 'udpfs_vmc_read'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/device-udpfs.c	241	no previous prototype for 'udpfs_vmc_write'	1	1
+-Wmissing-prototypes	modules/iopcore/cdvdman/ncmd.c	55	no previous prototype for 'sceCdReadCdda'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/ncmd.c	61	no previous prototype for 'lba_to_msf'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/ncmd.c	93	no previous prototype for 'cdvdman_fill_toc'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/scmd.c	145	no previous prototype for 'cdvdman_readID'	12	12
+-Wmissing-prototypes	modules/iopcore/cdvdman/smb.c	124	no previous prototype for 'OpenTCPSession'	1	1
+-Wmissing-prototypes	modules/iopcore/igrmbox/igrmbox.c	170	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/imgdrv/imgdrv.c	13	no previous prototype for 'dummy_fs'	1	1
+-Wmissing-prototypes	modules/iopcore/imgdrv/imgdrv.c	18	no previous prototype for 'lseek_fs'	1	1
+-Wmissing-prototypes	modules/iopcore/imgdrv/imgdrv.c	27	no previous prototype for 'read_fs'	1	1
+-Wmissing-prototypes	modules/iopcore/imgdrv/imgdrv.c	33	no previous prototype for 'close_fs'	1	1
+-Wmissing-prototypes	modules/iopcore/imgdrv/imgdrv.c	92	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/apemodpatch/main.c	61	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/cleareffects/main.c	13	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/f2techioppatch/main.c	20	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/iremsndpatch/main.c	41	no previous prototype for '_lock'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/iremsndpatch/main.c	46	no previous prototype for '_unlock'	1	1
+-Wmissing-prototypes	modules/iopcore/patches/iremsndpatch/main.c	51	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/iopcore/resetspu/resetspu.c	84	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/isofs/isofs.c	549	no previous prototype for 'ProbeISO9660'	1	1
+-Wmissing-prototypes	modules/isofs/isofs.c	661	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/mcemu/mcemu.c	24	no previous prototype for 'no_pademu'	4	4
+-Wmissing-prototypes	modules/mcemu/mcemu.c	42	no previous prototype for '_start'	4	4
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	51	no previous prototype for 'mmce_fs_init'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	58	no previous prototype for 'mmce_fs_deinit'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	63	no previous prototype for 'mmce_fs_open'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	145	no previous prototype for 'mmce_fs_close'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	201	no previous prototype for 'mmce_fs_read'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	280	no previous prototype for 'mmce_fs_write'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	355	no previous prototype for 'mmce_fs_lseek'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	402	no previous prototype for 'mmce_fs_ioctl'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	409	no previous prototype for 'mmce_fs_remove'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	468	no previous prototype for 'mmce_fs_mkdir'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	527	no previous prototype for 'mmce_fs_rmdir'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	586	no previous prototype for 'mmce_fs_dopen'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	661	no previous prototype for 'mmce_fs_dclose'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	710	no previous prototype for 'mmce_fs_dread'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	842	no previous prototype for 'mmce_fs_getstat'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	951	no previous prototype for 'mmce_fs_rename'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	1022	no previous prototype for 'mmce_fs_lseek64'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	1075	no previous prototype for 'mmce_fs_devctl'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	1169	no previous prototype for 'mmce_fs_ioctl2'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	1225	no previous prototype for 'mmce_fs_register'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_fs.c	1235	no previous prototype for 'mmce_fs_unregister'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_sio2.c	39	no previous prototype for 'mmce_sio2_intr_handler'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmce_sio2.c	50	no previous prototype for 'mmce_sio2_timeout_handler'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmceman.c	56	no previous prototype for '__start'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmceman.c	83	no previous prototype for '__stop'	1	1
+-Wmissing-prototypes	modules/mmce/mmceman/src/mmceman.c	93	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/mx4sio_bd/src/mx4sio.c	30	no previous prototype for 'mx_sio2_dma_isr_rx'	2	2
+-Wmissing-prototypes	modules/mx4sio_bd/src/mx4sio.c	84	no previous prototype for 'mx_sio2_dma_isr_tx'	2	2
+-Wmissing-prototypes	modules/mx4sio_bd/src/mx4sio.c	141	no previous prototype for 'mx_sio2_init_ports'	2	2
+-Wmissing-prototypes	modules/mx4sio_bd/src/mx4sio.c	149	no previous prototype for 'mx_sio2_init_td'	2	2
+-Wmissing-prototypes	modules/mx4sio_bd/src/mx4sio.c	839	no previous prototype for '_start'	2	2
+-Wmissing-prototypes	modules/network/SMSTCPIP/ps2ip.c	85	no previous prototype for 'PostInputMSG'	1	1
+-Wmissing-prototypes	modules/network/SMSTCPIP/ps2ip.c	268	no previous prototype for 'ps2ip_Stub'	1	1
+-Wmissing-prototypes	modules/network/SMSTCPIP/ps2ip.c	273	no previous prototype for 'ps2ip_ShutDown'	1	1
+-Wmissing-prototypes	modules/network/SMSTCPIP/ps2ip.c	295	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/httpclient/main.c	124	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/httpclient/main.c	151	no previous prototype for '_exit'	1	1
+-Wmissing-prototypes	modules/network/nbns/main.c	42	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/nbns/main.c	71	no previous prototype for '_exit'	1	1
+-Wmissing-prototypes	modules/network/nfsman/nfsman.c	1397	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/ps2ips/ps2ips.c	725	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/raudp/raudp.c	1232	no previous prototype for '_shutdown'	1	1
+-Wmissing-prototypes	modules/network/raudp/raudp.c	1242	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/smap-ingame/main.c	190	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/smap_udpbd/src/main.c	19	no previous prototype for 'parse_ip'	1	1
+-Wmissing-prototypes	modules/network/smap_udpbd/src/main.c	45	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/smap_udpbd/src/udptty.c	75	no previous prototype for 'udptty_init'	1	1
+-Wmissing-prototypes	modules/network/smb2man/smb2man.c	1768	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/smb2man/usmb2/md5.c	52	no previous prototype for 'rotateLeft'	1	1
+-Wmissing-prototypes	modules/network/smb2man/usmb2/usmb2.c	504	no previous prototype for 'usmb2_negotiateprotocol'	1	
+-Wmissing-prototypes	modules/network/smb2man/usmb2/usmb2.c	563	no previous prototype for 'usmb2_sessionsetup'	1	
+-Wmissing-prototypes	modules/network/smbinit/des.c	508	no previous prototype for 'DES'	1	1
+-Wmissing-prototypes	modules/network/smbinit/main.c	11	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/smbinit/md4.c	142	no previous prototype for 'MD4'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/auth.c	19	no previous prototype for 'LM_Password_Hash'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/auth.c	48	no previous prototype for 'NTLM_Password_Hash'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/auth.c	72	no previous prototype for 'LM_Response'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/des.c	510	no previous prototype for 'DES'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/md4.c	145	no previous prototype for 'MD4'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/smb.c	859	no previous prototype for 'smb_NTCreateAndX'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/smb_fio.c	402	no previous prototype for 'smb_closeAll'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/smb_fio.c	871	no previous prototype for 'DMA_sendEE'	1	1
+-Wmissing-prototypes	modules/network/smbman-ra/smbman.c	25	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_bd/src/main.c	22	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_bd/src/udpfs_bd.c	173	no previous prototype for 'udpfs_bd_init'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/main.c	14	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	32	no previous prototype for 'udpfs_fhi_connected'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	38	no previous prototype for 'udpfs_fhi_read'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	58	no previous prototype for 'udpfs_fhi_write'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	97	no previous prototype for 'udpfs_fhi_init'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	125	no previous prototype for 'udpfs_fhi_cleanup'	1	1
+-Wmissing-prototypes	modules/network/udpfs_fhi/src/udpfs_fhi.c	138	no previous prototype for 'udpfs_fhi_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ioman/src/main.c	22	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ioman/src/udpfs_ioman.c	504	no previous prototype for 'udpfs_init'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ministack/src/main.c	44	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ministack/src/ministack_xchg.c	79	no previous prototype for 'mstack_xchg'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ministack/src/ministack_xchg.c	199	no previous prototype for 'mstack_xchg_init'	1	1
+-Wmissing-prototypes	modules/network/udpfs_ministack/src/udptty.c	75	no previous prototype for 'udptty_init'	1	1
+-Wmissing-prototypes	modules/network/udpfs_smap/src/main.c	11	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/pademu/pademu.c	99	no previous prototype for '_start'	2	2
+-Wmissing-prototypes	modules/pademu/pademu.c	150	no previous prototype for '_exit'	2	2
+-Wmissing-prototypes	modules/pccf/main.c	109	no previous prototype for '_start'	2	2
+-Wmissing-prototypes	modules/usb/usbd-ra/src/driver.c	56	no previous prototype for 'probeDeviceTree'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/driver.c	120	no previous prototype for 'disconnectDriver'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	33	no previous prototype for 'cleanUpFunc'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	65	no previous prototype for 'openDeviceEndpoint'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	164	no previous prototype for 'doOpenEndpoint'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	175	no previous prototype for 'doCloseEndpoint'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	185	no previous prototype for 'doGetDeviceStaticDescriptor'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	208	no previous prototype for 'handleRhsc'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	239	no previous prototype for 'hcdProcessIntr'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	310	no previous prototype for 'hcdIrqThread'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	327	no previous prototype for 'usbdIntrHandler'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	333	no previous prototype for 'initHardware'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	355	no previous prototype for 'initHcdStructs'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hcd.c	500	no previous prototype for 'hcdInit'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	43	no previous prototype for 'initHubDriver'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	71	no previous prototype for 'allocHubBuffer'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	83	no previous prototype for 'freeHubBuffer'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	91	no previous prototype for 'HubControlTransfer'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	107	no previous prototype for 'hubStatusChangeCallback'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	169	no previous prototype for 'cancelTimerCallback'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	189	no previous prototype for 'addTimerCallback'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	228	no previous prototype for 'killEndpoint'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	281	no previous prototype for 'removeEndpointFromDevice'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	301	no previous prototype for 'hubDeviceResetCallback'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	309	no previous prototype for 'hubResetDevice'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	333	no previous prototype for 'checkDelayedResetsTree'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	349	no previous prototype for 'checkDelayedResets'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	357	no previous prototype for 'killDevice'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	364	no previous prototype for 'flushPort'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	402	no previous prototype for 'fetchConfigDescriptors'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	444	no previous prototype for 'requestDevDescrptCb'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	477	no previous prototype for 'hubPeekDeviceDescriptor'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	487	no previous prototype for 'hubSetFuncAddressCB'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	516	no previous prototype for 'hubTimedSetFuncAddress'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	590	no previous prototype for 'hubSetPortPower'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	606	no previous prototype for 'hubSetupPorts'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	628	no previous prototype for 'hubCheckPorts'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/hub.c	641	no previous prototype for 'hubCheckDeviceDesc'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/usbd.c	335	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/usbio.c	40	no previous prototype for 'enqueueEndpoint'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/usbio.c	67	no previous prototype for 'setupControlTransfer'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/usbio.c	152	no previous prototype for 'setupIsocronTransfer'	1	1
+-Wmissing-prototypes	modules/usb/usbd-ra/src/usbio.c	214	no previous prototype for 'setupBulkTransfer'	1	1
+-Wmissing-prototypes	modules/usb/usbmass_bd/src/main.c	16	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	modules/usb/usbmass_bd/src/usb_mass.c	456	no previous prototype for 'usb_queue_cmd'	1	1
+-Wmissing-prototypes	modules/usb/usbmass_bd/src/usb_mass.c	829	no previous prototype for 'usb_mass_init'	1	1
+-Wmissing-prototypes	modules/vmc/genvmc/genvmc.c	937	no previous prototype for '_start'	1	1
+-Wmissing-prototypes	tools/hwtest/smb2probe/probe_iop.c	133	no previous prototype for '_start'	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/ps2ip.c	69	'inline' is not at beginning of declaration	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/ps2ip.c	74	'inline' is not at beginning of declaration	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/ps2ip.c	79	'inline' is not at beginning of declaration	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/ps2ip.c	167	'inline' is not at beginning of declaration	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/ps2ip.c	172	'inline' is not at beginning of declaration	1	1
+-Wold-style-declaration	modules/network/SMSTCPIP/tcp_in.c	654	'inline' is not at beginning of declaration	1	1
+-Wredundant-decls	<sdk>/packages/core/cglue/include/sys/socket.h	978	redundant redeclaration of 'int libcglue_ps2ip_setconfig(const t_ip_info*)' in same scope	1	
+-Wredundant-decls	<sdk>/packages/core/cglue/include/sys/socket.h	978	redundant redeclaration of 'libcglue_ps2ip_setconfig'	1	
+-Wredundant-decls	<sdk>/packages/core/cglue/include/sys/socket.h	979	redundant redeclaration of 'int libcglue_ps2ip_getconfig(char*, t_ip_info*)' in same scope	1	
+-Wredundant-decls	<sdk>/packages/core/cglue/include/sys/socket.h	979	redundant redeclaration of 'libcglue_ps2ip_getconfig'	1	
+-Wredundant-decls	<sdk>/packages/core/kernel/include/kernel.h	485	redundant redeclaration of 'int sceSifDmaStat(int)' in same scope	96	
+-Wredundant-decls	<sdk>/packages/core/kernel/include/kernel.h	485	redundant redeclaration of 'sceSifDmaStat'	18	
+-Wredundant-decls	<sdk>/packages/core/kernel/include/kernel.h	487	redundant redeclaration of 'int sceSifSetDma(SifDmaTransfer_t*, int)' in same scope	96	
+-Wredundant-decls	<sdk>/packages/core/kernel/include/kernel.h	487	redundant redeclaration of 'sceSifSetDma'	18	
+-Wredundant-decls	ee_core/src/iopmgr.c	32	redundant redeclaration of '_iop_reboot_count'	1	1
+-Wredundant-decls	ee_core/src/padhook.c	112	redundant redeclaration of '_gp'	1	1
+-Wredundant-decls	modules/ds34bt/iop/ds34bt.c	366	redundant redeclaration of 'ds34pad_init'	1	1
+-Wredundant-decls	modules/hdd/atad/src/ps2atad.c	221	redundant redeclaration of 'ata_device_sector_io64'	1	1
+-Wredundant-decls	modules/iopcore/cdvdfsv/cdvdfsv-internal.h	37	redundant redeclaration of 'sceCdChangeThreadPriority'	4	
+-Wredundant-decls	modules/iopcore/cdvdman/device-bdm.c	20	redundant redeclaration of 'cdvdman_settings'	4	4
+-Wredundant-decls	modules/iopcore/cdvdman/device-hdd.c	13	redundant redeclaration of 'cdvdman_settings'	2	2
+-Wredundant-decls	modules/iopcore/cdvdman/device-mmce.c	10	redundant redeclaration of 'cdvdman_settings'	1	1
+-Wredundant-decls	modules/iopcore/cdvdman/device-udpfs.c	18	redundant redeclaration of 'cdvdman_settings'	1	1
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	1	redundant redeclaration of 'DeviceInit'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	2	redundant redeclaration of 'DeviceDeinit'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	3	redundant redeclaration of 'DeviceReady'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	5	redundant redeclaration of 'DeviceFSInit'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	6	redundant redeclaration of 'DeviceLock'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	7	redundant redeclaration of 'DeviceUnmount'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	8	redundant redeclaration of 'DeviceStop'	11	
+-Wredundant-decls	modules/iopcore/cdvdman/device.h	10	redundant redeclaration of 'DeviceReadSectors'	11	
+-Wredundant-decls	modules/mcemu/mcemu_sys.c	11	redundant redeclaration of 'QueryLibraryEntryTable'	4	4
+-Wredundant-decls	modules/network/SMSTCPIP/netif.c	173	redundant redeclaration of 'tcp_active_pcbs'	1	1
+-Wredundant-decls	modules/network/nfsman/unfs4/unfs4.h	163	redundant redeclaration of 'unfs4_init_context'	1	
+-Wredundant-decls	modules/network/nfsman/unfs4/unfs4.h	168	redundant redeclaration of 'unfs4_mount'	1	
+-Wredundant-decls	modules/network/nfsman/unfs4/unfs4.h	174	redundant redeclaration of 'unfs4_open'	1	
+-Wredundant-decls	modules/network/nfsman/unfs4/unfs4.h	178	redundant redeclaration of 'unfs4_prw'	1	
+-Wredundant-decls	modules/network/nfsman/unfs4/unfs4.h	185	redundant redeclaration of 'unfs4_size'	1	
+-Wredundant-decls	modules/network/smap-ingame/xfer.h	1	redundant redeclaration of 'HandleRxIntr'	2	
+-Wredundant-decls	modules/network/smap-ingame/xfer.h	2	redundant redeclaration of 'SMAPSendPacket'	2	
+-Wredundant-decls	modules/pademu/sys_utils.c	12	redundant redeclaration of 'QueryLibraryEntryTable'	2	2
+-Wredundant-decls	modules/usb/usbd-ra/src/driver.h	21	redundant redeclaration of 'callUsbDriverFunc'	1	
+-Wredundant-decls	modules/usb/usbd-ra/src/hcd.h	21	redundant redeclaration of 'callUsbDriverFunc'	1	
+-Wredundant-decls	modules/usb/usbd-ra/src/interface.c	28	redundant redeclaration of 'usbConfig'	1	1
+-Wredundant-decls	modules/usb/usbd-ra/src/usbio.h	26	redundant redeclaration of 'handleIoReqList'	5	
+-Wredundant-decls	src/app/opl.cpp	341	redundant redeclaration of 'void moduleUpdateMenuInternal(opl_io_module_t*, int, int)' in same scope	1	1
+-Wredundant-decls	src/gfx/themeelems.cpp	1106	redundant redeclaration of 'theme_element_t* thmGetElemForItem(menu_list*, submenu_list*, theme_element_t*)' in same scope	1	1
+-Wredundant-decls	src/platform/system.cpp	132	redundant redeclaration of 'void guiEnd()' in same scope	1	1
+-Wredundant-decls	src/platform/system.cpp	133	redundant redeclaration of 'void menuEnd()' in same scope	1	1
+-Wredundant-decls	src/platform/system.cpp	135	redundant redeclaration of 'void rmEnd()' in same scope	1	1
+-Wredundant-decls	src/sources/ratls_ps2.cpp	67	redundant redeclaration of 'mbedtls_ms_time_t mbedtls_ms_time()' in same scope	1	1
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	122	redundant redeclaration of 'psa_key_attributes_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	122	redundant redeclaration of 'psa_key_attributes_t psa_key_attributes_init()' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	148	redundant redeclaration of 'psa_set_key_id'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	148	redundant redeclaration of 'void psa_set_key_id(psa_key_attributes_t*, mbedtls_svc_key_id_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	196	redundant redeclaration of 'psa_set_key_lifetime'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	196	redundant redeclaration of 'void psa_set_key_lifetime(psa_key_attributes_t*, psa_key_lifetime_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	211	redundant redeclaration of 'mbedtls_svc_key_id_t psa_get_key_id(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	211	redundant redeclaration of 'psa_get_key_id'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	224	redundant redeclaration of 'psa_get_key_lifetime'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	224	redundant redeclaration of 'psa_key_lifetime_t psa_get_key_lifetime(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	243	redundant redeclaration of 'psa_set_key_usage_flags'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	243	redundant redeclaration of 'void psa_set_key_usage_flags(psa_key_attributes_t*, psa_key_usage_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	256	redundant redeclaration of 'psa_get_key_usage_flags'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	256	redundant redeclaration of 'psa_key_usage_t psa_get_key_usage_flags(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	289	redundant redeclaration of 'psa_set_key_algorithm'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	289	redundant redeclaration of 'void psa_set_key_algorithm(psa_key_attributes_t*, psa_algorithm_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	303	redundant redeclaration of 'psa_algorithm_t psa_get_key_algorithm(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	303	redundant redeclaration of 'psa_get_key_algorithm'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	320	redundant redeclaration of 'psa_set_key_type'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	320	redundant redeclaration of 'void psa_set_key_type(psa_key_attributes_t*, psa_key_type_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	338	redundant redeclaration of 'psa_set_key_bits'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	338	redundant redeclaration of 'void psa_set_key_bits(psa_key_attributes_t*, size_t)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	351	redundant redeclaration of 'psa_get_key_type'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	351	redundant redeclaration of 'psa_key_type_t psa_get_key_type(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	363	redundant redeclaration of 'psa_get_key_bits'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	363	redundant redeclaration of 'size_t psa_get_key_bits(const psa_key_attributes_t*)' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	954	redundant redeclaration of 'psa_hash_operation_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	954	redundant redeclaration of 'psa_hash_operation_t psa_hash_operation_init()' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	1313	redundant redeclaration of 'psa_mac_operation_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	1313	redundant redeclaration of 'psa_mac_operation_t psa_mac_operation_init()' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	1726	redundant redeclaration of 'psa_cipher_operation_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	1726	redundant redeclaration of 'psa_cipher_operation_t psa_cipher_operation_init()' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	2252	redundant redeclaration of 'psa_aead_operation_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	2252	redundant redeclaration of 'psa_aead_operation_t psa_aead_operation_init()' in same scope	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	3252	redundant redeclaration of 'psa_key_derivation_operation_init'	1	
+-Wredundant-decls	third_party/mbedtls/include/psa/crypto.h	3252	redundant redeclaration of 'psa_key_derivation_operation_t psa_key_derivation_operation_init()' in same scope	1	
+-Wredundant-decls	tools/hwtest/smb2probe/probe.c	285	redundant redeclaration of '_gp'	1	1
+-Wtype-limits	src/gfx/coverflow.cpp	157	comparison of unsigned expression in '< 0' is always false	1	1
+-Wtype-limits	src/gfx/grid.cpp	211	comparison of unsigned expression in '< 0' is always false	1	1
+-Wunterminated-string-initialization	modules/network/smbinit/smbauth.c	23	initializer-string for array of 'char' truncates NUL terminator but destination lacks 'nonstring' attribute (15 chars into 14 available)	1	1
+-Wunterminated-string-initialization	modules/network/smbman-ra/auth.c	21	initializer-string for array of 'unsigned char' truncates NUL terminator but destination lacks 'nonstring' attribute (15 chars into 14 available)	1	1
+-Wunused-but-set-variable	modules/network/SMSTCPIP/icmp.c	54	variable 'code' set but not used	1	1
+-Wunused-macros	elfldr/loader.c	148	macro 'LAUNCHDIAG_BGCOLOUR' is not used	1	1
+-Wunused-macros	elfldr/loader.c	149	macro 'LAUNCHDIAG_COLOR_CHILD_UP' is not used	1	1
+-Wunused-macros	elfldr/loader.c	150	macro 'LAUNCHDIAG_COLOR_CHILD_LOADED' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	55	macro 'IsSurrogateH' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	56	macro 'IsSurrogateL' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	62	macro 'FA_DIRTY' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	86	macro 'ET_UPCASE' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	97	macro 'BS_OEMName' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	104	macro 'BPB_Media' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	106	macro 'BPB_SecPerTrk' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	107	macro 'BPB_NumHeads' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	108	macro 'BPB_HiddSec' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	110	macro 'BS_DrvNum' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	111	macro 'BS_NTres' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	112	macro 'BS_BootSig' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	113	macro 'BS_VolID' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	114	macro 'BS_VolLab' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	115	macro 'BS_FilSysType' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	116	macro 'BS_BootCode' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	120	macro 'BPB_ExtFlags32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	124	macro 'BPB_BkBootSec32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	125	macro 'BS_DrvNum32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	126	macro 'BS_NTres32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	127	macro 'BS_BootSig32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	128	macro 'BS_VolID32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	129	macro 'BS_VolLab32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	131	macro 'BS_BootCode32' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	134	macro 'BPB_VolOfsEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	141	macro 'BPB_VolIDEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	143	macro 'BPB_VolFlagEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	147	macro 'BPB_DrvNumEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	149	macro 'BPB_RsvdEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	150	macro 'BS_BootCodeEx' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	155	macro 'DIR_CrtTime10' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	168	macro 'XDIR_NumLabel' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	169	macro 'XDIR_Label' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	170	macro 'XDIR_CaseSum' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	177	macro 'XDIR_CrtTime10' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	179	macro 'XDIR_CrtTZ' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	202	macro 'PTE_Boot' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	203	macro 'PTE_StHead' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	204	macro 'PTE_StSec' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	205	macro 'PTE_StCyl' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	207	macro 'PTE_EdHead' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	208	macro 'PTE_EdSec' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	209	macro 'PTE_EdCyl' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	211	macro 'PTE_SizLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	214	macro 'GPTH_Rev' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	217	macro 'GPTH_CurLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	218	macro 'GPTH_BakLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	219	macro 'GPTH_FstLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	220	macro 'GPTH_LstLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	221	macro 'GPTH_DskGuid' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	225	macro 'GPTH_PtBcc' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	228	macro 'GPTE_UpGuid' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	230	macro 'GPTE_LstLba' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	231	macro 'GPTE_Flags' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	232	macro 'GPTE_Name' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	297	macro 'TBL_CT437' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	305	macro 'TBL_CT720' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	313	macro 'TBL_CT737' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	321	macro 'TBL_CT771' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	329	macro 'TBL_CT775' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	337	macro 'TBL_CT850' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	345	macro 'TBL_CT852' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	353	macro 'TBL_CT855' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	361	macro 'TBL_CT857' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	369	macro 'TBL_CT860' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	377	macro 'TBL_CT861' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	385	macro 'TBL_CT862' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	393	macro 'TBL_CT863' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	401	macro 'TBL_CT864' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	409	macro 'TBL_CT865' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	417	macro 'TBL_CT866' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	437	macro 'TBL_DC932' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	438	macro 'TBL_DC936' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	439	macro 'TBL_DC949' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	440	macro 'TBL_DC950' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	542	macro 'LEAVE_MKFS' is not used	1	1
+-Wunused-macros	modules/bdm/bdmfs_fatfs/fatfs/ff.c	2334	macro 'DIR_READ_LABEL' is not used	1	1
+-Wunused-macros	modules/hdd/atad/src/ps2atad.c	193	macro 'ATA_BD_SECTOR_SIZE' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/atad.c	57	macro 'BANNER' is not used	2	2
+-Wunused-macros	modules/iopcore/cdvdman/atad.c	58	macro 'VERSION' is not used	2	2
+-Wunused-macros	modules/iopcore/cdvdman/dev9.c	43	macro 'VERSION' is not used	8	8
+-Wunused-macros	modules/iopcore/cdvdman/dev9.c	44	macro 'BANNER' is not used	8	8
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	36	macro 'BANNER' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	37	macro 'VERSION' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	53	macro 'ATAreg_NSECTOR_RD' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	54	macro 'ATAreg_SECTOR_RD' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	55	macro 'ATAreg_LCYL_RD' is not used	1	1
+-Wunused-macros	modules/iopcore/cdvdman/hdpro_atad.c	56	macro 'ATAreg_HCYL_RD' is not used	1	1
+-Wunused-macros	modules/iopcore/patches/f2techioppatch/main.c	17	macro 'JAL' is not used	1	1
+-Wunused-macros	modules/iopcore/patches/f2techioppatch/main.c	18	macro 'JMP' is not used	1	1
+-Wunused-macros	modules/isofs/lz4.c	51	macro 'HEAPMODE' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	136	macro 'lz4_bswap16' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	155	macro 'ALLOCATOR' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	156	macro 'FREEMEM' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	158	macro 'MEM_INIT' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	226	macro 'A64' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	234	macro 'HASHTABLESIZE' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	244	macro 'KB' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	245	macro 'MB' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	246	macro 'GB' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	248	macro 'LZ4_64KLIMIT' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	249	macro 'SKIPSTRENGTH' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	251	macro 'MAXD_LOG' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	252	macro 'MAX_DISTANCE' is not used	13	13
+-Wunused-macros	modules/isofs/lz4.c	322	macro 'LZ4_WRITE_LITTLEENDIAN_16' is not used	13	13
+-Wunused-macros	modules/mmce/mmceman/src/mmce_fs.c	12	macro 'MMCE_FS_WAIT_TIMEOUT' is not used	1	1
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	23	macro 'CMD17' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	26	macro 'CMD24' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	34	macro 'SPISD_R1_ERASE_RESET_FLAG' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	36	macro 'SPISD_R1_CMD_CRC_FLAG' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	37	macro 'SPISD_R1_ERASE_SEQ_ERROR_FLAG' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	38	macro 'SPISD_R1_ADDR_ERROR_FLAG' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	39	macro 'SPISD_R1_PARAM_ERROR_FLAG' is not used	2	2
+-Wunused-macros	modules/mx4sio_bd/src/spi_sdcard_driver.c	40	macro 'SPISD_R1_ZERO_FLAG' is not used	2	2
+-Wunused-macros	modules/network/SMSTCPIP/ip_frag.c	89	macro 'IP_REASS_TMO' is not used	1	1
+-Wunused-macros	modules/network/nbns/nbns.c	25	macro 'NB_GET_MN_FLAGS' is not used	1	1
+-Wunused-macros	modules/network/nfsman/nfsman.c	20	macro '_GNU_SOURCE' is not used	1	1
+-Wunused-macros	modules/network/nfsman/nfsman.c	165	macro 'NFS4ERR_MINOR_VERS_MISMATCH' is not used	1	1
+-Wunused-macros	modules/network/smap-ingame/main.c	36	macro 'ERR_CONN' is not used	1	1
+-Wunused-macros	modules/network/smap-ingame/main.c	37	macro 'ERR_IF' is not used	1	1
+-Wunused-macros	modules/network/smb2man/smb2man.c	30	macro '_GNU_SOURCE' is not used	1	1
+-Wunused-macros	modules/network/smb2man/usmb2/unicode.c	7	macro '_GNU_SOURCE' is not used	1	1
+-Wunused-macros	modules/pademu/ds34usb.c	18	macro 'REQ_USB_IN' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	21	macro 'USB_SUBCLASS_MASS_RBC' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	22	macro 'USB_SUBCLASS_MASS_ATAPI' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	23	macro 'USB_SUBCLASS_MASS_QIC' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	24	macro 'USB_SUBCLASS_MASS_UFI' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	28	macro 'USB_PROTOCOL_MASS_CBI' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	29	macro 'USB_PROTOCOL_MASS_CBI_NO_CCI' is not used	1	1
+-Wunused-macros	modules/usb/usbmass_bd/src/usb_mass.c	35	macro 'USB_XFER_MAX_RETRIES' is not used	1	1
+-Wunused-macros	src/gfx/renderman.cpp	16	macro '__VRAM_SIZE' is not used	1	1
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	133	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	139	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	145	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	151	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	157	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	163	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	170	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	177	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	183	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	189	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	189	unused parameter 'finishedCallback'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	195	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	201	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	207	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	213	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	213	unused parameter 'finishedCallback'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/osd_config.h	225	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/rom0_info.h	39	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/rom0_info.h	46	unused parameter 'driver'	99	
+-Wunused-parameter	<sdk>/packages/core/kernel/include/rom0_info.h	55	unused parameter 'driver'	99	
+-Wunused-parameter	ee_core/src/main.c	40	unused parameter 'argc'	1	1
+-Wunused-parameter	ee_core/src/main.c	40	unused parameter 'argv'	1	1
+-Wunused-parameter	ee_core/src/padhook.c	455	unused parameter 'arg'	1	1
+-Wunused-parameter	ee_core/src/padhook.c	685	unused parameter 'cause'	1	1
+-Wunused-parameter	ee_core/src/patches.c	796	unused parameter 'arg_len'	1	1
+-Wunused-parameter	ee_core/src/patches.c	796	unused parameter 'args'	1	1
+-Wunused-parameter	ee_core/src/syshook.c	50	unused parameter 'len'	1	1
+-Wunused-parameter	elfldr/loader.c	55	unused parameter 'argc'	1	1
+-Wunused-parameter	elfldr/loader.c	55	unused parameter 'argv'	1	1
+-Wunused-parameter	elfldr/loader.c	82	unused parameter 'size'	1	1
+-Wunused-parameter	modules/debug/udptty-ingame/udptty.c	186	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/debug/udptty-ingame/udptty.c	186	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/debug/udptty-ingame/udptty.c	240	unused parameter 'device'	1	1
+-Wunused-parameter	modules/debug/udptty-ingame/udptty.c	248	unused parameter 'device'	1	1
+-Wunused-parameter	modules/debug/udptty-ingame/udptty.c	259	unused parameter 'file'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	157	unused parameter 'devId'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	229	unused parameter 'devId'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	375	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	375	unused parameter 'count'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	375	unused parameter 'result'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	824	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	824	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	1168	unused parameter 'pad'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	1627	unused parameter 'data'	1	1
+-Wunused-parameter	modules/ds34bt/iop/ds34bt.c	1635	unused parameter 'size'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	233	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	244	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	244	unused parameter 'resultCode'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	253	unused parameter 'count'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	253	unused parameter 'result'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	893	unused parameter 'data'	1	1
+-Wunused-parameter	modules/ds34usb/iop/ds34usb.c	901	unused parameter 'size'	1	1
+-Wunused-parameter	modules/hdd/xhdd/hdpro.c	8	unused parameter 'device'	1	1
+-Wunused-parameter	modules/hdd/xhdd/hdpro.c	8	unused parameter 'mode'	1	1
+-Wunused-parameter	modules/hdd/xhdd/hdpro.c	8	unused parameter 'type'	1	1
+-Wunused-parameter	modules/hdd/xhdd/xhdd.c	19	unused parameter 'device'	1	1
+-Wunused-parameter	modules/hdd/xhdd/xhdd.c	32	unused parameter 'arglen'	1	1
+-Wunused-parameter	modules/hdd/xhdd/xhdd.c	32	unused parameter 'name'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	57	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	57	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	75	unused parameter 'args'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	128	unused parameter 'args'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	139	unused parameter 'args'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	155	unused parameter 'args'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	170	unused parameter 'args'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	178	unused parameter 'fno'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	178	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	192	unused parameter 'fno'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	192	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	201	unused parameter 'fno'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	201	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	210	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/cdvdfsv.c	225	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/ncmd.c	384	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/scmd.c	125	unused parameter 'size'	1	1
+-Wunused-parameter	modules/iopcore/cdvdfsv/searchfile.c	39	unused parameter 'fno'	1	1
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	165	unused parameter 'bcr'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	165	unused parameter 'dir'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	172	unused parameter 'bcr'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	172	unused parameter 'dir'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	273	unused parameter 'unused'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/atad.c	732	unused parameter 'device'	2	2
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	303	unused parameter 'arg'	8	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	373	unused parameter 'init_mode'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	379	unused parameter 'arg'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	1046	unused parameter 'args'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	1137	unused parameter 'common'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	1174	unused parameter 'argc'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/cdvdman.c	1174	unused parameter 'argv'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'arglen'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'args'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'buf'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'buflen'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'f'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	85	unused parameter 'name'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	536	unused parameter 'unused'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/dev9.c	624	unused parameter 'unused'	8	8
+-Wunused-parameter	modules/iopcore/cdvdman/hdpro_atad.c	138	unused parameter 'unused'	1	1
+-Wunused-parameter	modules/iopcore/cdvdman/hdpro_atad.c	736	unused parameter 'device'	1	1
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	126	unused parameter 'mode'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	214	unused parameter 'dev'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	232	unused parameter 'dev'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	478	unused parameter 'args'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	478	unused parameter 'f'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	495	unused parameter 'arglen'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	495	unused parameter 'buflen'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	495	unused parameter 'f'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	495	unused parameter 'name'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	599	unused parameter 'arglen'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	599	unused parameter 'args'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	599	unused parameter 'buf'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	599	unused parameter 'buflen'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/ioops.c	599	unused parameter 'f'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/streaming.c	15	unused parameter 'arg'	12	12
+-Wunused-parameter	modules/iopcore/cdvdman/streaming.c	294	unused parameter 'mode'	12	12
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	18	unused parameter 'fd'	1	1
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	18	unused parameter 'offset'	1	1
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	27	unused parameter 'fd'	1	1
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	33	unused parameter 'fd'	1	1
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	92	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/iopcore/imgdrv/imgdrv.c	92	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/iopcore/patches/cleareffects/main.c	13	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/iopcore/patches/cleareffects/main.c	13	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/iopcore/resetspu/resetspu.c	84	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/iopcore/resetspu/resetspu.c	84	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	77	unused parameter 'device'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	114	unused parameter 'device'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	371	unused parameter 'flags'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	371	unused parameter 'mode'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	579	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	579	unused parameter 'arglen'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	579	unused parameter 'f'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	579	unused parameter 'flags'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	579	unused parameter 'fsname'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	608	unused parameter 'f'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	608	unused parameter 'fsname'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	661	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/isofs/isofs.c	661	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/isofs/zso.c	21	unused parameter 'first_block'	14	13
+-Wunused-parameter	modules/mcemu/mcemu.c	42	unused parameter 'argc'	4	4
+-Wunused-parameter	modules/mcemu/mcemu.c	42	unused parameter 'argv'	4	4
+-Wunused-parameter	modules/mcemu/mcemu.c	65	unused parameter 'param'	4	4
+-Wunused-parameter	modules/mcemu/mcemu.c	276	unused parameter 'cnum'	4	4
+-Wunused-parameter	modules/mcemu/mcemu.c	276	unused parameter 'port'	4	4
+-Wunused-parameter	modules/mcemu/mcemu.c	276	unused parameter 'slot'	4	4
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	51	unused parameter 'f'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	58	unused parameter 'f'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	63	unused parameter 'mode'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	402	unused parameter 'cmd'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	402	unused parameter 'data'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	402	unused parameter 'file'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	468	unused parameter 'flags'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1075	unused parameter 'buflen'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1075	unused parameter 'name'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1169	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1169	unused parameter 'arglen'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1169	unused parameter 'data'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmce_fs.c	1169	unused parameter 'datalen'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	56	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	56	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	56	unused parameter 'startaddr'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	83	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	83	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	83	unused parameter 'mi'	1	1
+-Wunused-parameter	modules/mmce/mmceman/src/mmceman.c	83	unused parameter 'startaddr'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/api_msg.c	110	unused parameter 'pcb'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/api_msg.c	153	unused parameter 'pcb'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/api_msg.c	167	unused parameter 'pcb'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/api_msg.c	471	unused parameter 'pcb'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/ps2ip.c	295	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/ps2ip.c	295	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	218	unused parameter 'namelen'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	289	unused parameter 'namelen'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	328	unused parameter 'backlog'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	486	unused parameter 'flags'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	543	unused parameter 'tolen'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	579	unused parameter 'domain'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	813	unused parameter 'len'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/sockets.c	893	unused parameter 'how'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/tcp.c	822	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/tcpip.c	57	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/SMSTCPIP/timers.c	73	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	29	unused parameter 'nbytes'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	117	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	124	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	124	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	151	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/httpclient/main.c	151	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	22	unused parameter 'nbytes'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	35	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	42	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	42	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	71	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/nbns/main.c	71	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/nbns/nbns.c	168	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/nfsman/unfs4/unfs4.c	654	unused parameter 'mode'	1	
+-Wunused-parameter	modules/network/smap-ingame/main.c	45	unused parameter 'pNetIF'	1	1
+-Wunused-parameter	modules/network/smap-ingame/smap.c	112	unused parameter 'bmsr'	1	1
+-Wunused-parameter	modules/network/smap-ingame/smap.c	358	unused parameter 'flag'	1	1
+-Wunused-parameter	modules/network/smap-ingame/smap.c	406	unused parameter 'bcr'	1	1
+-Wunused-parameter	modules/network/smap-ingame/xfer.c	26	unused parameter 'smap_regbase'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/smap.c	462	unused parameter 'flag'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/smap.c	507	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/smap.c	507	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	71	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	82	unused parameter 'bd'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	295	unused parameter 'bd'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	300	unused parameter 'bd'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	307	unused parameter 'hdr'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	385	unused parameter 'hdr'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	395	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udpbd.c	395	unused parameter 'socket'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udptty.c	15	unused parameter 'driver'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/udptty.c	37	unused parameter 'file'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/xfer.c	31	unused parameter 'bcr'	1	1
+-Wunused-parameter	modules/network/smap_udpbd/src/xfer.c	62	unused parameter 'smap_regbase'	1	1
+-Wunused-parameter	modules/network/smbinit/main.c	11	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/smbinit/main.c	11	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/udpfs_bd/src/udpfs_bd.c	87	unused parameter 'bd'	1	1
+-Wunused-parameter	modules/network/udpfs_bd/src/udpfs_bd.c	93	unused parameter 'bd'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	111	unused parameter 'd'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	151	unused parameter 'd'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	171	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	171	unused parameter 'unk1'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	171	unused parameter 'unk2'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	171	unused parameter 'unk3'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	171	unused parameter 'unk4'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	276	unused parameter 'cmd'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	276	unused parameter 'data'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	276	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	281	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	287	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	293	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	360	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	366	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	366	unused parameter 'mask'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	366	unused parameter 'name'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	366	unused parameter 'stat'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	371	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	371	unused parameter 'new_name'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	371	unused parameter 'old'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	376	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	376	unused parameter 'name'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	381	unused parameter 'dev'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	381	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	381	unused parameter 'flag'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'arglen'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'devname'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'flag'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	386	unused parameter 'fsname'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	391	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	391	unused parameter 'fsname'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	396	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	396	unused parameter 'arglen'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	396	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	396	unused parameter 'name'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	403	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	403	unused parameter 'new_name'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	403	unused parameter 'old'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	408	unused parameter 'buf'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	408	unused parameter 'buflen'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	408	unused parameter 'f'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	408	unused parameter 'path'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	413	unused parameter 'data'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	413	unused parameter 'datalen'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	413	unused parameter 'rdata'	1	1
+-Wunused-parameter	modules/network/udpfs_ioman/src/udpfs_ioman.c	413	unused parameter 'rdatalen'	1	1
+-Wunused-parameter	modules/network/udpfs_ministack/src/ministack_eth.c	14	unused parameter 'len'	1	1
+-Wunused-parameter	modules/network/udpfs_ministack/src/udptty.c	15	unused parameter 'driver'	1	1
+-Wunused-parameter	modules/network/udpfs_ministack/src/udptty.c	37	unused parameter 'file'	1	1
+-Wunused-parameter	modules/network/udpfs_shared/src/udprdma.c	124	unused parameter 'hdr_len'	3	
+-Wunused-parameter	modules/network/udpfs_shared/src/udprdma.c	124	unused parameter 'udp_socket'	3	
+-Wunused-parameter	modules/network/udpfs_smap/src/smap.c	456	unused parameter 'flag'	1	1
+-Wunused-parameter	modules/network/udpfs_smap/src/smap.c	501	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/network/udpfs_smap/src/smap.c	501	unused parameter 'argv'	1	1
+-Wunused-parameter	modules/network/udpfs_smap/src/xfer.c	38	unused parameter 'bcr'	1	1
+-Wunused-parameter	modules/network/udpfs_smap/src/xfer.c	63	unused parameter 'smap_regbase'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	153	unused parameter 'devId'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	225	unused parameter 'devId'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	354	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	354	unused parameter 'count'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	354	unused parameter 'result'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	749	unused parameter 'arg'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	749	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/pademu/ds34bt.c	1096	unused parameter 'pad'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	226	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	238	unused parameter 'bytes'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	238	unused parameter 'resultCode'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	247	unused parameter 'count'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	247	unused parameter 'result'	1	1
+-Wunused-parameter	modules/pademu/ds34usb.c	570	unused parameter 'options'	1	1
+-Wunused-parameter	modules/pademu/pademu.c	150	unused parameter 'mode'	2	2
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	689	unused parameter 'dev'	1	1
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	698	unused parameter 'dev'	1	1
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	891	unused parameter 'buflen'	1	1
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	891	unused parameter 'f'	1	1
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	937	unused parameter 'argc'	1	1
+-Wunused-parameter	modules/vmc/genvmc/genvmc.c	937	unused parameter 'argv'	1	1
+-Wunused-parameter	src/app/settingsio.cpp	1230	unused parameter 'launch'	1	1
+-Wunused-parameter	src/core/bgm.cpp	191	unused parameter 'arg'	1	1
+-Wunused-parameter	src/core/bgm.cpp	227	unused parameter 'arg'	1	1
+-Wunused-parameter	src/core/bgm.cpp	554	unused parameter 'source'	1	1
+-Wunused-parameter	src/core/bgm.cpp	736	unused parameter 'alarm_id'	1	1
+-Wunused-parameter	src/core/bgm.cpp	736	unused parameter 'time'	1	1
+-Wunused-parameter	src/core/cheatman.cpp	187	unused parameter 'linenumber'	1	1
+-Wunused-parameter	src/core/gsm.cpp	95	unused parameter 'cmdline'	1	1
+-Wunused-parameter	src/gfx/artload.cpp	98	unused parameter 'value'	1	1
+-Wunused-parameter	src/gfx/coverflow.cpp	58	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/renderman.cpp	203	unused parameter 'cause'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	209	unused parameter 'theme'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	209	unused parameter 'themePath'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	455	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	455	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	455	unused parameter 'menu'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	484	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	505	unused parameter 'name'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	505	unused parameter 'theme'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	505	unused parameter 'themeConfig'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	505	unused parameter 'themePath'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	544	unused parameter 'menu'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	762	unused parameter 'themeConfig'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	924	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	924	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	924	unused parameter 'menu'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1199	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1358	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1601	unused parameter 'themePath'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1722	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1722	unused parameter 'elem'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1722	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1722	unused parameter 'menu'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1806	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1806	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1867	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1867	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1890	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1890	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	1930	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2119	unused parameter 'themePath'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2210	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2266	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2266	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2326	unused parameter 'config'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2326	unused parameter 'item'	1	1
+-Wunused-parameter	src/gfx/themeelems.cpp	2326	unused parameter 'menu'	1	1
+-Wunused-parameter	src/gfx/themes.cpp	1061	unused parameter 'psm'	1	1
+-Wunused-parameter	src/platform/system.cpp	454	unused parameter 'arg'	1	1
+-Wunused-parameter	src/platform/system.cpp	755	unused parameter 'compatFlags'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	602	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	634	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	775	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	884	unused parameter 'id'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	884	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1369	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1394	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1399	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1418	unused parameter 'exception'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1418	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/appsupport.cpp	1432	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/bdmlaunch.cpp	128	unused parameter 'configSet'	1	1
+-Wunused-parameter	src/sources/bdmsupport.cpp	586	unused parameter 'name'	1	1
+-Wunused-parameter	src/sources/bdmsupport.cpp	600	unused parameter 'name'	1	1
+-Wunused-parameter	src/sources/bdmsupport.cpp	2082	unused parameter 'psm'	1	1
+-Wunused-parameter	src/sources/bdmsupport.cpp	2143	unused parameter 'exception'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	716	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	998	unused parameter 'configSet'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1558	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1558	unused parameter 'psm'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1574	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1579	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1585	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1606	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1630	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/ethsupport.cpp	1635	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1158	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1159	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1161	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1181	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1211	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1227	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1233	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1239	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1253	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1290	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1321	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1393	unused parameter 'id'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1393	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1394	unused parameter 'id'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1394	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1394	unused parameter 'newName'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1396	unused parameter 'exception'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1396	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1404	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1409	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1432	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/favsupport.cpp	1437	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	463	unused parameter 'action'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	463	unused parameter 'why'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	1458	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2237	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2943	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2943	unused parameter 'psm'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2961	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2966	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	2972	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	3032	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	3040	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/hddsupport.cpp	3207	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	838	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1245	unused parameter 'configSet'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1766	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1766	unused parameter 'psm'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1776	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1783	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1791	unused parameter 'exception'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1791	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1807	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1822	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/mmcesupport.cpp	1827	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/netsupport.cpp	58	unused parameter 'alarm_id'	1	1
+-Wunused-parameter	src/sources/netsupport.cpp	58	unused parameter 'time'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	316	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1204	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1204	unused parameter 'psm'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1221	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1226	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1232	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1244	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1254	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/sources/udpfssupport.cpp	1259	unused parameter 'itemList'	1	1
+-Wunused-parameter	src/ui/dia.cpp	628	unused parameter 'inMenu'	1	1
+-Wunused-parameter	src/ui/dia.cpp	1068	unused parameter 'ui'	1	1
+-Wunused-parameter	src/ui/guigame.cpp	220	unused parameter 'modified'	1	1
+-Wunused-parameter	src/ui/guigame.cpp	1290	unused parameter 'modified'	1	1
+-Wunused-parameter	src/ui/guigame.cpp	1418	unused parameter 'modified'	1	1
+-Wunused-parameter	src/ui/guigame.cpp	1722	unused parameter 'configSet'	1	1
+-Wunused-parameter	src/ui/guigame.cpp	2384	unused parameter 'modified'	1	1
+-Wunused-variable	src/sources/cuesupport.cpp	772	unused variable 'restored'	1	1
+-Wwrite-strings	src/app/opl.cpp	1502	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/sysneutrino.cpp	1277	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/sysneutrino.cpp	1295	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/sysneutrino.cpp	1299	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/system.cpp	750	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/system.cpp	751	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/platform/system.cpp	1663	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/ethsupport.cpp	958	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/favsupport.cpp	1243	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/favsupport.cpp	1249	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/hddsupport.cpp	49	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/hddsupport.cpp	645	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/hddsupport.cpp	1423	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/hddsupport.cpp	1425	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/netsupport.cpp	361	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/netsupport.cpp	441	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/netsupport.cpp	487	ISO C++ forbids converting a string constant to 'char*'	1	1
+-Wwrite-strings	src/sources/udpfssupport.cpp	326	ISO C++ forbids converting a string constant to 'char*'	1	1
+
+# ---- unique warnings by flag ----
+#    439  -Wunused-parameter
+#    243  -Wmissing-prototypes
+#    134  -Wunused-macros
+#     82  -Wredundant-decls
+#     82  -Wempty-body
+#     18  -Wwrite-strings
+#      8  -Wdiscarded-qualifiers
+#      6  -Wold-style-declaration
+#      4  -Wextra
+#      3  -Wduplicated-branches
+#      2  -Wunterminated-string-initialization
+#      2  -Wcast-function-type
+#      2  -Wtype-limits
+#      1  -Wunused-but-set-variable
+#      1  -Wcomment
+#      1  -Wmissing-declarations
+#      1  -Wunused-variable
+#      1  (no flag)

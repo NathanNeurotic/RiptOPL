@@ -1,0 +1,211 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-23",
+  "coverage": [
+    {"path": "src/platform/util.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/zso.c", "status": "read_full", "note": ""},
+    {"path": "include/achievements.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/achievements.cpp", "status": "read_full", "note": ""},
+    {"path": "src/sources/appscan.cpp", "status": "read_full", "note": ""},
+    {"path": "include/appsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "util.cpp is the menu ELF's grab-bag of file helpers: memory-card detection (checkMC/getmcID), browser save-icon stamping, openFile/readFile/listDir, a buffered line reader/writer (file_buffer_t), console-region detection, the PS2 logo check, recursive folder delete, the NOP delay() and boot-dir helpers. zso.c supplies the menu-side raw read callbacks (file or HDD sectors) for the shared modules/isofs ZSO reader, used by CheckPS2Logo. achievements.cpp/.h (RETROACHIEVEMENTS overlay only) is the RA achievement browser backend: Caduceus CADB1 pages over SMB/UDPFS, or the xeRAbora PC's JSON library with a small hand-written JSON scanner, plus the retroachievements.org game-ID lookup; requests run on the IO thread and the GUI reads a snapshot. appscan.cpp scans APPS folders on every enabled device and mc0/mc1 and resolves legacy conf_apps.cfg / CFG/<elf>.cfg files; appsupport.h holds the app_info_t record and APP_* limits used by appsupport.cpp.",
+  "reusable_helpers": [
+    {"name": "getFileSize", "path": "src/platform/util.cpp", "line": 48, "what": "file size via lseek END then rewind"},
+    {"name": "openFile", "path": "src/platform/util.cpp", "line": 316, "what": "open() that resolves mc? to the detected card and mkdirs the parent dir on O_CREAT"},
+    {"name": "readFile", "path": "src/platform/util.cpp", "line": 324, "what": "read a whole file into a malloc/memalign buffer with size check"},
+    {"name": "listDir", "path": "src/platform/util.cpp", "line": 372, "what": "readdir loop with a per-entry callback and element cap"},
+    {"name": "openFileBuffer/readFileBuffer/writeFileBuffer/closeFileBuffer", "path": "src/platform/util.cpp", "line": 458, "what": "buffered line reader (BOM skip, CRLF, # comments) and buffered writer with sticky write errno"},
+    {"name": "fromHex", "path": "src/platform/util.cpp", "line": 716, "what": "decode one hex digit, -1 if invalid"},
+    {"name": "sysDeleteFolder", "path": "src/platform/util.cpp", "line": 857, "what": "recursive folder delete"},
+    {"name": "sanitizePrefix", "path": "src/platform/util.cpp", "line": 952, "what": "normalise a path prefix: backslash to slash, trim leading/trailing slashes"},
+    {"name": "bdmFatfsOpenErrno", "path": "src/platform/util.cpp", "line": 436, "what": "map negated FatFs FRESULT from mass open to errno"},
+    {"name": "delay", "path": "src/platform/util.cpp", "line": 941, "what": "NOP busy-wait, ~0.25 s per tick"},
+    {"name": "jsonString/jsonSkip/jsonObject", "path": "src/sources/achievements.cpp", "line": 182, "what": "minimal JSON string decode (UTF-8 safe), value skip and per-member callback object walk (static)"},
+    {"name": "field", "path": "src/sources/achievements.cpp", "line": 38, "what": "strtok-like splitter that keeps empty fields (static)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Xerabora mode: the Hardcore filter on a game's achievement list always shows an empty page",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/achievements.cpp", "start": 326, "end": 335},
+        {"path": "src/sources/achievements.cpp", "start": 408, "end": 411},
+        {"path": "src/ui/menusys.cpp", "start": 1238, "end": 1239}
+      ],
+      "problem": "Square cycles achFilter 0..3 on any 'A' page (menusys.cpp:1239). In Xerabora mode achievementsXeraboraPage skips every entry with !a->hardcore when filter==3, but xeraEntryMember only fills hardcore for kind 'G'; for 'A' entries it stays 0 from the memset at achievements.cpp:371. So filter 3 (Hardcore) always lists nothing, with total 0.",
+      "fix": "In Xerabora mode let Square cycle only All/Earned/Locked (filter modulo 3 when gRAMode is RA_MODE_XERABORA), or drop the filter==3 clause for kind 'A' if the xeRAbora /game document turns out to carry a per-achievement hardcore field to parse instead.",
+      "justification": "One condition in the existing key handler removes a filter state that can never show data; it is smaller than parsing a field the document does not appear to provide.",
+      "benefit": "Fixes a UI state that always shows an empty list; about 1 line changed",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read achievements.cpp:314-336 (hardcore set only under x->kind=='G'), 371 (memset), 397-417 (filter==3 && !a->hardcore -> continue), menusys.cpp:1238-1241 (Square on achKind=='A' cycles % 4). The test fixture .github/scripts/test_ra_xerabora_browser.py:40-54 models the /game document with no hardcore key per achievement; that the real xeRAbora document also lacks it is INFERRED from that fixture."
+    },
+    {
+      "n": 2,
+      "title": "appscan.cpp carries ~45 unused includes copied from opl.cpp, with comments for code that is not in this file",
+      "category": 7,
+      "locations": [
+        {"path": "src/sources/appscan.cpp", "start": 7, "end": 68},
+        {"path": "src/ui/menuitems.cpp", "start": 43, "end": 43},
+        {"path": "src/ui/menuitems.cpp", "start": 61, "end": 61},
+        {"path": "src/app/lwnbdctl.cpp", "start": 44, "end": 44},
+        {"path": "src/app/lwnbdctl.cpp", "start": 60, "end": 60},
+        {"path": "src/app/autolaunch.cpp", "start": 43, "end": 43},
+        {"path": "src/app/autolaunch.cpp", "start": 59, "end": 59}
+      ],
+      "problem": "appscan.cpp (180 lines of code) includes 46 headers: gui, renderman, themes, textures, pad, dialogs, menusys, every device support header, tar, cheatman, sound, xparam, fileXio_rpc, sys/stat, libds34bt/usb and more. Its code needs only opl.h, oplint.h, sourceregistry.h, gamesource.h, ioman.h (LOG), config.h, util.h, appsupport.h and unistd. The comments claim uses that do not exist here (mkdir for mc?:/OPL, fileXioDopen for BDM autolaunch, mmceLoadModules for resolveBootDirToMass). The same copied block with the same stale comments sits in menuitems.cpp and lwnbdctl.cpp, which also contain no such calls.",
+      "fix": "Delete the include lines appscan.cpp does not need and the stale per-include comments; keep the eight or so headers listed. Do the same trim in the other split-out files that kept the opl.cpp block (each in its own unit).",
+      "justification": "",
+      "benefit": "~45 lines removed from appscan.cpp, less rebuild coupling (every header change recompiles it); no ELF change (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 45,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read appscan.cpp 1-248. Grep in appscan.cpp for resolveBootDirToMass, fileXioDopen(, fileXioIoctl2(, mkdir(, mmceLoadModules(, DelayThread, fnt*(, ds34*: only the include comments at :44 and :61. LOG is defined in include/ioman.h:77-80; gsOf in include/gamesource.h:102. Grep count of those names in menuitems.cpp and lwnbdctl.cpp = 2 each (the two include comments only). The exact minimal include set is INFERRED (not compiled)."
+    },
+    {
+      "n": 3,
+      "title": "oplGetLegacyAppsConfig and oplGetLegacyAppsInfo repeat the same device-prefix loop and open/close existence probe",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/appscan.cpp", "start": 179, "end": 216},
+        {"path": "src/sources/appscan.cpp", "start": 218, "end": 248}
+      ],
+      "problem": "Both functions walk the modules from MODE_COUNT-1 down, skip disabled or prefix-less sources, build a path, test it with openFile+close and configAlloc it on success, else configAlloc the last tried path. They differ only in the file name format, the config type (CONFIG_APPS vs 0), the mc?:OPL first probe and the empty-path fallback. The open/close/configAlloc probe appears three times (187-192, 202-207, 233-238).",
+      "fix": "Merge them into one static lookup taking the per-device name format and config type (the ETH backslash only matters for the CFG case), with the two public functions as one-line callers; or at least fold the repeated probe into one static helper.",
+      "justification": "",
+      "benefit": "~20 lines removed (INFERRED from the two 30-38 line bodies sharing about 25 lines); no measurable ELF change",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appscan.cpp:179-248 side by side. Callers: host.cpp:92-93 only (via host::app().legacyAppsConfig/legacyAppsInfo, used at appsupport.cpp:609,656,1327)."
+    },
+    {
+      "n": 4,
+      "title": "checkMC always opens four directories even when the first answers the question",
+      "category": 3,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 55, "end": 110}
+      ],
+      "problem": "checkMC opendirs mc0:/, mc1:/, mc0:OPL/ and mc1:OPL/ unconditionally, stores four flags and only then picks in the order mc0:OPL, mc1:OPL, mc0, mc1. Each opendir is a card access on the IO path, and while no card is found mcID stays -1 so every later call (openFile on an mc? path, checkMCFolder) repeats all four.",
+      "fix": "Probe in priority order and return on the first hit: mc0:OPL/, mc1:OPL/, mc0:/, mc1:/, using one small static exists test instead of four copied opendir/closedir blocks.",
+      "justification": "",
+      "benefit": "~35 lines removed (56-line function to about 20); up to three fewer memory-card opendirs on the first probe (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 35,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read util.cpp:55-110. checkMC callers: util.cpp:251 (checkMCFolder), :266 (checkFile, reached from openFile/readFile/listDir). No existing dirExists-style helper in src (grep dirExists|DirExists|folderExists|isDir: none)."
+    },
+    {
+      "n": 5,
+      "title": "util.cpp leftovers: unused max(), unused htab table, commented-out LOG lines, redundant else",
+      "category": 1,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 703, "end": 707},
+        {"path": "include/util.h", "start": 46, "end": 46},
+        {"path": "src/platform/util.cpp", "start": 728, "end": 728},
+        {"path": "src/platform/util.cpp", "start": 560, "end": 561},
+        {"path": "src/platform/util.cpp", "start": 569, "end": 569},
+        {"path": "src/platform/util.cpp", "start": 578, "end": 578},
+        {"path": "src/platform/util.cpp", "start": 592, "end": 592},
+        {"path": "src/platform/util.cpp", "start": 596, "end": 596},
+        {"path": "src/platform/util.cpp", "start": 617, "end": 617},
+        {"path": "src/platform/util.cpp", "start": 906, "end": 907}
+      ],
+      "problem": "max() has no caller anywhere in the C/C++ sources (min() does). static const htab[] is never referenced. readFileBuffer carries seven commented-out upstream debug LOG lines. In sysDeleteFolder the else branch sets result = 0, which it already is.",
+      "fix": "Delete max() and its prototype, htab, the commented-out LOG lines and the else branch.",
+      "justification": "",
+      "benefit": "~16 lines removed; max() is already dropped by -ffunction-sections + --gc-sections and htab is static, so no ELF change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 16,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep '[^a-zA-Z_.>:]max\\s*\\(' over the repo excluding third_party: only util.cpp:704, util.h:46 and comments/Python. Grep -w htab: util.cpp:728 and a docs mention only. BUILD-EVIDENCE.md:146 confirms -ffunction-sections and --gc-sections for the main ELF."
+    },
+    {
+      "n": 6,
+      "title": "achievements.h exports four functions only achievements.cpp calls",
+      "category": 3,
+      "locations": [
+        {"path": "include/achievements.h", "start": 39, "end": 47},
+        {"path": "src/sources/achievements.cpp", "start": 62, "end": 62},
+        {"path": "src/sources/achievements.cpp", "start": 352, "end": 352},
+        {"path": "src/sources/achievements.cpp", "start": 397, "end": 397},
+        {"path": "src/sources/achievements.cpp", "start": 485, "end": 485}
+      ],
+      "problem": "achievementsParse, achievementsParseXerabora, achievementsXeraboraPage and achievementsParseGameId are declared in the public header but called only inside achievements.cpp (lines 723, 435, 643, 530) and by the two Python test harnesses, which paste the .cpp text into the same translation unit ahead of the test code.",
+      "fix": "Make the four functions static and delete their prototypes and comments from achievements.h.",
+      "justification": "",
+      "benefit": "~7 header lines removed; lets the compiler inline or drop them (small, INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep of the four names over the repo excluding .github: only achievements.h:40,43,44,47 and achievements.cpp definitions and the internal calls. test_caduceus_browser.py:20-69 and test_ra_xerabora_browser.py:56-64 strip includes and compile the source text with the tests appended after it, so static definitions remain visible. Each definition precedes its first use."
+    },
+    {
+      "n": 7,
+      "title": "achievements.cpp small redundancies: repeated request reset, double key wipe, inline hex decode",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/achievements.cpp", "start": 596, "end": 601},
+        {"path": "src/sources/achievements.cpp", "start": 625, "end": 627},
+        {"path": "src/sources/achievements.cpp", "start": 761, "end": 762},
+        {"path": "src/sources/achievements.cpp", "start": 721, "end": 721},
+        {"path": "src/sources/achievements.cpp", "start": 728, "end": 728},
+        {"path": "src/sources/achievements.cpp", "start": 205, "end": 210},
+        {"path": "src/platform/util.cpp", "start": 716, "end": 726}
+      ],
+      "problem": "loadXerabora sets requestKind='A', requestPage=0, requestFilter=0 twice on the image path, though requestImage (761-762) already set kind and page. The key buffer is wiped at 721 and again unconditionally at the done label (728). The \\u escape decodes hex with a three-way inline ternary although util.cpp already has fromHex.",
+      "fix": "Set requestFilter = 0 in requestImage and delete both reset blocks (keep the goto). Delete the memset at 721. Use fromHex for the \\u digits.",
+      "justification": "",
+      "benefit": "~8 lines removed; no ELF change worth measuring (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read achievements.cpp:575-654 (loadXerabora runs only with imagePath set by requestImage for the image branch), 675-733 (every path reaches done: and line 728), 755-775 (requestImage sets requestKind and requestPage). The Caduceus image request string at :694 hard-codes filter 0, so requestFilter is only read by achievementsXeraboraPage at :643."
+    },
+    {
+      "n": 8,
+      "title": "oplGetAppImageByMode is a one-line forwarder to gSourceRegistry.appImageByMode",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/appscan.cpp", "start": 76, "end": 82},
+        {"path": "include/opl.h", "start": 70, "end": 70},
+        {"path": "src/sources/appsupport.cpp", "start": 1389, "end": 1391}
+      ],
+      "problem": "The free function only forwards its seven arguments to SourceRegistry::appImageByMode (opl.cpp:145). Its only callers are the two calls in appsupport.cpp.",
+      "fix": "Call gSourceRegistry.appImageByMode directly from appsupport.cpp (including sourceregistry.h) and delete the forwarder, its comment and its opl.h prototype.",
+      "justification": "",
+      "benefit": "~8 lines removed; one call level less per app cover lookup (negligible)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep oplGetAppImageByMode over the repo: appscan.cpp:79 (definition), opl.h:70 (prototype), appsupport.cpp:1389,1391 (calls), comments in opl.cpp:143, sourceregistry.h:19 and docs/CPP-CONVERSION-PLAN.md. No test stubs it."
+    }
+  ]
+}

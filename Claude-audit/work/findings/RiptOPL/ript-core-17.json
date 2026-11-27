@@ -1,0 +1,168 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-17",
+  "coverage": [
+    {"path": "src/gfx/textshape.cpp", "status": "read_full", "note": ""},
+    {"path": "include/textures.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/textures.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "textshape.cpp is the text-layout helper for the font system (fntsys.cpp): UTF-8 next/put, zero-width marks, CJK/Thai/Lao line-break rules and Arabic/Persian shaping plus right-to-left reordering into static 1024-codepoint buffers; it is live because lng/fork ships Arabic.yml and Persian.yml. textures.h/textures.cpp are the PNG/JPG texture loader: the positional table of embedded default textures (internalDefault, mirrored by enum INTERNAL_TEXTURE), libpng decode from embedded blobs, theme .tar members, staged RAM copies (MMCE/BDM) or a streaming 4 KB file reader, JPG art decode with downscale, OPL Manager art-name aliases, abort-flag plumbing for the art worker thread, and debug-HUD timing counters. Game art enters through texDiscoverArt (all itemGetImage backends), theme pictures through texDiscoverLoad / texLoadInternal.",
+  "reusable_helpers": [
+    {"name": "txtNext", "path": "src/gfx/textshape.cpp", "line": 14, "what": "decodes one UTF-8 character (code point + byte length, broken sequence = 1 byte)"},
+    {"name": "txtPut", "path": "src/gfx/textshape.cpp", "line": 36, "what": "appends a code point as UTF-8 into a bounded buffer, -1 if it does not fit with the terminator"},
+    {"name": "txtShape", "path": "src/gfx/textshape.cpp", "line": 381, "what": "Arabic/Persian presentation-form shaping and per-line RTL reorder for left-to-right drawing"},
+    {"name": "texPngHeaderIsSmallT8", "path": "include/textures.h", "line": 182, "what": "checks a PNG signature + IHDR (29 bytes) for size and 8-bit palette before decoding"},
+    {"name": "texStageExternalFileIntoMemory", "path": "src/gfx/textures.cpp", "line": 623, "what": "reads a whole open file into a heap buffer: lseek size + one read, else 32 KB chunked growth with abort checks and an 8 MB cap"},
+    {"name": "texArtAlias", "path": "src/gfx/textures.cpp", "line": 1368, "what": "maps OPL Manager art names (_BG_00, _SCR_00, _SCR_01) to OPL names and back for paths in an ART folder"},
+    {"name": "texIsJpg", "path": "src/gfx/textures.cpp", "line": 1166, "what": "JPEG magic check (FF D8 FF) on a memory buffer"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Worst-open latch (texDebugWorstOpen, gTexWorstOpen*) and gBgmInRead exist only for a finished art-open investigation",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 528, "end": 584},
+        {"path": "src/gfx/textures.cpp", "start": 929, "end": 943},
+        {"path": "src/gfx/textures.cpp", "start": 7, "end": 7},
+        {"path": "include/textures.h", "start": 231, "end": 234},
+        {"path": "src/ui/guioverlay.cpp", "start": 193, "end": 194},
+        {"path": "src/ui/guioverlay.cpp", "start": 211, "end": 213},
+        {"path": "src/core/bgm.cpp", "start": 76, "end": 76},
+        {"path": "src/core/bgm.cpp", "start": 240, "end": 240},
+        {"path": "src/core/bgm.cpp", "start": 276, "end": 276},
+        {"path": "include/sound.h", "start": 46, "end": 46}
+      ],
+      "problem": "Every staged art open samples two ioman queue depths, gBgmInRead and clock() to keep a session-worst record (5 statics, a 13-line getter, ~40 lines of investigation narrative incl. a quoted user report). The comment says the measurement exists to decide whether an in-RAM art directory index is worth building; that index now exists (artindex.cpp, IX field in the same HUD line), so the question is closed. gBgmInRead's only reader is textures.cpp:933.",
+      "fix": "Delete gTexWorstOpen* and texDebugWorstOpen, the pendAtOpen/menuAtOpen/bgmAtOpen sampling and latch update in texLoadAll, the W field in the HUD format string, gBgmInRead (definition, two writes, extern) and the sound.h include. Cut the 528-565 narrative to one line describing O:<hit>/<miss> if that field is kept.",
+      "justification": "",
+      "benefit": "~70 source lines removed (35 latch+getter, ~12 sampling, 4 header, 4 gBgmInRead, ~17 comment); a few hundred bytes of .text/.data, two queue reads per staged open (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 70,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "grep -rn texDebugWorstOpen|gTexWorstOpen over src/RiptOPL: textures.cpp:566-584,937-942, textures.h:234, guioverlay.cpp:194 only. git grep gBgmInRead: sound.h:46, bgm.cpp:76,240,276 (writes), textures.cpp:933 (only read). HUD is drawn by Overlays::drawArtHud (guioverlay.cpp:134-218) behind the runtime debug setting, so it is compiled in every build. artIndexDebug/artIndexFindPicture exist in src/gfx/artindex.cpp:45 and are used by textures.cpp:1345,1357,1431. INFERRED part: that the owner no longer needs the W field."
+    },
+    {
+      "n": 2,
+      "title": "Stale comments in textures.cpp contradict the code they describe (absence rule, SEEK_END ban, OE meaning)",
+      "category": 7,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 495, "end": 525},
+        {"path": "src/gfx/textures.cpp", "start": 661, "end": 667},
+        {"path": "include/textures.h", "start": 222, "end": 223},
+        {"path": "src/ui/guioverlay.cpp", "start": 179, "end": 182}
+      ],
+      "problem": "The 31-line block before gTexStagedOpenNonEnoent says the absence check returns 1 unconditionally and should 'match master' if OE climbs, but texStagedOpenIsAbsence (586-610) already returns err==ENOENT plus FatFs 4/5/6 for mass*, and counts non-absence on every device, not 'non-MMCE'. The block at 661-667 says 'Do NOT size the file with lseek(SEEK_END) first' directly under the fast path (639-641) that does exactly that for non-MMCE devices. The header and HUD comments repeat the outdated OE meaning.",
+      "fix": "Delete 495-525 except one line stating what gTexStagedOpenNonEnoent counts; reduce 661-667 to 'MMCE cannot SEEK_END: grow the buffer while reading'; reword textures.h:222-223 and guioverlay.cpp:179-182 to the current rule.",
+      "justification": "",
+      "benefit": "~35 comment lines removed; no ELF change (MEASURED from cited ranges: 31 + 7 lines, minus ~3 replacement lines)",
+      "benefit_rank": 2,
+      "lines_removed": 35,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read textures.cpp:495-525 (claims 'the code returns 1 unconditionally'), 586-610 (isAbsence = err==ENOENT, mass* adds 4/5/6, counter increments when !isAbsence on any device), 632-659 (lseek SEEK_END fast path when !shortReadIsEof), 661-667 (says not to lseek SEEK_END). textures.h:222-223 and guioverlay.cpp:179-182 describe OE as 'errno != ENOENT on a non-MMCE device' and say the code still needs master's ENOENT rule."
+    },
+    {
+      "n": 3,
+      "title": "12 gfx/ PNGs that no build embeds: Device_1..6, Device_all, no_Device, no_Rating, logo4..6",
+      "category": 7,
+      "locations": [
+        {"path": "gfx/Device_1.png", "whole": true},
+        {"path": "gfx/Device_2.png", "whole": true},
+        {"path": "gfx/Device_3.png", "whole": true},
+        {"path": "gfx/Device_4.png", "whole": true},
+        {"path": "gfx/Device_5.png", "whole": true},
+        {"path": "gfx/Device_6.png", "whole": true},
+        {"path": "gfx/Device_all.png", "whole": true},
+        {"path": "gfx/no_Device.png", "whole": true},
+        {"path": "gfx/no_Rating.png", "whole": true},
+        {"path": "gfx/logo4.png", "whole": true},
+        {"path": "gfx/logo5.png", "whole": true},
+        {"path": "gfx/logo6.png", "whole": true},
+        {"path": "src/gfx/textures.cpp", "start": 241, "end": 243},
+        {"path": "src/gfx/textures.cpp", "start": 258, "end": 266},
+        {"path": "src/gfx/textures.cpp", "start": 297, "end": 301}
+      ],
+      "problem": "textures.cpp maps these textures to NULL or to a shared blob (Rating_0, logo3/2/1), and tools/assets.py PNG_ASSETS (46-57, plus the Korium additions at 163) does not list them, so the source PNGs are never bin2c'd. logo4/5/6 and no_Rating are byte-identical to logo3/2/1 and Rating_0 (cmp). No other file references the file names.",
+      "fix": "Delete the 12 PNG files from gfx/. Keep the table rows: their names are still theme lookup keys (misc/*.cfg use default=no_Rating).",
+      "justification": "",
+      "benefit": "29,792 bytes of tracked repo files removed (MEASURED: inventory/RiptOPL.tsv sizes); no ELF change",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read tools/assets.py:46-60 and 159-180 (only PNG_ASSETS, Korium extras and ra_mark are embedded, sourced from gfx/<name>.png). Grep for Device_[1-6all].png, no_Device, logo4 over the whole repo: only textures.cpp. git grep no_Rating: only theme cfg default= keys and textures.cpp:243. cmp gfx/logo4.png logo3.png, logo5/logo2, logo6/logo1, no_Rating/Rating_0: identical. Sizes from inventory: 582+742+886+899+600+784+1016+676+1332+8569+7161+6545 = 29,792."
+    },
+    {
+      "n": 4,
+      "title": "Commented-out 'currently unused' icon enum values and externs, half of them since re-enabled",
+      "category": 1,
+      "locations": [
+        {"path": "include/textures.h", "start": 36, "end": 42},
+        {"path": "src/gfx/textures.cpp", "start": 57, "end": 61}
+      ],
+      "problem": "The block lists UP/DOWN/L1/L2/R1/R2 as unused, but L1_ICON and R1_ICON are live enum values at textures.h:121-122 (with L1_png/R1_png externs at textures.cpp:62,64). The remaining names (up/down/L2/R2) have no asset in gfx/ and no reference anywhere.",
+      "fix": "Delete both commented-out blocks.",
+      "justification": "",
+      "benefit": "12 lines removed (7 + 5); no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read textures.h:36-42, 121-122 and textures.cpp:57-64. ls gfx shows L1/L3/R1/R3.png but no up/down/L2/R2.png; tools/assets.py PNG_ASSETS has no up/down/L2/R2 entry."
+    },
+    {
+      "n": 5,
+      "title": "achievements.cpp jsonPutUtf8 re-implements textshape txtPut",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/achievements.cpp", "start": 158, "end": 178},
+        {"path": "src/gfx/textshape.cpp", "start": 36, "end": 65}
+      ],
+      "problem": "jsonPutUtf8 (21 lines) encodes a BMP code point as UTF-8 into a bounded buffer with the same fit rule as txtPut (at+n must leave room for the terminator); txtPut is always linked (src/gfx is in the main ELF) and handles 4-byte sequences too. The only difference is the failure value (unchanged at vs -1).",
+      "fix": "Delete jsonPutUtf8 and at its single call site (achievements.cpp:219) call txtPut, keeping at when it returns -1.",
+      "justification": "",
+      "benefit": "~18 lines net removed in the RetroAchievements build; ~100 bytes .text (INFERRED, small static function)",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep jsonPutUtf8|txtPut( over repo: achievements.cpp:159 (def), :219 (only call); textshape.cpp:36 (def), :446; textshape.h:12; ripps2_text_cases.inc tests. Compared fit checks: jsonPutUtf8 'at + n >= size' vs txtPut 'at + n > size - 1' (equivalent). achievements.cpp is added only by RA overlays (brief section 3)."
+    },
+    {
+      "n": 6,
+      "title": "Small leftovers in textures: unused ERR_MISSING_ALPHA, mutable maxSize, identity ternaries, dead (void)filePath",
+      "category": 1,
+      "locations": [
+        {"path": "include/textures.h", "start": 200, "end": 200},
+        {"path": "src/gfx/textures.cpp", "start": 145, "end": 145},
+        {"path": "src/gfx/textures.cpp", "start": 588, "end": 588},
+        {"path": "src/gfx/textures.cpp", "start": 1405, "end": 1405},
+        {"path": "src/gfx/textures.cpp", "start": 1408, "end": 1408},
+        {"path": "src/gfx/textures.cpp", "start": 1437, "end": 1437}
+      ],
+      "problem": "ERR_MISSING_ALPHA appears nowhere else in the repo. maxSize is a non-const static that is never written (only read at 369). (void)filePath silences an unused-parameter warning for a parameter used at line 600. '(result >= 0) ? 0 : result' in texDiscoverArt/texDiscoverLoad is the identity: every loader path returns 0 or a negative ERR_* code.",
+      "fix": "Delete ERR_MISSING_ALPHA and the (void)filePath line; make maxSize constexpr; return result directly at 1405, 1408 and 1437.",
+      "justification": "",
+      "benefit": "2 lines removed, 3 simplified; a few bytes (one load per texSizeValidate call) (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn ERR_MISSING_ALPHA over the whole repo: only textures.h:200. grep maxSize in textures.cpp: 145 (def), 369 (read). Return values: texReadData returns 0 or ERR_*; texLoadAll returns texEnd(..., status) with those; texLoadJpgMemory returns 0 or ERR_*; texLoadJpgFile/texLoadArtFile/texFindArt pass them through."
+    }
+  ]
+}

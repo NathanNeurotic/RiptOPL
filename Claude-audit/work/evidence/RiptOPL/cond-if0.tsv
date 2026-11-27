@@ -1,0 +1,9 @@
+path	start	end	lines	kind	tier
+modules/usb/usbd-ra/src/usbd.c	200	207	8	#if 0	module
+modules/hdd/apa/src/cache.c	55	61	7	#if 0 (until #else)	module
+modules/mmce/mmceman/src/sio2man_hook.c	26	29	4	#if 0	module
+modules/network/SMSTCPIP/include/lwip/dhcp.h	52	55	4	#if 0	skim
+modules/network/SMSTCPIP/include/lwip/opt.h	495	497	3	#else branch of #if 1	skim
+modules/network/SMSTCPIP/loopif.c	106	108	3	#if 0	skim
+modules/network/SMSTCPIP/include/lwip/opt.h	514	515	2	#if 0 (until #else)	skim
+modules/network/SMSTCPIP/mem.c	144	145	2	#if 0 (until #else)	skim

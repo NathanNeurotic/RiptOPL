@@ -1,0 +1,1542 @@
+[
+ {
+  "id": "ript-core-01",
+  "chunk": "ript-core-01",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2266,
+  "nfiles": 36,
+  "label": "ee_core, ee_core/igrovl, ee_core/include",
+  "order": 0
+ },
+ {
+  "id": "ript-core-01.b",
+  "chunk": "ript-core-01",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2266,
+  "nfiles": 36,
+  "label": "ee_core, ee_core/igrovl, ee_core/include",
+  "order": 0
+ },
+ {
+  "id": "ript-core-02",
+  "chunk": "ript-core-02",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3103,
+  "nfiles": 10,
+  "label": "ee_core/src",
+  "order": 1
+ },
+ {
+  "id": "ript-core-02.b",
+  "chunk": "ript-core-02",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3103,
+  "nfiles": 10,
+  "label": "ee_core/src",
+  "order": 1
+ },
+ {
+  "id": "ript-core-03",
+  "chunk": "ript-core-03",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3078,
+  "nfiles": 5,
+  "label": "ee_core/src",
+  "order": 2
+ },
+ {
+  "id": "ript-core-03.b",
+  "chunk": "ript-core-03",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3078,
+  "nfiles": 5,
+  "label": "ee_core/src",
+  "order": 2
+ },
+ {
+  "id": "ript-core-04",
+  "chunk": "ript-core-04",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2922,
+  "nfiles": 5,
+  "label": "ee_core/src",
+  "order": 3
+ },
+ {
+  "id": "ript-core-04.b",
+  "chunk": "ript-core-04",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2922,
+  "nfiles": 5,
+  "label": "ee_core/src",
+  "order": 3
+ },
+ {
+  "id": "ript-core-05",
+  "chunk": "ript-core-05",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2636,
+  "nfiles": 8,
+  "label": "ee_core/src",
+  "order": 4
+ },
+ {
+  "id": "ript-core-05.b",
+  "chunk": "ript-core-05",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2636,
+  "nfiles": 8,
+  "label": "ee_core/src",
+  "order": 4
+ },
+ {
+  "id": "ript-core-06",
+  "chunk": "ript-core-06",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3537,
+  "nfiles": 38,
+  "label": "ee_core/tests, elfldr, include",
+  "order": 5
+ },
+ {
+  "id": "ript-core-06.b",
+  "chunk": "ript-core-06",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3537,
+  "nfiles": 38,
+  "label": "ee_core/tests, elfldr, include",
+  "order": 5
+ },
+ {
+  "id": "ript-core-07",
+  "chunk": "ript-core-07",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2471,
+  "nfiles": 19,
+  "label": "include, src/app",
+  "order": 6
+ },
+ {
+  "id": "ript-core-07.b",
+  "chunk": "ript-core-07",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2471,
+  "nfiles": 19,
+  "label": "include, src/app",
+  "order": 6
+ },
+ {
+  "id": "ript-core-08",
+  "chunk": "ript-core-08",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2134,
+  "nfiles": 1,
+  "label": "src/app",
+  "order": 7
+ },
+ {
+  "id": "ript-core-08.b",
+  "chunk": "ript-core-08",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2134,
+  "nfiles": 1,
+  "label": "src/app",
+  "order": 7
+ },
+ {
+  "id": "ript-core-09",
+  "chunk": "ript-core-09",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2621,
+  "nfiles": 1,
+  "label": "src/app",
+  "order": 8
+ },
+ {
+  "id": "ript-core-09.b",
+  "chunk": "ript-core-09",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2621,
+  "nfiles": 1,
+  "label": "src/app",
+  "order": 8
+ },
+ {
+  "id": "ript-core-10",
+  "chunk": "ript-core-10",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2610,
+  "nfiles": 8,
+  "label": "src/core",
+  "order": 9
+ },
+ {
+  "id": "ript-core-10.b",
+  "chunk": "ript-core-10",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2610,
+  "nfiles": 8,
+  "label": "src/core",
+  "order": 9
+ },
+ {
+  "id": "ript-core-11",
+  "chunk": "ript-core-11",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3389,
+  "nfiles": 8,
+  "label": "src/core",
+  "order": 10
+ },
+ {
+  "id": "ript-core-11.b",
+  "chunk": "ript-core-11",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3389,
+  "nfiles": 8,
+  "label": "src/core",
+  "order": 10
+ },
+ {
+  "id": "ript-core-12",
+  "chunk": "ript-core-12",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2516,
+  "nfiles": 9,
+  "label": "src/core",
+  "order": 11
+ },
+ {
+  "id": "ript-core-12.b",
+  "chunk": "ript-core-12",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2516,
+  "nfiles": 9,
+  "label": "src/core",
+  "order": 11
+ },
+ {
+  "id": "ript-core-13",
+  "chunk": "ript-core-13",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3066,
+  "nfiles": 5,
+  "label": "src/core",
+  "order": 12
+ },
+ {
+  "id": "ript-core-13.b",
+  "chunk": "ript-core-13",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3066,
+  "nfiles": 5,
+  "label": "src/core",
+  "order": 12
+ },
+ {
+  "id": "ript-core-14",
+  "chunk": "ript-core-14",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2508,
+  "nfiles": 11,
+  "label": "src/gfx",
+  "order": 13
+ },
+ {
+  "id": "ript-core-14.b",
+  "chunk": "ript-core-14",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2508,
+  "nfiles": 11,
+  "label": "src/gfx",
+  "order": 13
+ },
+ {
+  "id": "ript-core-15",
+  "chunk": "ript-core-15",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3068,
+  "nfiles": 8,
+  "label": "src/gfx",
+  "order": 14
+ },
+ {
+  "id": "ript-core-15.b",
+  "chunk": "ript-core-15",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3068,
+  "nfiles": 8,
+  "label": "src/gfx",
+  "order": 14
+ },
+ {
+  "id": "ript-core-16",
+  "chunk": "ript-core-16",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3322,
+  "nfiles": 6,
+  "label": "src/gfx",
+  "order": 15
+ },
+ {
+  "id": "ript-core-16.b",
+  "chunk": "ript-core-16",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3322,
+  "nfiles": 6,
+  "label": "src/gfx",
+  "order": 15
+ },
+ {
+  "id": "ript-core-17",
+  "chunk": "ript-core-17",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2128,
+  "nfiles": 3,
+  "label": "src/gfx",
+  "order": 16
+ },
+ {
+  "id": "ript-core-17.b",
+  "chunk": "ript-core-17",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2128,
+  "nfiles": 3,
+  "label": "src/gfx",
+  "order": 16
+ },
+ {
+  "id": "ript-core-18",
+  "chunk": "ript-core-18",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2726,
+  "nfiles": 2,
+  "label": "src/gfx",
+  "order": 17
+ },
+ {
+  "id": "ript-core-18.b",
+  "chunk": "ript-core-18",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2726,
+  "nfiles": 2,
+  "label": "src/gfx",
+  "order": 17
+ },
+ {
+  "id": "ript-core-19",
+  "chunk": "ript-core-19",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3033,
+  "nfiles": 5,
+  "label": "src/gfx",
+  "order": 18
+ },
+ {
+  "id": "ript-core-19.b",
+  "chunk": "ript-core-19",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3033,
+  "nfiles": 5,
+  "label": "src/gfx",
+  "order": 18
+ },
+ {
+  "id": "ript-core-20",
+  "chunk": "ript-core-20",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3264,
+  "nfiles": 25,
+  "label": "src/platform",
+  "order": 19
+ },
+ {
+  "id": "ript-core-20.b",
+  "chunk": "ript-core-20",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3264,
+  "nfiles": 25,
+  "label": "src/platform",
+  "order": 19
+ },
+ {
+  "id": "ript-core-21",
+  "chunk": "ript-core-21",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2524,
+  "nfiles": 5,
+  "label": "src/platform",
+  "order": 20
+ },
+ {
+  "id": "ript-core-21.b",
+  "chunk": "ript-core-21",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2524,
+  "nfiles": 5,
+  "label": "src/platform",
+  "order": 20
+ },
+ {
+  "id": "ript-core-22",
+  "chunk": "ript-core-22",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2791,
+  "nfiles": 4,
+  "label": "src/platform",
+  "order": 21
+ },
+ {
+  "id": "ript-core-22.b",
+  "chunk": "ript-core-22",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2791,
+  "nfiles": 4,
+  "label": "src/platform",
+  "order": 21
+ },
+ {
+  "id": "ript-core-23",
+  "chunk": "ript-core-23",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2221,
+  "nfiles": 6,
+  "label": "src/platform, src/sources",
+  "order": 22
+ },
+ {
+  "id": "ript-core-23.b",
+  "chunk": "ript-core-23",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2221,
+  "nfiles": 6,
+  "label": "src/platform, src/sources",
+  "order": 22
+ },
+ {
+  "id": "ript-core-24",
+  "chunk": "ript-core-24",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3562,
+  "nfiles": 5,
+  "label": "src/sources",
+  "order": 23
+ },
+ {
+  "id": "ript-core-24.b",
+  "chunk": "ript-core-24",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3562,
+  "nfiles": 5,
+  "label": "src/sources",
+  "order": 23
+ },
+ {
+  "id": "ript-core-25",
+  "chunk": "ript-core-25",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2873,
+  "nfiles": 3,
+  "label": "src/sources",
+  "order": 24
+ },
+ {
+  "id": "ript-core-25.b",
+  "chunk": "ript-core-25",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2873,
+  "nfiles": 3,
+  "label": "src/sources",
+  "order": 24
+ },
+ {
+  "id": "ript-core-26",
+  "chunk": "ript-core-26",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3483,
+  "nfiles": 6,
+  "label": "src/sources",
+  "order": 25
+ },
+ {
+  "id": "ript-core-26.b",
+  "chunk": "ript-core-26",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3483,
+  "nfiles": 6,
+  "label": "src/sources",
+  "order": 25
+ },
+ {
+  "id": "ript-core-27",
+  "chunk": "ript-core-27",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 2759,
+  "nfiles": 8,
+  "label": "src/sources",
+  "order": 26
+ },
+ {
+  "id": "ript-core-27.b",
+  "chunk": "ript-core-27",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 2759,
+  "nfiles": 8,
+  "label": "src/sources",
+  "order": 26
+ },
+ {
+  "id": "ript-core-28",
+  "chunk": "ript-core-28",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3474,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 27
+ },
+ {
+  "id": "ript-core-28.b",
+  "chunk": "ript-core-28",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3474,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 27
+ },
+ {
+  "id": "ript-core-29",
+  "chunk": "ript-core-29",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3453,
+  "nfiles": 6,
+  "label": "src/sources",
+  "order": 28
+ },
+ {
+  "id": "ript-core-29.b",
+  "chunk": "ript-core-29",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3453,
+  "nfiles": 6,
+  "label": "src/sources",
+  "order": 28
+ },
+ {
+  "id": "ript-core-30",
+  "chunk": "ript-core-30",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3446,
+  "nfiles": 13,
+  "label": "src/sources",
+  "order": 29
+ },
+ {
+  "id": "ript-core-30.b",
+  "chunk": "ript-core-30",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3446,
+  "nfiles": 13,
+  "label": "src/sources",
+  "order": 29
+ },
+ {
+  "id": "ript-core-31",
+  "chunk": "ript-core-31",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 1208,
+  "nfiles": 4,
+  "label": "src/sources",
+  "order": 30
+ },
+ {
+  "id": "ript-core-31.b",
+  "chunk": "ript-core-31",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 1208,
+  "nfiles": 4,
+  "label": "src/sources",
+  "order": 30
+ },
+ {
+  "id": "ript-core-32",
+  "chunk": "ript-core-32",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3259,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 31
+ },
+ {
+  "id": "ript-core-32.b",
+  "chunk": "ript-core-32",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3259,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 31
+ },
+ {
+  "id": "ript-core-33",
+  "chunk": "ript-core-33",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 1646,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 32
+ },
+ {
+  "id": "ript-core-33.b",
+  "chunk": "ript-core-33",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 1646,
+  "nfiles": 2,
+  "label": "src/sources",
+  "order": 32
+ },
+ {
+  "id": "ript-core-34",
+  "chunk": "ript-core-34",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3485,
+  "nfiles": 3,
+  "label": "src/sources",
+  "order": 33
+ },
+ {
+  "id": "ript-core-34.b",
+  "chunk": "ript-core-34",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3485,
+  "nfiles": 3,
+  "label": "src/sources",
+  "order": 33
+ },
+ {
+  "id": "ript-core-35",
+  "chunk": "ript-core-35",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3177,
+  "nfiles": 7,
+  "label": "src/ui",
+  "order": 34
+ },
+ {
+  "id": "ript-core-35.b",
+  "chunk": "ript-core-35",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3177,
+  "nfiles": 7,
+  "label": "src/ui",
+  "order": 34
+ },
+ {
+  "id": "ript-core-36",
+  "chunk": "ript-core-36",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3454,
+  "nfiles": 8,
+  "label": "src/ui",
+  "order": 35
+ },
+ {
+  "id": "ript-core-36.b",
+  "chunk": "ript-core-36",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3454,
+  "nfiles": 8,
+  "label": "src/ui",
+  "order": 35
+ },
+ {
+  "id": "ript-core-37",
+  "chunk": "ript-core-37",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3470,
+  "nfiles": 6,
+  "label": "src/ui",
+  "order": 36
+ },
+ {
+  "id": "ript-core-37.b",
+  "chunk": "ript-core-37",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3470,
+  "nfiles": 6,
+  "label": "src/ui",
+  "order": 36
+ },
+ {
+  "id": "ript-core-38",
+  "chunk": "ript-core-38",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 1565,
+  "nfiles": 11,
+  "label": "src/ui",
+  "order": 37
+ },
+ {
+  "id": "ript-core-38.b",
+  "chunk": "ript-core-38",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 1565,
+  "nfiles": 11,
+  "label": "src/ui",
+  "order": 37
+ },
+ {
+  "id": "ript-core-39",
+  "chunk": "ript-core-39",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3531,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 38
+ },
+ {
+  "id": "ript-core-39.b",
+  "chunk": "ript-core-39",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3531,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 38
+ },
+ {
+  "id": "ript-core-40",
+  "chunk": "ript-core-40",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 1737,
+  "nfiles": 7,
+  "label": "src/ui",
+  "order": 39
+ },
+ {
+  "id": "ript-core-40.b",
+  "chunk": "ript-core-40",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 1737,
+  "nfiles": 7,
+  "label": "src/ui",
+  "order": 39
+ },
+ {
+  "id": "ript-core-41",
+  "chunk": "ript-core-41",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 3484,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 40
+ },
+ {
+  "id": "ript-core-41.b",
+  "chunk": "ript-core-41",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 3484,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 40
+ },
+ {
+  "id": "ript-core-42",
+  "chunk": "ript-core-42",
+  "tier": "core",
+  "lens": "structure",
+  "lines": 1017,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 41
+ },
+ {
+  "id": "ript-core-42.b",
+  "chunk": "ript-core-42",
+  "tier": "core",
+  "lens": "defects",
+  "lines": 1017,
+  "nfiles": 2,
+  "label": "src/ui",
+  "order": 41
+ },
+ {
+  "id": "ript-module-01",
+  "chunk": "ript-module-01",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3181,
+  "nfiles": 19,
+  "label": "misc, modules, modules/bdm +2 more",
+  "order": 42
+ },
+ {
+  "id": "ript-module-01.b",
+  "chunk": "ript-module-01",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3181,
+  "nfiles": 19,
+  "label": "misc, modules, modules/bdm +2 more",
+  "order": 42
+ },
+ {
+  "id": "ript-module-02",
+  "chunk": "ript-module-02",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4932,
+  "nfiles": 34,
+  "label": "modules/bdm/src, modules/bdmassault, modules/bdmassault/ilink_bd_assault",
+  "order": 43
+ },
+ {
+  "id": "ript-module-02.b",
+  "chunk": "ript-module-02",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4932,
+  "nfiles": 34,
+  "label": "modules/bdm/src, modules/bdmassault, modules/bdmassault/ilink_bd_assault",
+  "order": 43
+ },
+ {
+  "id": "ript-module-03",
+  "chunk": "ript-module-03",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3070,
+  "nfiles": 23,
+  "label": "modules/bdmassault/ilink_bd_assault, modules/bdmevent, modules/debug/ps2link",
+  "order": 44
+ },
+ {
+  "id": "ript-module-03.b",
+  "chunk": "ript-module-03",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3070,
+  "nfiles": 23,
+  "label": "modules/bdmassault/ilink_bd_assault, modules/bdmevent, modules/debug/ps2link",
+  "order": 44
+ },
+ {
+  "id": "ript-module-04",
+  "chunk": "ript-module-04",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3065,
+  "nfiles": 19,
+  "label": "modules/debug/udptty-ingame, modules/ds34bt, modules/ds34bt/ee +3 more",
+  "order": 45
+ },
+ {
+  "id": "ript-module-04.b",
+  "chunk": "ript-module-04",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3065,
+  "nfiles": 19,
+  "label": "modules/debug/udptty-ingame, modules/ds34bt, modules/ds34bt/ee +3 more",
+  "order": 45
+ },
+ {
+  "id": "ript-module-05",
+  "chunk": "ript-module-05",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4803,
+  "nfiles": 21,
+  "label": "modules/ds34usb/iop, modules/hdd/apa",
+  "order": 46
+ },
+ {
+  "id": "ript-module-05.b",
+  "chunk": "ript-module-05",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4803,
+  "nfiles": 21,
+  "label": "modules/ds34usb/iop, modules/hdd/apa",
+  "order": 46
+ },
+ {
+  "id": "ript-module-06",
+  "chunk": "ript-module-06",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3490,
+  "nfiles": 19,
+  "label": "modules/hdd/apa, modules/hdd/atad, modules/hdd/common +1 more",
+  "order": 47
+ },
+ {
+  "id": "ript-module-06.b",
+  "chunk": "ript-module-06",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3490,
+  "nfiles": 19,
+  "label": "modules/hdd/apa, modules/hdd/atad, modules/hdd/common +1 more",
+  "order": 47
+ },
+ {
+  "id": "ript-module-07",
+  "chunk": "ript-module-07",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4610,
+  "nfiles": 26,
+  "label": "modules/ilink/IEEE1394_bd, modules/ilink/iLinkman",
+  "order": 48
+ },
+ {
+  "id": "ript-module-07.b",
+  "chunk": "ript-module-07",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4610,
+  "nfiles": 26,
+  "label": "modules/ilink/IEEE1394_bd, modules/ilink/iLinkman",
+  "order": 48
+ },
+ {
+  "id": "ript-module-08",
+  "chunk": "ript-module-08",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4752,
+  "nfiles": 19,
+  "label": "modules/iopcore/cdvdfsv, modules/iopcore/cdvdman",
+  "order": 49
+ },
+ {
+  "id": "ript-module-08.b",
+  "chunk": "ript-module-08",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4752,
+  "nfiles": 19,
+  "label": "modules/iopcore/cdvdfsv, modules/iopcore/cdvdman",
+  "order": 49
+ },
+ {
+  "id": "ript-module-09",
+  "chunk": "ript-module-09",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4690,
+  "nfiles": 18,
+  "label": "modules/iopcore/cdvdman",
+  "order": 50
+ },
+ {
+  "id": "ript-module-09.b",
+  "chunk": "ript-module-09",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4690,
+  "nfiles": 18,
+  "label": "modules/iopcore/cdvdman",
+  "order": 50
+ },
+ {
+  "id": "ript-module-10",
+  "chunk": "ript-module-10",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3833,
+  "nfiles": 7,
+  "label": "modules/iopcore/cdvdman",
+  "order": 51
+ },
+ {
+  "id": "ript-module-10.b",
+  "chunk": "ript-module-10",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3833,
+  "nfiles": 7,
+  "label": "modules/iopcore/cdvdman",
+  "order": 51
+ },
+ {
+  "id": "ript-module-11",
+  "chunk": "ript-module-11",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3340,
+  "nfiles": 47,
+  "label": "modules/iopcore/common, modules/iopcore/freezediag, modules/iopcore/igrmbox +4 more",
+  "order": 52
+ },
+ {
+  "id": "ript-module-11.b",
+  "chunk": "ript-module-11",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3340,
+  "nfiles": 47,
+  "label": "modules/iopcore/common, modules/iopcore/freezediag, modules/iopcore/igrmbox +4 more",
+  "order": 52
+ },
+ {
+  "id": "ript-module-12",
+  "chunk": "ript-module-12",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 5000,
+  "nfiles": 35,
+  "label": "modules/mcemu, modules/mmce/mmceman",
+  "order": 53
+ },
+ {
+  "id": "ript-module-12.b",
+  "chunk": "ript-module-12",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 5000,
+  "nfiles": 35,
+  "label": "modules/mcemu, modules/mmce/mmceman",
+  "order": 53
+ },
+ {
+  "id": "ript-module-13",
+  "chunk": "ript-module-13",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3385,
+  "nfiles": 21,
+  "label": "modules/mmce/mmceman, modules/mx4sio_bd, modules/mx4sio_bd/src",
+  "order": 54
+ },
+ {
+  "id": "ript-module-13.b",
+  "chunk": "ript-module-13",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3385,
+  "nfiles": 21,
+  "label": "modules/mmce/mmceman, modules/mx4sio_bd, modules/mx4sio_bd/src",
+  "order": 54
+ },
+ {
+  "id": "ript-module-14",
+  "chunk": "ript-module-14",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4645,
+  "nfiles": 31,
+  "label": "modules/network/SMSUTILS, modules/network/common, modules/network/httpclient +2 more",
+  "order": 55
+ },
+ {
+  "id": "ript-module-14.b",
+  "chunk": "ript-module-14",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4645,
+  "nfiles": 31,
+  "label": "modules/network/SMSUTILS, modules/network/common, modules/network/httpclient +2 more",
+  "order": 55
+ },
+ {
+  "id": "ript-module-15",
+  "chunk": "ript-module-15",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4001,
+  "nfiles": 17,
+  "label": "modules/network/nfsman, modules/network/ps2ips, modules/network/rapops +2 more",
+  "order": 56
+ },
+ {
+  "id": "ript-module-15.b",
+  "chunk": "ript-module-15",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4001,
+  "nfiles": 17,
+  "label": "modules/network/nfsman, modules/network/ps2ips, modules/network/rapops +2 more",
+  "order": 56
+ },
+ {
+  "id": "ript-module-16",
+  "chunk": "ript-module-16",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3732,
+  "nfiles": 25,
+  "label": "modules/network/smap-ingame, modules/network/smap_udpbd",
+  "order": 57
+ },
+ {
+  "id": "ript-module-16.b",
+  "chunk": "ript-module-16",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3732,
+  "nfiles": 25,
+  "label": "modules/network/smap-ingame, modules/network/smap_udpbd",
+  "order": 57
+ },
+ {
+  "id": "ript-module-17",
+  "chunk": "ript-module-17",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3928,
+  "nfiles": 19,
+  "label": "modules/network/smb2man",
+  "order": 58
+ },
+ {
+  "id": "ript-module-17.b",
+  "chunk": "ript-module-17",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3928,
+  "nfiles": 19,
+  "label": "modules/network/smb2man",
+  "order": 58
+ },
+ {
+  "id": "ript-module-18",
+  "chunk": "ript-module-18",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4932,
+  "nfiles": 25,
+  "label": "modules/network/smb2man, modules/network/smbinit, modules/network/smbman-ra",
+  "order": 59
+ },
+ {
+  "id": "ript-module-18.b",
+  "chunk": "ript-module-18",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4932,
+  "nfiles": 25,
+  "label": "modules/network/smb2man, modules/network/smbinit, modules/network/smbman-ra",
+  "order": 59
+ },
+ {
+  "id": "ript-module-19",
+  "chunk": "ript-module-19",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3128,
+  "nfiles": 19,
+  "label": "modules/network/smbman-ra, modules/network/udpfs_bd",
+  "order": 60
+ },
+ {
+  "id": "ript-module-19.b",
+  "chunk": "ript-module-19",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3128,
+  "nfiles": 19,
+  "label": "modules/network/smbman-ra, modules/network/udpfs_bd",
+  "order": 60
+ },
+ {
+  "id": "ript-module-20",
+  "chunk": "ript-module-20",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3550,
+  "nfiles": 51,
+  "label": "modules/network/udpfs_fhi, modules/network/udpfs_ioman, modules/network/udpfs_ministack",
+  "order": 61
+ },
+ {
+  "id": "ript-module-20.b",
+  "chunk": "ript-module-20",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3550,
+  "nfiles": 51,
+  "label": "modules/network/udpfs_fhi, modules/network/udpfs_ioman, modules/network/udpfs_ministack",
+  "order": 61
+ },
+ {
+  "id": "ript-module-21",
+  "chunk": "ript-module-21",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3785,
+  "nfiles": 21,
+  "label": "modules/network/udpfs_shared, modules/network/udpfs_smap",
+  "order": 62
+ },
+ {
+  "id": "ript-module-21.b",
+  "chunk": "ript-module-21",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3785,
+  "nfiles": 21,
+  "label": "modules/network/udpfs_shared, modules/network/udpfs_smap",
+  "order": 62
+ },
+ {
+  "id": "ript-module-22",
+  "chunk": "ript-module-22",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3704,
+  "nfiles": 15,
+  "label": "modules/pademu",
+  "order": 63
+ },
+ {
+  "id": "ript-module-22.b",
+  "chunk": "ript-module-22",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3704,
+  "nfiles": 15,
+  "label": "modules/pademu",
+  "order": 63
+ },
+ {
+  "id": "ript-module-23",
+  "chunk": "ript-module-23",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 4753,
+  "nfiles": 33,
+  "label": "modules/pccf, modules/usb/usbd-ra",
+  "order": 64
+ },
+ {
+  "id": "ript-module-23.b",
+  "chunk": "ript-module-23",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 4753,
+  "nfiles": 33,
+  "label": "modules/pccf, modules/usb/usbd-ra",
+  "order": 64
+ },
+ {
+  "id": "ript-module-24",
+  "chunk": "ript-module-24",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 3465,
+  "nfiles": 17,
+  "label": "modules/usb/usbd-ra, modules/usb/usbmass_bd, modules/vmc/genvmc",
+  "order": 65
+ },
+ {
+  "id": "ript-module-24.b",
+  "chunk": "ript-module-24",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 3465,
+  "nfiles": 17,
+  "label": "modules/usb/usbd-ra, modules/usb/usbmass_bd, modules/vmc/genvmc",
+  "order": 65
+ },
+ {
+  "id": "ript-module-25",
+  "chunk": "ript-module-25",
+  "tier": "module",
+  "lens": "structure",
+  "lines": 1688,
+  "nfiles": 17,
+  "label": "third_party/PSUManager, third_party/korium, third_party/orbit-neutrino +2 more",
+  "order": 66
+ },
+ {
+  "id": "ript-module-25.b",
+  "chunk": "ript-module-25",
+  "tier": "module",
+  "lens": "defects",
+  "lines": 1688,
+  "nfiles": 17,
+  "label": "third_party/PSUManager, third_party/korium, third_party/orbit-neutrino +2 more",
+  "order": 66
+ },
+ {
+  "id": "ript-support-01",
+  "chunk": "ript-support-01",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7942,
+  "nfiles": 45,
+  "label": ".claude, .github, .github/ISSUE_TEMPLATE +1 more",
+  "order": 67
+ },
+ {
+  "id": "ript-support-02",
+  "chunk": "ript-support-02",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7916,
+  "nfiles": 41,
+  "label": ".github/scripts",
+  "order": 68
+ },
+ {
+  "id": "ript-support-03",
+  "chunk": "ript-support-03",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7861,
+  "nfiles": 35,
+  "label": ".github/scripts",
+  "order": 69
+ },
+ {
+  "id": "ript-support-04",
+  "chunk": "ript-support-04",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7898,
+  "nfiles": 44,
+  "label": ".github/scripts",
+  "order": 70
+ },
+ {
+  "id": "ript-support-05",
+  "chunk": "ript-support-05",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7958,
+  "nfiles": 36,
+  "label": ".github/scripts",
+  "order": 71
+ },
+ {
+  "id": "ript-support-06",
+  "chunk": "ript-support-06",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7613,
+  "nfiles": 32,
+  "label": ".github/scripts",
+  "order": 72
+ },
+ {
+  "id": "ript-support-07",
+  "chunk": "ript-support-07",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7996,
+  "nfiles": 30,
+  "label": ".github/scripts",
+  "order": 73
+ },
+ {
+  "id": "ript-support-08",
+  "chunk": "ript-support-08",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7657,
+  "nfiles": 37,
+  "label": ".github/scripts",
+  "order": 74
+ },
+ {
+  "id": "ript-support-09",
+  "chunk": "ript-support-09",
+  "tier": "support",
+  "lens": "support",
+  "lines": 6965,
+  "nfiles": 109,
+  "label": ".github/scripts, ship/EMBER, ship/Example +3 more",
+  "order": 75
+ },
+ {
+  "id": "ript-support-10",
+  "chunk": "ript-support-10",
+  "tier": "support",
+  "lens": "support",
+  "lines": 7894,
+  "nfiles": 82,
+  "label": "tests/nfs-live, tests/pccf, tests/ratls +2 more",
+  "order": 76
+ },
+ {
+  "id": "ript-support-11",
+  "chunk": "ript-support-11",
+  "tier": "support",
+  "lens": "support",
+  "lines": 6197,
+  "nfiles": 43,
+  "label": "tools/hwtest, tools/pc",
+  "order": 77
+ },
+ {
+  "id": "ript-buildci-01",
+  "chunk": "ript-buildci-01",
+  "tier": "buildci",
+  "lens": "buildci",
+  "lines": 3168,
+  "nfiles": 11,
+  "label": "(root)",
+  "order": 78
+ },
+ {
+  "id": "ript-buildci-02",
+  "chunk": "ript-buildci-02",
+  "tier": "buildci",
+  "lens": "buildci",
+  "lines": 2222,
+  "nfiles": 12,
+  "label": ".github/workflows",
+  "order": 79
+ },
+ {
+  "id": "ript-docs-01",
+  "chunk": "ript-docs-01",
+  "tier": "docs",
+  "lens": "docs",
+  "lines": 11501,
+  "nfiles": 59,
+  "label": "(root), .github, .github/scripts +1 more",
+  "order": 80
+ },
+ {
+  "id": "ript-docs-02",
+  "chunk": "ript-docs-02",
+  "tier": "docs",
+  "lens": "docs",
+  "lines": 7635,
+  "nfiles": 28,
+  "label": "docs, docs/assets",
+  "order": 81
+ },
+ {
+  "id": "ript-docs-03",
+  "chunk": "ript-docs-03",
+  "tier": "docs",
+  "lens": "docs",
+  "lines": 5728,
+  "nfiles": 61,
+  "label": "docs/plans, docs/popsmb, docs/ps2sdk-patches +34 more",
+  "order": 82
+ },
+ {
+  "id": "ript-skim-01",
+  "chunk": "ript-skim-01",
+  "tier": "skim",
+  "lens": "skim",
+  "lines": 24210,
+  "nfiles": 36,
+  "label": "language string tables",
+  "order": 83
+ },
+ {
+  "id": "ript-skim-02",
+  "chunk": "ript-skim-02",
+  "tier": "skim",
+  "lens": "skim",
+  "lines": 16720,
+  "nfiles": 57,
+  "label": "lwIP-derived SMSTCPIP network stack (upstream OPL/SMS)",
+  "order": 84
+ },
+ {
+  "id": "ript-skim-03",
+  "chunk": "ript-skim-03",
+  "tier": "skim",
+  "lens": "skim",
+  "lines": 24099,
+  "nfiles": 7,
+  "label": "vendored FatFs (ChaN) sources",
+  "order": 85
+ },
+ {
+  "id": "ript-skim-04",
+  "chunk": "ript-skim-04",
+  "tier": "skim",
+  "lens": "skim",
+  "lines": 205284,
+  "nfiles": 280,
+  "label": "vendored mbedTLS library",
+  "order": 86
+ }
+]

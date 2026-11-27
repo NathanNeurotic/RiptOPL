@@ -1,0 +1,90 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-25.b",
+  "coverage": [
+    {"path": "include/bdmsupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/bdmsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cuesupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "bdmsupport.cpp is the BDM (massN:) game source: driver-name classification of USB/iLink/MX4SIO/ATA/UDPBD/PC CARD CF devices, boot-path parsing and typed-root handoff spelling, IOP module loading for the BDM core (bdm, bdmfs_fatfs, bdmevent, usbmass_bd) and the optional transports (iLink, MX4SIO, PCCF, ATA, UDPBD/UDPFS block chain) on the IO worker, the SIF hotplug event handler that bumps BdmGeneration, and the BdmSource GameSource implementation (needsUpdate/update/config/art/VMC/launch forwarding) over per-slot bdm_device_data_t with separate PS2 and PS1 lists. bdmsupport.h declares the per-slot data, BDM_TYPE_* ids and the cross-module helpers (device root by type, boot-dir resolvers, network transport helpers, config-write diagnostic snapshot). cuesupport.h declares the Ember (CUE) PS1 support: naming limits, EMBER folder layout, scan/rename/settings/launch helpers and the merged POPSTARTER+Ember PS1 list builder implemented in src/sources/cuesupport.cpp.",
+  "reusable_helpers": [
+    {"name": "bdmParseBootStem", "path": "src/sources/bdmsupport.cpp", "line": 179, "what": "splits a '<device><unit>:' path token into its alpha stem and bounded unit number"},
+    {"name": "bdmReadDeviceIdentity", "path": "src/sources/bdmsupport.cpp", "line": 296, "what": "opens a massN: root and reads the BDM driver name and device number through the guarded ioctl2 path"},
+    {"name": "bdmGetDeviceRootByType", "path": "src/sources/bdmsupport.cpp", "line": 495, "what": "returns the first massN:/ root whose driver matches a BDM_TYPE_*"},
+    {"name": "bdmGetDeviceSlotsByType", "path": "src/sources/bdmsupport.cpp", "line": 527, "what": "lists every massN: slot whose driver matches a BDM_TYPE_*"},
+    {"name": "bdmLoadOptionalModule", "path": "src/sources/bdmsupport.cpp", "line": 586, "what": "loads an embedded IRX buffer with a log line and failure log"},
+    {"name": "bdmFindPartition", "path": "src/sources/bdmsupport.cpp", "line": 2326, "what": "finds the first massN: device holding (or able to create) a config file under gBDMPrefix"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "bdmLoadBlockDeviceModules sleeps up to 4.2 s on the IO worker at boot, ahead of every page list and of deferredInit (splash end)",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 1470, "end": 1485},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1415, "end": 1427},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1462, "end": 1468},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1549, "end": 1560},
+        {"path": "src/app/opl.cpp", "start": 538, "end": 542},
+        {"path": "src/app/opl.cpp", "start": 1751, "end": 1759},
+        {"path": "src/app/opl.cpp", "start": 2116, "end": 2116},
+        {"path": "src/ui/guisplash.cpp", "start": 191, "end": 210}
+      ],
+      "problem": "The first bdmInit queues bdmLoadBlockDeviceModules (1559) before each slot's IO_MENU_UPDATE_DEFFERED (opl.cpp 538-542), and deferredInit, which posts GUI_INIT_DONE, is queued after init() (opl.cpp 2116); the single FIFO IO worker runs them in order. The pass ends with one-shot DelayThread settles: 600 ms whenever USB is enabled (1465), 600 ms when MX4SIO is enabled but no card answers (1422), and a 12 x 250 ms poll when iLink is enabled but no iLink root appears (1480-1481). Every page list, and the splash fade (guisplash.cpp 191-210 waits on guiInitComplete), waits behind those sleeps.",
+      "fix": "Delete the iLink poll loop at 1480-1483 and keep its single bdmForceDeviceRefresh, as the MX4SIO branch does: bdmevent is armed before any transport loads (1513-1526), so a late iLink mount already bumps BdmGeneration, which docs/ILINK-DISCOVERY-PARITY-2026-10-18.md already relies on after the deadline. For the USB and MX4SIO settles, either drop the DelayThread and keep the probe plus refresh, or queue the one-shot settle tail as its own IO request after deferredInit so GUI_INIT_DONE and the first lists are not behind it.",
+      "justification": "Only the second USB/MX4SIO option adds anything (one function split out of bdmLoadBlockDeviceModules and one ioPutRequest). It removes a fixed 0.6-1.2 s from the boot critical path without changing the settle the comments at 1429-1461 defend; the iLink part is a pure deletion.",
+      "benefit": "Up to 3.0 s (iLink on, no device) + 0.6 s (MX4SIO on, no card) + 0.6 s (USB on) less wait before the first lists and the splash fade (INFERRED: sum of the DelayThread arguments; overlap with other boot work not measured); ~6 lines removed for the iLink loop",
+      "benefit_rank": 3,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bdmsupport.cpp 1260-1560. ioman.cpp 259-331: one worker, appendLocked links at the tail, putUnlessWaiting only skips an identical not-started request. opl.cpp 538-542: init() then ioPutRequest(IO_MENU_UPDATE_DEFFERED) per page; 1719 _loadConfig -> applyConfig -> initAllSupport (567 bdmEnumerateDevices -> bdmInitDevicesData -> initSupport per slot, bdmdevices.cpp 97); 2116 deferredInit queued after init(); 1757-1759 GUI_INIT_DONE; gui.cpp 195-196 sets initComplete_; guisplash.cpp 191-210 fade gated on guiInitComplete. git log -S ilinkProbeDone: 79f16d18 (deliberate upstream-parity restore; its doc states the 3 s cost). INFERRED: how much of the sleep overlaps main-thread boot work, and that mount events alone discover iLink on hardware."
+    },
+    {
+      "n": 2,
+      "title": "BdmSource::needsUpdate stats CD/DVD and opens ul.cfg on the connect pass although the result is already 1",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 1844, "end": 1861},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1816, "end": 1825},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1625, "end": 1626},
+        {"path": "include/bdmsupport.h", "start": 43, "end": 44},
+        {"path": "src/sources/bdmdevices.cpp", "start": 413, "end": 413},
+        {"path": "src/sources/bdmdevices.cpp", "start": 449, "end": 455}
+      ],
+      "problem": "bdmUpdateDeviceData returns only 1, -1 or 0 (bdmdevices.cpp 413, 449, 455), and needsUpdate returns on 0 and -1 (1817-1823), so lines 1844-1861 run only with result == 1. The two stat() calls and sbIsSameSize (open/size/close of ul.cfg) cannot change the return value, and bdmModifiedCDPrev/DVDPrev are read nowhere else. update() then calls sbReadList, which reads the same folders and ul.cfg again.",
+      "fix": "Delete lines 1844-1861, the two struct fields bdmModifiedCDPrev/bdmModifiedDVDPrev and their initialisation at 1625-1626; drop the then-unused struct stat st.",
+      "justification": "",
+      "benefit": "About 5 IOP RPCs (2 stat, open, lseek, close) less per device connect pass on the IO worker; ~22 lines removed (INFERRED from the cited ranges)",
+      "benefit_rank": 1,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read needsUpdate 1698-1878 and bdmUpdateDeviceData bdmdevices.cpp 209-456: return statements are 0 (220, 308, 331, 377, 389, 432, 455), 1 (413), -1 (449). Grep bdmModifiedCDPrev|bdmModifiedDVDPrev over src/: only bdmsupport.cpp 1625-1626 and 1847-1856. sbIsSameSize supportbase.cpp 65-78 opens <prefix>ul.cfg and reads its size."
+    },
+    {
+      "n": 3,
+      "title": "BdmSource::config retries mkdir of <home>/CFG on every row settle once the folder exists",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 2055, "end": 2066},
+        {"path": "src/ui/menusys.cpp", "start": 587, "end": 606}
+      ],
+      "problem": "On a read-only UDPBD/UDPFS page, config() remembers the CFG folder in madeCfgDir only when mkdir returns 0. From the second boot on the folder already exists, mkdir fails, nothing is latched, and the mkdir is issued again on every config() call. _menuLoadConfigAsync calls config() each time the cursor settles on a row (menusys.cpp 587-606), so each settle costs one extra mkdir RPC on the settings home, usually the memory card.",
+      "fix": "Also latch madeCfgDir when mkdir fails because the folder already exists (errno EEXIST), so the one-mkdir-per-folder intent in the comment holds across boots.",
+      "justification": "",
+      "benefit": "One fileXio mkdir RPC (memory card or USB) less per row settle on read-only network pages (INFERRED; EEXIST mapping of the mc/mass drivers not verified)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bdmsupport.cpp 2042-2073: madeCfgDir is written only inside 'if (mkdir(dir, 0777) == 0)'. Grep '->config(' over src/: menusys.cpp 571 (_menuLoadConfig), 606 (_menuLoadConfigAsync, browse-time settle), 659 (#Size), guigame.cpp 258, cfgtitle.cpp 227, favsupport.cpp 1287. MODE_FLAG_READ_ONLY is set only for UDPBD-type slots (bdmdevices.cpp 299-303, 398-402). INFERRED: mkdir on an existing folder returns -1 on the PS2 newlib port for mc and mass."
+    }
+  ]
+}

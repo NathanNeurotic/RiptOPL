@@ -1,0 +1,133 @@
+## Files that no other file mentions by name (files-unreferenced.tsv)
+- tests/host/test_atlas.cpp  (81 lines; mentioned in 0 docs)
+- tests/host/test_bdmtyped.cpp  (69 lines; mentioned in 0 docs)
+- tests/host/test_config.cpp  (196 lines; mentioned in 0 docs)
+- tests/host/test_grid.cpp  (82 lines; mentioned in 0 docs)
+- tests/host/test_igrmenu.cpp  (238 lines; mentioned in 0 docs)
+- tests/host/test_ps2cnf.cpp  (57 lines; mentioned in 0 docs)
+- tests/host/test_raii.cpp  (85 lines; mentioned in 1 docs)
+- tests/host/test_tar.cpp  (163 lines; mentioned in 0 docs)
+- tests/host/test_themeviews.cpp  (371 lines; mentioned in 0 docs)
+- tests/host/test_vmc_groups.cpp  (47 lines; mentioned in 0 docs)
+- tests/host/test_wallpaper.cpp  (90 lines; mentioned in 0 docs)
+
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- .github/scripts/wiki_sync.py:257  member `convert_summary`  (no-other-mention)
+- .github/scripts/wiki_sync.py:260  member `convert_video`  (no-other-mention)
+- .github/scripts/wiki_sync.py:265  member `convert_div`  (no-other-mention)
+- .github/scripts/wiki_sync.py:273  member `convert_dt`  (no-other-mention)
+- .github/scripts/wiki_sync.py:276  member `convert_dd`  (no-other-mention)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1543  member `_send_raw_data`  (no-other-mention)
+
+## Byte-identical files (dupes-exact-files.tsv)
+- ship/EMBER/Ember Official Webpage.url is byte-identical to: RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/EMBER/Ember Official Webpage.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/EMBER/Ember Official Webpage.url is byte-identical to: RiptOPL/ship/EMBER/Ember Official Webpage.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/OPL-PS1-AIO-Converter-GUI.url is byte-identical to: RiptOPL/tools/pc/OPL-PS1-AIO-Converter-GUI.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/OrbitPS2-Manager.url is byte-identical to: RiptOPL/tools/pc/OrbitPS2-Manager.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/PS2-Servers.url is byte-identical to: RiptOPL/tools/pc/PS2-Servers.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/PS2RD-CHT-Manager.url is byte-identical to: RiptOPL/tools/pc/PS2RD-CHT-Manager.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/android-udpfs-server.url is byte-identical to: RiptOPL/tools/pc/udpfs-server.url
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsbd.toml is byte-identical to: RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsd.toml; RiptOPL/ship/neutrino/bsd-udpfsbd.toml
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsd.toml is byte-identical to: RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsbd.toml; RiptOPL/ship/neutrino/bsd-udpfsbd.toml
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/__init__.py is byte-identical to: PS2-Servers/udpfs_server/compressed_iso/__init__.py
+- ship/POPS/UDPFS-NOTICES/LICENSE is byte-identical to: RiptOPL/ship/POPS/UDPFS-NOTICES/AFL-2.0.txt
+- ship/POPS/UDPFS-NOTICES/LICENSE is byte-identical to: RiptOPL/ship/POPS/UDPFS-NOTICES/AFL-2.0.txt; Launchstation/iop/ps2ips_rpc/PS2SDK_LICENSE.txt
+- ship/POPS/UDPFS-NOTICES/PATHMAP.INI is byte-identical to: POPSLoader/docs/third_party/okeanos_udpfs/PATHMAP.INI.example
+- ship/neutrino/bsd-udpfsbd.toml is byte-identical to: RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsbd.toml; RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfsd.toml
+- tests/host/sdk_stub/tamtypes.h is byte-identical to: RiptOPL/tests/host/stub/tamtypes.h
+- tests/host/stub/include/ioman.h is byte-identical to: RiptOPL/tests/host/stub/ioman.h
+- tests/host/stub/ioman.h is byte-identical to: RiptOPL/tests/host/stub/include/ioman.h
+- tests/host/stub/tamtypes.h is byte-identical to: RiptOPL/tests/host/sdk_stub/tamtypes.h
+
+## Largely identical files (dupes-file-pairs.tsv)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT is 70% the same as Launchstation/res/APPINFO.PBT (95 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT is 82% the same as POPSLoader/bin/POPSLDR/APPINFO.PBT (111 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpbd-hdd.toml is 50% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml is 36% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpbd-hdd.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml is 36% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs.toml is 57% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb-debug.toml is 66% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb.toml is 85% the same as RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb-debug.toml (12 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/base.py is 95% the same as PS2-Servers/udpfs_server/compressed_iso/base.py (114 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/chd.py is 59% the same as PS2-Servers/udpfs_server/compressed_iso/chd.py (78 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/cso.py is 68% the same as PS2-Servers/udpfs_server/compressed_iso/cso.py (59 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/zso.py is 47% the same as PS2-Servers/udpfs_server/compressed_iso/zso.py (49 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py is 45% the same as PS2-Servers/udpfs_server/udpfs_server.py (629 cloned normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py repeats itself: 14 cloned normalised lines inside the file (1%)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as Launchstation/iop/mx4sio_bd/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as Launchstation/iop/oldlibs/ps2ftpd/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as Launchstation/iop/usbmass_bd/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as POPSLoader/iop/embed/BDMASSAULT_MX4SIO/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/modules/bdmassault/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/modules/debug/ps2link/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/modules/mx4sio_bd/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/modules/usb/usbmass_bd/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/third_party/ps2sdk-ppctty/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as RiptOPL/third_party/ps2sdk-socket/LICENSE (15 cloned normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE is 10% the same as Simple-Media-System/iop/smbman-sms/LICENSE-AFL-2.0 (15 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT:18-51  ==  Launchstation/res/APPINFO.PBT:19-52  (28 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT:30-51  ==  POPSLoader/bin/POPSLDR/APPINFO.PBT:30-51  (19 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT:45-73  ==  POPSLoader/bin/POPSLDR/APPINFO.PBT:45-73  (25 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT:80-153  ==  Launchstation/res/APPINFO.PBT:80-153  (67 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/APPS/APP_RIPTOPL/APPINFO.PBT:80-153  ==  POPSLoader/bin/POPSLDR/APPINFO.PBT:80-153  (67 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpbd-hdd.toml:25-36  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml:33-44  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml:15-26  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs.toml:15-26  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml:33-44  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpbd-hdd.toml:25-36  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs.toml:15-26  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-udpfs-hdd.toml:15-26  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb-debug.toml:12-49  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb.toml:8-45  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb.toml:8-45  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/bsd-usb-debug.toml:12-49  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/base.py:147-179  ==  PS2-Servers/udpfs_server/compressed_iso/base.py:164-196  (23 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/base.py:2-29  ==  PS2-Servers/udpfs_server/compressed_iso/base.py:2-29  (18 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/base.py:32-46  ==  PS2-Servers/udpfs_server/compressed_iso/base.py:32-46  (13 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/base.py:48-136  ==  PS2-Servers/udpfs_server/compressed_iso/base.py:53-141  (60 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/chd.py:133-152  ==  PS2-Servers/udpfs_server/compressed_iso/chd.py:269-291  (15 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/chd.py:161-191  ==  PS2-Servers/udpfs_server/compressed_iso/chd.py:304-334  (26 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/chd.py:46-82  ==  PS2-Servers/udpfs_server/compressed_iso/chd.py:153-189  (25 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/chd.py:86-100  ==  PS2-Servers/udpfs_server/compressed_iso/chd.py:193-207  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/cso.py:2-33  ==  PS2-Servers/udpfs_server/compressed_iso/cso.py:2-33  (21 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/cso.py:62-96  ==  PS2-Servers/udpfs_server/compressed_iso/cso.py:70-104  (21 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/cso.py:98-125  ==  PS2-Servers/udpfs_server/compressed_iso/cso.py:109-139  (17 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/zso.py:2-40  ==  PS2-Servers/udpfs_server/compressed_iso/zso.py:2-40  (25 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/compressed_iso/zso.py:74-114  ==  PS2-Servers/udpfs_server/compressed_iso/zso.py:82-122  (24 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1042-1073  ==  PS2-Servers/udpfs_server/udpfs_server.py:2183-2214  (24 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1075-1090  ==  PS2-Servers/udpfs_server/udpfs_server.py:2222-2237  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1123-1150  ==  PS2-Servers/udpfs_server/udpfs_server.py:2292-2319  (21 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1171-1194  ==  PS2-Servers/udpfs_server/udpfs_server.py:2359-2382  (19 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1197-1222  ==  PS2-Servers/udpfs_server/udpfs_server.py:2387-2412  (20 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1231-1250  ==  PS2-Servers/udpfs_server/udpfs_server.py:2434-2453  (16 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1255-1278  ==  PS2-Servers/udpfs_server/udpfs_server.py:2473-2494  (16 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1551-1567  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1593-1609  (14 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1557-1572  ==  PS2-Servers/udpfs_server/udpfs_server.py:2978-2993  (13 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1576-1597  ==  PS2-Servers/udpfs_server/udpfs_server.py:2997-3018  (16 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1593-1609  ==  RiptOPL/ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1551-1567  (14 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1622-1637  ==  PS2-Servers/udpfs_server/udpfs_server.py:3052-3067  (13 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:1653-1749  ==  PS2-Servers/udpfs_server/udpfs_server.py:3094-3190  (78 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:167-190  ==  PS2-Servers/udpfs_server/udpfs_server.py:401-424  (14 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:214-280  ==  PS2-Servers/udpfs_server/udpfs_server.py:464-530  (51 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:3-22  ==  PS2-Servers/udpfs_server/udpfs_server.py:3-22  (16 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:348-360  ==  PS2-Servers/udpfs_server/udpfs_server.py:795-807  (12 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:441-487  ==  PS2-Servers/udpfs_server/udpfs_server.py:1111-1157  (38 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:542-556  ==  PS2-Servers/udpfs_server/udpfs_server.py:1388-1402  (14 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:567-598  ==  PS2-Servers/udpfs_server/udpfs_server.py:1413-1444  (25 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:608-646  ==  PS2-Servers/udpfs_server/udpfs_server.py:1453-1491  (36 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:670-686  ==  PS2-Servers/udpfs_server/udpfs_server.py:1641-1657  (13 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:702-722  ==  PS2-Servers/udpfs_server/udpfs_server.py:1668-1688  (17 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:737-774  ==  PS2-Servers/udpfs_server/udpfs_server.py:1706-1743  (33 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:78-97  ==  PS2-Servers/udpfs_server/udpfs_server.py:200-219  (17 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:805-821  ==  PS2-Servers/udpfs_server/udpfs_server.py:1824-1840  (16 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:867-892  ==  PS2-Servers/udpfs_server/udpfs_server.py:1927-1952  (22 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:894-916  ==  PS2-Servers/udpfs_server/udpfs_server.py:1955-1977  (17 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:918-936  ==  PS2-Servers/udpfs_server/udpfs_server.py:1990-2008  (14 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:969-984  ==  PS2-Servers/udpfs_server/udpfs_server.py:2078-2093  (13 normalised lines)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/udpfs_server/udpfs_server.py:989-1004  ==  PS2-Servers/udpfs_server/udpfs_server.py:2120-2135  (13 normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE:123-138  ==  Launchstation/iop/mx4sio_bd/LICENSE:123-138  (15 normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE:123-138  ==  Launchstation/iop/oldlibs/ps2ftpd/LICENSE:123-138  (15 normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE:123-138  ==  Launchstation/iop/usbmass_bd/LICENSE:123-138  (15 normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE:123-138  ==  POPSLoader/iop/embed/BDMASSAULT_MX4SIO/LICENSE:123-138  (15 normalised lines)
+- ship/POPS/UDPFS-NOTICES/LICENSE:123-138  ==  RiptOPL/modules/bdmassault/LICENSE:123-138  (15 normalised lines)
+- ... 6 more: grep your file paths in evidence/RiptOPL/
+
+## TODO/FIXME/HACK style markers (cond-markers.tsv)
+- ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/emu-dvd-file.toml:18  #unload = true // FIXME this is broken, can be tested with Jak X

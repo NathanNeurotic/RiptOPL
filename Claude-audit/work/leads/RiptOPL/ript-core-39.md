@@ -1,0 +1,11 @@
+## Largely identical files (dupes-file-pairs.tsv)
+- src/ui/guisettings.cpp is 0% the same as RiptOPL/src/ui/gui.cpp (21 cloned normalised lines)
+- src/ui/guisettings.cpp is 0% the same as RiptOPL/src/ui/guigameid.cpp (22 cloned normalised lines)
+- src/ui/guisettings.cpp is 0% the same as RiptOPL/src/ui/guimodal.cpp (22 cloned normalised lines)
+- src/ui/guisettings.cpp is 0% the same as RiptOPL/src/ui/guiwait.cpp (22 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- src/ui/guisettings.cpp:32-53  ==  RiptOPL/src/ui/guigameid.cpp:34-55  (22 normalised lines)
+- src/ui/guisettings.cpp:32-53  ==  RiptOPL/src/ui/guimodal.cpp:22-43  (22 normalised lines)
+- src/ui/guisettings.cpp:32-53  ==  RiptOPL/src/ui/guiwait.cpp:21-42  (22 normalised lines)
+- src/ui/guisettings.cpp:33-53  ==  RiptOPL/src/ui/gui.cpp:29-49  (21 normalised lines)

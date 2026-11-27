@@ -1,0 +1,86 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-21.b",
+  "coverage": [
+    {"path": "src/platform/ratls.c", "status": "read_full", "note": ""},
+    {"path": "src/platform/selfupdate.c", "status": "read_full", "note": ""},
+    {"path": "src/platform/sysdisc.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/sysneutrino.cpp", "status": "read_full", "note": ""},
+    {"path": "include/system.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "ratls.c is the portable half of the HTTPS client: one mbedTLS session over caller-supplied socket callbacks, a buffered GET for the RetroAchievements game-ID lookup (raTlsRequest) and a streamed, size-capped GET with redirect reporting for Check for Updates (raTlsDownload); ratls_ps2.cpp supplies sockets, clock and roots, and both callers run on the IO worker. selfupdate.c holds the updater's pure parsers (SHA256SUMS.txt, build number in a version string, GitHub-only URL split, path join, MIPS ELF header check). sysdisc.cpp implements Launch Disc: wall-clock-bounded detect/re-detect waits with a GUI progress callback, SYSTEM.CNF BOOT2 parsing with a disc-key fallback, MMCE game ID, then rom0:PS2LOGO. sysneutrino.cpp launches the external Neutrino core: device-token mapping, pre-teardown preflights that rewrite <neutrino>/config/bsd-*.toml (ip sync, SMB/NFS login), cheats and RA cfg files, and the argv composer that enforces the 14-entry / 256-byte ExecPS2 budget before sysLoadELFKeepIOP. include/system.h declares the platform/launch API and the Neutrino SMB/VMC argument structs.",
+  "reusable_helpers": [
+    {"name": "raTlsRtcToUtc", "path": "src/platform/ratls.c", "line": 50, "what": "converts the PS2 RTC (Japan time) date fields to a UTC epoch second count"},
+    {"name": "suParseSums", "path": "src/platform/selfupdate.c", "line": 60, "what": "parses a sha256sum-style SHA256SUMS.txt: digest for one file name plus the release build number"},
+    {"name": "suSplitUrl", "path": "src/platform/selfupdate.c", "line": 105, "what": "splits an https URL into host and path, accepting only an allowlist of hosts"},
+    {"name": "suJoin", "path": "src/platform/selfupdate.c", "line": 128, "what": "joins dir + name + suffix, adding '/' unless dir ends in ':' or '/', with truncation check"},
+    {"name": "suLooksLikeElf", "path": "src/platform/selfupdate.c", "line": 135, "what": "checks a 32-bit little-endian MIPS executable ELF header"},
+    {"name": "sysParseBoot2", "path": "src/platform/sysdisc.cpp", "line": 75, "what": "extracts the BOOT2 path from SYSTEM.CNF text (case-insensitive key, same-line '=')"},
+    {"name": "sysLastPathSeparator", "path": "src/platform/sysneutrino.cpp", "line": 279, "what": "returns the last '/' or '\\' in a path"},
+    {"name": "neutrinoArgHasActiveFlag", "path": "src/platform/sysneutrino.cpp", "line": 199, "what": "token-boundary search for an active (not $-disabled) flag or key= prefix in a whitespace-separated arg string"},
+    {"name": "sysTomlEscape", "path": "src/platform/sysneutrino.cpp", "line": 498, "what": "escapes a string for a TOML basic string, rejecting control characters"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Tray-open check compares sceCdStatus() with an error code (SCECdErOPENS), so it never fires",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/sysdisc.cpp", "start": 158, "end": 159},
+        {"path": "src/platform/system.cpp", "start": 498, "end": 499}
+      ],
+      "problem": "sceCdStatus() returns the drive status register (bit 0 = tray open, value SCECdStatShellOpen; see the repo's own emulation in modules/iopcore/cdvdman/scmd.c:60-68,115-119), but both functions compare it with SCECdErOPENS, a member of the SCECdEr* error-code family returned by sceCdGetError. An open tray therefore never takes the documented 'return -1' exit. In sysGetDiscBootPath the open tray reads as NODISC and the code goes on to send a tray-close request (sysdisc.cpp:168-175) and re-detect for up to 2-4 s; in sysGetDiscID the NODISC test at system.cpp:506 returns -1 anyway.",
+      "fix": "Delete the two dead checks. They never fire today, and an open tray already ends in the NODISC handling in both functions. If an open tray should fail fast in sysGetDiscBootPath, test sceCdStatus() & SCECdStatShellOpen there instead.",
+      "justification": "",
+      "benefit": "4 lines removed (INFERRED); the code then does what it actually does, with no misleading guard. No ELF size change worth stating.",
+      "benefit_rank": 2,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "grep -rn SCECdErOPENS over src/RiptOPL: only sysdisc.cpp:158 and system.cpp:498. grep sceCdStatus: modules/iopcore/cdvdman/scmd.c:115-119 returns cdvdman_stat.status, which scmd.c:68 sets to SCECdStatShellOpen on tray open (bit 0 test at :64,:79). SCECdEr* values elsewhere are error codes (e.g. test_udpfs_files_oplcore.py:235-237 SCECdErREAD 0x30, SCECdErTRMOPN 0x31). INFERRED: SCECdErOPENS is 0x11 in the ps2sdk header (not in this repo), which is not a reachable status value (tray-open bit plus seek bit). Callers do not distinguish -1 from -2: menusys.cpp:2365-2367 and discsupport.cpp:111-113,164-168 show one generic error."
+    },
+    {
+      "n": 2,
+      "title": "Launch Disc waits use absolute clock()+budget deadlines that break at the 32-bit clock wrap",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/sysdisc.cpp", "start": 134, "end": 137},
+        {"path": "src/platform/sysdisc.cpp", "start": 185, "end": 188},
+        {"path": "src/platform/sysdisc.cpp", "start": 197, "end": 198}
+      ],
+      "problem": "sysDiscSettle and the NODISC re-detect compute deadline = clock() + budget and loop while clock() < deadline. The repo itself says clock() is a 32-bit microsecond counter (ratls_ps2.cpp:167, nettime.cpp:72) and that only the elapsed form (clock() - start) survives the wrap (guiwait.cpp:97-98). If Launch Disc is chosen in the last 1-4 s before a wrap (every ~71.6 min), the deadline overflows, every wait ends at once, and a disc that is still identifying or spun down is reported as 'disc launch error'.",
+      "fix": "Keep a start tick and compare elapsed time, as guiwait.cpp:99-103 does: (clock() - start) < budgetTicks for the three tests. Same line count.",
+      "justification": "",
+      "benefit": "Removes a rare spurious Launch Disc failure (about 4 s in every 71.6 min of uptime, about 0.1% of launches; INFERRED). No size change.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read sysdisc.cpp:132-145 and 168-207. Repo statements on clock(): ratls_ps2.cpp:167-172 and nettime.cpp:72-75 ('32-bit microsecond counter ... compare elapsed time, which survives the wrap'), guiwait.cpp:97-103 ('unlike an absolute clock()+limit deadline'). Every other timed wait found by grep 'clock() - ' (guinotify.cpp:89,148, guisettings.cpp:1388, menusys.cpp:2755, ranet.cpp:1110) uses the elapsed form. INFERRED: clock_t width and CLOCKS_PER_SEC come from those comments; the ps2sdk header is not in this repo. Reachable: menusys.cpp:2365 (GUI thread) and discsupport.cpp:50 call sysGetDiscBootPath."
+    },
+    {
+      "n": 3,
+      "title": "Two Neutrino TOML preflights keep separate static 4 KB in/out buffer pairs (16.9 KB .bss) though they never run together",
+      "category": 4,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 384, "end": 385},
+        {"path": "src/platform/sysneutrino.cpp", "start": 639, "end": 640}
+      ],
+      "problem": "sysSyncNeutrinoUdpfsToml has static toml[4096] and updated[4116]; sysNeutrinoSmbPreflight has static toml[4096] and updated[4608]. That is 16,916 bytes of .bss held for the whole run. The two are only called one after the other (the udpfs sync from sysNeutrinoPreflight:836-837 for udpfs/udpfsbd/udpbd only; the SMB/NFS preflight only from ethsupport.cpp:1216), neither calls the other, and neither keeps data between calls, so one pair is enough.",
+      "fix": "Replace the four function-local statics with one file-scope pair (4096 in, 4096 + 512 out) used by both functions.",
+      "justification": "",
+      "benefit": "8,212 bytes .bss saved (MEASURED: nm gives 0x1000+0x1014 and 0x1000+0x1200 = 16,916 B; one 4096+4608 pair keeps 8,704). No code growth.",
+      "benefit_rank": 2,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt lines 187 (SmbPreflight updated 0x1200), 206 (UdpfsToml updated 0x1014), 212 (UdpfsToml toml 0x1000), 214 (SmbPreflight toml 0x1000); riptopl-per-object.tsv:46 sysneutrino.o bss 17036. Callers via grep over src: sysSyncNeutrinoUdpfsToml only at sysneutrino.cpp:837; sysNeutrinoSmbPreflight only at ethsupport.cpp:1216, followed by sysNeutrinoPreflight(driver smb/nfs) at :1221, which skips the udpfs sync (sysneutrino.cpp:836). Both functions read the file fresh each call and keep no state in the buffers. The udpfs output needs at most 4094 + 15 bytes (sysneutrino.cpp:443), which fits in 4608."
+    }
+  ]
+}

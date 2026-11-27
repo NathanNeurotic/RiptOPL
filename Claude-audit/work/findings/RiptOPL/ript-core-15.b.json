@@ -1,0 +1,142 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-15.b",
+  "coverage": [
+    {"path": "src/gfx/fntsys.cpp", "status": "read_full", "note": ""},
+    {"path": "include/grid.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/grid.cpp", "status": "read_full", "note": ""},
+    {"path": "include/plasma.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/plasma.cpp", "status": "read_full", "note": ""},
+    {"path": "include/psbbnflow.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/psbbnflow.cpp", "status": "read_full", "note": ""},
+    {"path": "include/renderman.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "fntsys.cpp is the FreeType text system: a FontSystem object with 16 font slots, per-font glyph caches paged by codepoint (256 entries per page), up to four 256x256 T8 atlases per font, one CLUT, one semaphore shared by the GUI thread (draw/measure) and the IO worker (font loads), plus the fnt* C API with fit/marquee (fntRenderStringFit), word wrap (fntWrapText) and in-place wrap (fntFitString). grid.cpp/grid.h draw the Grid theme view (pages of covers, case flip with a COV2 back-cover cache, page slide, device sidebar); psbbnflow.cpp/psbbnflow.h draw the PSBBN Game Collection flow with hand-built triangle fans into static vertex arrays; plasma.cpp is the 32x32 perlin-noise background updated 6 rows a frame with VU0 helpers; renderman.h declares the renderer API (640x480 virtual space scaled to the native mode).",
+  "reusable_helpers": [
+    {"name": "fntRenderStringFit", "path": "src/gfx/fntsys.cpp", "line": 980, "what": "draws text in a fixed-width window: truncates with '...' or scrolls it as a marquee, binary-searching the cut point"},
+    {"name": "fntWrapText", "path": "src/gfx/fntsys.cpp", "line": 1049, "what": "word-wraps UTF-8 text to a pixel width into an output buffer, breaking long words and CJK/Thai per character"},
+    {"name": "fntFitString", "path": "src/gfx/fntsys.cpp", "line": 1135, "what": "in-place word wrap by replacing spaces with newlines at a pixel width"},
+    {"name": "gridSlideEase", "path": "include/grid.h", "line": 104, "what": "cubic ease-out 0..1 for slide animations"},
+    {"name": "PlasmaBackground::ease", "path": "include/plasma.h", "line": 21, "what": "table-driven quintic smoothstep 0..1, also used by screen fade transitions"},
+    {"name": "psbbnFlowRoundRect", "path": "include/psbbnflow.h", "line": 119, "what": "outline points of a rounded rectangle for triangle fans"},
+    {"name": "psbbnFlowCrop", "path": "include/psbbnflow.h", "line": 100, "what": "centre-crop UV window of a texture to a square"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "fntLoadDefault never sets a char size on the new default face (updateAspectRatioLocked runs while the font is still a local)",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/fntsys.cpp", "start": 393, "end": 412},
+        {"path": "src/gfx/fntsys.cpp", "start": 489, "end": 511},
+        {"path": "src/gfx/fntsys.cpp", "start": 648, "end": 677},
+        {"path": "src/app/opl.cpp", "start": 1944, "end": 1952},
+        {"path": "src/app/opl.cpp", "start": 1717, "end": 1719},
+        {"path": "src/core/lang.cpp", "start": 454, "end": 454},
+        {"path": "src/ui/guisplash.cpp", "start": 102, "end": 107}
+      ],
+      "problem": "loadSlotLocked ends in updateAspectRatioLocked, which only calls FT_Set_Char_Size on fonts_[i]; loadDefault loads into the local newFont and copies it into fonts_[FNT_DEFAULT] afterwards, so the new default face has no size until some later fntUpdateAspectRatio or fntLoadFile. fntInit loads the built-in font this way: the __OPLDIAG autolaunch screen (opl.cpp:1944-1952) draws FNT_DEFAULT straight after fntInit, and the boot splash draws its version and status lines (guisplash.cpp:102-107) before _loadConfig reaches applyConfig's guiUpdateScreenScale. With no size, FreeType 2.14 loads glyphs unscaled and drops FT_LOAD_RENDER, so those glyphs are cached as valid but have no bitmap.",
+      "fix": "Move the updateAspectRatioLocked() call out of loadSlotLocked: call it in loadDefault after the memcpy into fonts_[FNT_DEFAULT], and in loadFile after a successful loadSlotLocked.",
+      "justification": "It moves an existing call rather than adding logic, at the cost of one extra line: the call has to run once the new font is in fonts_, otherwise the default face is never sized. This is the smallest correct fix.",
+      "benefit": "Text drawn with the default font between fntInit and the first guiUpdateScreenScale is drawn at the right size instead of blank (the FreeType no-size behaviour is INFERRED from the 2.14.1 SDK version; the missing FT_Set_Char_Size is READ). Net +1 line.",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read fntsys.cpp:393-412 (loadSlotLocked -> updateAspectRatioLocked), 489-511 (newFont is a local, memcpy after), 648-677 (loop over fonts_ only). grep FT_Set_Char_Size|FT_Set_Pixel_Sizes|FT_Request_Size over the repo: only fntsys.cpp:674. grep fntUpdateAspectRatio: only gui.cpp:458 (Gui::updateScreenScale), called from settingsio.cpp:2523 (applyConfig), opl.cpp:358, guisettings.cpp. Boot order opl.cpp:1676-1719: lngInit (lang.cpp:454 fntInit), thmInit (internal theme, no fntLoadFile since themePath NULL, themes.cpp:1575-1576), splash at 1717-1718, then _loadConfig. OPLDIAG path opl.cpp:1944-1952 renders right after fntInit. FreeType version 2.14.1 from the installed SDK freetype.h; the NO_SCALE/RENDER behaviour of FT_Load_Glyph is from FreeType source knowledge, not read here."
+    },
+    {
+      "n": 2,
+      "title": "Kerning code in renderString, renderSubRTL and calcDimensionsLocked never runs: `previous` starts at 0 and is only set inside `if (... && previous)`",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/fntsys.cpp", "start": 753, "end": 755},
+        {"path": "src/gfx/fntsys.cpp", "start": 775, "end": 783},
+        {"path": "src/gfx/fntsys.cpp", "start": 837, "end": 844},
+        {"path": "src/gfx/fntsys.cpp", "start": 887, "end": 889},
+        {"path": "src/gfx/fntsys.cpp", "start": 907, "end": 916},
+        {"path": "src/gfx/fntsys.cpp", "start": 946, "end": 948},
+        {"path": "src/gfx/fntsys.cpp", "start": 1227, "end": 1229},
+        {"path": "src/gfx/fntsys.cpp", "start": 1244, "end": 1252},
+        {"path": "include/fontsystem.h", "start": 97, "end": 99}
+      ],
+      "problem": "Each loop sets previous = 0 and guards the kerning block with `use_kerning && previous`, and the only assignment to previous is inside that block, so the condition is always false and FT_Get_Kerning is never called. Kerning was never applied (an inherited OPL bug). Draw and measure agree only because neither one kerns. The built-in PoeVeticaNew.ttf has no 'kern' table anyway.",
+      "fix": "Delete the kerning blocks, the use_kerning/previous/glyph_index/delta state (GlyphRun fields and calcDimensionsLocked locals) and delta_x in the RTL renderString, plus the 'so kerning stays exact' remark at fntsys.cpp:1085. This keeps the current rendering exactly.",
+      "justification": "",
+      "benefit": "~45 lines removed; no rendering change, because the code never executes (READ). FT_Get_Kerning may be dropped from the link (INFERRED, small).",
+      "benefit_rank": 2,
+      "lines_removed": 45,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep kerning|previous|glyph_index|delta in fntsys.cpp: previous is assigned only at 755, 889 and 1228 (= 0) and at 782, 843, 915 and 1251, all inside `if (use_kerning && previous)`. GlyphRun fields are at fontsystem.h:97-99, and no other file touches them. A Python read of third_party/fonts/PoeVeticaNew.ttf finds no 'kern' or GPOS table (upem 2048)."
+    },
+    {
+      "n": 3,
+      "title": "Glyph cache pages of 256 entries (9 KB each) make CJK text cost ~0.7 MB of mostly empty cache per font",
+      "category": 4,
+      "locations": [
+        {"path": "include/fontsystem.h", "start": 22, "end": 22},
+        {"path": "include/fontsystem.h", "start": 43, "end": 59},
+        {"path": "src/gfx/fntsys.cpp", "start": 187, "end": 221},
+        {"path": "src/gfx/fntsys.cpp", "start": 593, "end": 602}
+      ],
+      "problem": "The cache is paged by codepoint/256, and each page is malloc'd whole: 256 x 36-byte entries = 9,216 B. CJK ideographs are spread over U+4E00-9FFF, so a few hundred distinct characters touch dozens of pages, each almost empty. Pages are freed only when the font is flushed. Counting the codepoints in lng/fork/Japanese, SChinese and TChinese.yml gives 74, 76 and 81 distinct pages: 666-729 KB per font once those strings have been drawn, for 578-746 used entries.",
+      "fix": "Lower GLYPH_CACHE_PAGE_SIZE to 32. The code already uses only the constant (/ and %). Optionally also narrow the entry's int fields to short.",
+      "justification": "",
+      "benefit": "INFERRED from the lang files: at 32 entries a page is 1,152 B, so 239-340 pages = 269-382 KB instead of 666-729 KB per CJK font (~350-400 KB saved per font in the worst case). Latin fonts save ~10-18 KB each. The pointer array grows to at most 8 KB.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read fontsystem.h:22 (GLYPH_CACHE_PAGE_SIZE 256) and 43-59 (entry: 7 ints + 2 pointers = 36 B on the 32-bit EE), and fntsys.cpp:187-221 (page malloc of 256 entries) and 593-602. grep GLYPH_CACHE_PAGE_SIZE: used only at fntsys.cpp:155, 209, 214, 594, 595. A Python count of distinct (codepoint // N) over lng/fork/*.yml: Japanese 74 pages at 256, 239 at 32; SChinese 76 / 305; TChinese 81 / 340; Korean 43 / 194. That assumes every string of the language is drawn before a flush, so it is an upper bound."
+    },
+    {
+      "n": 4,
+      "title": "When a font's 4 atlases are full, cacheGlyph drops the glyph and FreeType re-renders it on every draw and measure",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/fntsys.cpp", "start": 545, "end": 578},
+        {"path": "src/gfx/fntsys.cpp", "start": 608, "end": 625},
+        {"path": "include/fontsystem.h", "start": 16, "end": 20}
+      ],
+      "problem": "Nothing is evicted. Once all ATLAS_MAX (4) 256x256 atlases of a font are full, glyphAtlasPlace returns 0 and cacheGlyph returns NULL with the entry still invalid. The character is not drawn, the text closes up around it, and every later renderString or calcDimensions call runs FT_Load_Char + FT_Render_Glyph for it again and walks all four atlas trees. At 720p (native 720 lines, renderman.cpp:74) the 17 px font is ~25 px, so a CJK glyph cell is ~25x26 and an atlas holds ~90-100, ~400 per font. Japanese.yml alone has 490 distinct CJK characters.",
+      "fix": "On a placement failure, mark the entry valid with no allocation (as glyphAtlasPlace already does for empty bitmaps), so a full atlas costs nothing per frame. To make the characters show, raise ATLAS_MAX to 8: atlases are created lazily, so only a font that fills four pays 64 KB per extra atlas.",
+      "justification": "The problem is missing CJK characters, plus FreeType re-rasterising every missing glyph on the GUI thread each frame. Caching the failure is one assignment. Raising ATLAS_MAX is a constant change that allocates nothing for fonts that never need it, which makes it the simplest way to fit a CJK UI at 720p.",
+      "benefit": "Stops per-frame FreeType re-rendering of every glyph that does not fit (INFERRED: tens of microseconds each on the EE). With ATLAS_MAX 8, CJK UIs at 720p/576p keep all their characters (capacity arithmetic INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read fntsys.cpp:545-578 (returns 0 after ATLAS_MAX), 608-625 (isValid stays 0 on failure, so the next call loads again) and atlas.cpp:105-139 and 164-177 (guillotine split, width+1 x height+1 per glyph). updateAspectRatioLocked fntsys.cpp:654-674: char size 17 at 72*hs DPI, hs = native/480. renderman.cpp:74: 720p row 1280x720 (hs 1.5). The python count gives 490 distinct CJK characters in lng/fork/Japanese.yml, 645 in SChinese. Capacity: 256/25 x 256/26 = 10 x 9 = 90 per atlas (INFERRED; real glyph sizes depend on the language font)."
+    },
+    {
+      "n": 5,
+      "title": "cacheGlyph runs one or two FreeType cmap lookups for every non-ASCII character on every draw and measure once a fallback font is loaded",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/fntsys.cpp", "start": 586, "end": 591},
+        {"path": "src/gfx/fntsys.cpp", "start": 608, "end": 610},
+        {"path": "src/core/lang.cpp", "start": 424, "end": 441}
+      ],
+      "problem": "The fallback test (two FT_Get_Char_Index calls) runs before the glyph-cache lookup, so a cached glyph still pays it on every renderString and calcDimensions call. fntRenderStringFit measures a string several times a frame. This runs on the GUI thread whenever the optional font_CJK/font_Japanese file was found (lngInitFallbackFont), for every character >= 0x80: every CJK glyph of a CJK UI font, and twice for every CJK game title character drawn from the fallback.",
+      "fix": "In cacheGlyph, return the active font's own valid entry first, then the fallback font's valid entry for the same codepoint. A fallback entry only becomes valid through this redirect, and every font load flushes all caches. Only on a miss in both, run the two cmap lookups as now.",
+      "justification": "It adds one extra cache probe (~3 lines) to remove up to two cmap binary searches per character per pass on the GUI thread. It is the smallest change that makes cached glyphs free.",
+      "benefit": "Removes ~1-2 FT_Get_Char_Index binary searches per drawn or measured CJK character per frame (INFERRED ~0.5-1 us each, so ~0.5-2 ms per frame on a CJK game list). Applies only when the fallback font exists.",
+      "benefit_rank": 1,
+      "lines_removed": -3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read fntsys.cpp:581-638: fallback condition at 586-591 is evaluated before glyphPageOk / isValid at 598-610. fallbackFontId_ is set only by loadFallback (fntsys.cpp:442-459), called only from lngInitFallbackFont (lang.cpp:424-441), which opl.cpp:1741 calls at boot. The fallback slot id is never returned to callers, so its entries become valid only via this redirect. Every loadFile/loadDefault flushes all fonts (fntsys.cpp:409, 669-675). The per-lookup cost is INFERRED, not measured."
+    }
+  ]
+}

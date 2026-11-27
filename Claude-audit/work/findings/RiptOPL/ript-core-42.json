@@ -1,0 +1,107 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-42",
+  "coverage": [
+    {"path": "src/ui/menuwatch.cpp", "status": "read_full", "note": ""},
+    {"path": "src/ui/selfupdate.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "menuwatch.cpp is the __OPLDIAG-only menu watchdog and crash catcher: a priority-1 thread that watches rmFramesDrawn and the GUI step set by menuWatchStep (gui.cpp, opl.cpp), shows boot-stage colours on the GS background, and writes RIPTOPL-FREEZE.TXT or RIPTOPL-CRASH.TXT (registers, EE thread table, VBlank PC samples, diag log tail) to mc0/mc1 through bounded libmc calls with a newlib fallback; libeedebug level-1 handlers redirect a faulting thread into crashReport. selfupdate.cpp is the Check for Updates menu action, compiled only with RIPTOPL_UPDATER (standard builds, tools/build_edition.py): on the IO worker it raises the network, fetches SHA256SUMS.txt from the build's GitHub release channel over raHttpsDownload with redirect following, compares build numbers, downloads the ELF into RAM, checks SHA-256 and ELF header, and overwrites the booted ELF in place with fileXio. Parsing helpers (suSplitUrl, suParseSums, suRevision, suJoin, suLooksLikeElf) live in src/platform/selfupdate.c.",
+  "reusable_helpers": [
+    {"name": "add", "path": "src/ui/menuwatch.cpp", "line": 149, "what": "appends printf-formatted text to a fixed report buffer, clamping at the buffer end"},
+    {"name": "mcWaitBounded", "path": "src/ui/menuwatch.cpp", "line": 221, "what": "polls mcSync(MC_NOWAIT) with a millisecond timeout instead of the unbounded MC_WAIT"},
+    {"name": "writeReportMc", "path": "src/ui/menuwatch.cpp", "line": 247, "what": "writes a buffer to a memory-card file through libmc (getinfo, delete, open, write, close) with every wait bounded"},
+    {"name": "writeReport", "path": "src/ui/menuwatch.cpp", "line": 277, "what": "writes a buffer to a path, libmc first for mcN: paths, newlib open/write/close otherwise"},
+    {"name": "suIsMc", "path": "src/ui/selfupdate.cpp", "line": 117, "what": "tests whether a path starts with mc0: or mc1:"},
+    {"name": "suFetch", "path": "src/ui/selfupdate.cpp", "line": 145, "what": "HTTPS GET from github.com via raHttpsDownload, following up to three redirects to GitHub hosts"},
+    {"name": "suNetworkUp", "path": "src/ui/selfupdate.cpp", "line": 210, "what": "loads the network modules and waits up to 10 s for a non-zero IP (DHCP lease)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "The mc0:/mc1: path prefix test is written out in six places (suIsMc, fmIsMcPath, fmIsMc, menuwatch writeReport, settingsio twice)",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/selfupdate.cpp", "start": 117, "end": 120},
+        {"path": "src/ui/menuwatch.cpp", "start": 284, "end": 284},
+        {"path": "src/ui/guifilemgr.cpp", "start": 69, "end": 72},
+        {"path": "src/core/filemgr.cpp", "start": 82, "end": 85},
+        {"path": "src/app/settingsio.cpp", "start": 690, "end": 696},
+        {"path": "src/app/settingsio.cpp", "start": 700, "end": 704}
+      ],
+      "problem": "The same expression (strncmp(p, \"mc\", 2) == 0 && (p[2] == '0' || p[2] == '1') && p[3] == ':') appears as three identical static one-line functions (selfupdate.cpp:117, guifilemgr.cpp:69, filemgr.cpp:82), inline in menuwatch.cpp:284, and twice more in settingsio.cpp (bootHomeIsConcreteMc on gBootDir, and inside sameConcreteMcSlot). No shared helper exists in include/.",
+      "fix": "Keep one static inline isMcPath() in a header the files already include (include/opl.h) and delete suIsMc, fmIsMcPath, fmIsMc and bootHomeIsConcreteMc, calling the shared one instead; use it in menuwatch.cpp:284 and for the first operand in sameConcreteMcSlot.",
+      "justification": "The helper replaces six copies of the same test already in the tree, so it removes code overall (four function bodies and two inline expressions become one four-line inline).",
+      "benefit": "~10 source lines net (INFERRED: 4 static helpers of 4-5 lines plus 2 inline expressions replaced by one 4-line inline); no ELF change, the compiler already inlines these static one-liners.",
+      "benefit_rank": 2,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over src/RiptOPL for \"[2] == '0' || x[2] == '1'\": selfupdate.cpp:119, menuwatch.cpp:284, guifilemgr.cpp:71, filemgr.cpp:84, settingsio.cpp:694 and :703, nothing else. Grep for (is|Is)Mc...(const char: only suIsMc, fmIsMcPath, fmIsMc (all static). No include/util*.h. Read settingsio.cpp:690-704. All files are in the main riptopl target globs (ps2.yaml:641); selfupdate.cpp only in updater builds, menuwatch.cpp body only under __OPLDIAG."
+    },
+    {
+      "n": 2,
+      "title": "menuwatch.cpp: freeze and crash reports repeat the EE thread table, the log tail and the write-and-colour tail",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/menuwatch.cpp", "start": 202, "end": 215},
+        {"path": "src/ui/menuwatch.cpp", "start": 345, "end": 348},
+        {"path": "src/ui/menuwatch.cpp", "start": 436, "end": 451}
+      ],
+      "problem": "buildReport (202-215) and crashReport (436-446) each contain the same header line, the same 1..255 ReferThreadStatus loop with the same format string (differing only in which thread is marked and the sema line), and the same diagCopy/terminate/append block. watchThread (345-348) and crashReport (448-451) repeat the same mc0-then-mc1 writeReport call with green/orange screen colours, differing only in the file name. addEpcSamples already shows the shared-helper pattern for the PC samples.",
+      "fix": "Move the thread table plus log tail into one static helper taking the thread id to mark and its label (with the sema line kept, it is harmless in the crash report), and the two-card write plus colour into one helper taking the file name; call both from buildReport/watchThread and crashReport.",
+      "justification": "Both helpers replace two copies that already exist in this file, so the file gets shorter; no behaviour change other than the crash report also listing semaphore counts.",
+      "benefit": "~12 source lines (INFERRED: 14+4 duplicated lines become two helpers of ~10 lines plus 4 call lines); diagnostic builds only, so no shipped-ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read menuwatch.cpp 1-584 in full. Format strings at 202/436 and 206/440 are identical; 213-215 and 444-446 identical; 345-348 and 448-451 identical apart from the file name. Whole file is under #ifdef __OPLDIAG (17, 584); include/menuwatch.h:54-69 gives empty inline stubs otherwise."
+    },
+    {
+      "n": 3,
+      "title": "suNetworkUp repeats netTimeFetch's network bring-up and 40 x 250 ms DHCP wait loop",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/selfupdate.cpp", "start": 210, "end": 225},
+        {"path": "src/sources/nettime.cpp", "start": 141, "end": 153}
+      ],
+      "problem": "selfupdate.cpp:217-224 and nettime.cpp:145-153 are the same sequence: ethLoadInitModules(), then up to 40 polls of ethGetNetConfig for a non-zero IP with DelayThread(250 ms), with the same comment. The nettime.cpp:141-144 comment also claims modules loaded by Check for Updates keep ps2ip's start-up address, but suNetworkUp calls the same ethLoadInitModules(), so that remark is stale.",
+      "fix": "Put the load-and-wait loop once in ethsupport.cpp next to ethGetNetConfig (returning 0 or -1) and call it from both; drop the stale 'another path (Check for Updates)' sentence in nettime.cpp.",
+      "justification": "Two identical copies exist in the main ELF; one helper is smaller than two copies and keeps the timeout in one place.",
+      "benefit": "~5 source lines net and a stale comment fixed (INFERRED: two 8-line copies become one ~9-line helper and two calls); a few dozen bytes of .text in updater builds (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep 'DHCP lease can take' over src: only selfupdate.cpp:219 and nettime.cpp:147. Read nettime.cpp:130-158 and selfupdate.cpp:210-225. Other ethGetNetConfig callers (ranet.cpp:431,814, rapopslaunch.cpp:65, ethsupport.cpp:1209, supportbase.cpp:1915) do a single check without the wait loop. ratlsNicBusy (ratls_ps2.cpp:261) vs nettime's inline busy test differ, so only the load-and-wait part is shared."
+    },
+    {
+      "n": 4,
+      "title": "selfupdate.cpp error paths: five identical \"%s\" cases in suReport and free(f.data) repeated on six exits of suInstallWorker",
+      "category": 3,
+      "locations": [
+        {"path": "src/ui/selfupdate.cpp", "start": 361, "end": 389},
+        {"path": "src/ui/selfupdate.cpp", "start": 269, "end": 269},
+        {"path": "src/ui/selfupdate.cpp", "start": 284, "end": 294},
+        {"path": "src/ui/selfupdate.cpp", "start": 319, "end": 349}
+      ],
+      "problem": "suReport formats into a 256-byte stack buffer with snprintf(\"%s\") in five cases only to pass a fixed language string to guiMsgBox; only the SWAP and GITHUB cases need formatting. suInstallWorker frees f.data separately on each of its six exit paths (285, 291, 321, 331, 341, 344) because f.data is initialised only after the first two gotos.",
+      "fix": "In suReport, pick the string id for the plain cases and call guiMsgBox(_l(id), 0, NULL) once, keeping snprintf only for SWAP and GITHUB. In suInstallWorker, set f.data = NULL at the top and free it once at the done label, deleting the five other free calls.",
+      "justification": "",
+      "benefit": "~13 source lines (INFERRED: suReport 29 -> ~20 lines, five free calls removed); negligible ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read selfupdate.cpp 1-433 in full. suReport 361-389: NETBUSY, NETWORK, CLOCK, WRITE/MEMORY and VERIFY cases are snprintf(text, ..., \"%s\", _l(...)). free(f.data) at 285, 291, 321, 331, 341, 344; f.data first assigned at 269, after the gotos at 262 and 267; free(NULL) is safe."
+    }
+  ]
+}

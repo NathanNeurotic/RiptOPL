@@ -1,0 +1,136 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-19.b",
+  "coverage": [
+    {"path": "src/gfx/themes.cpp", "status": "read_full", "note": ""},
+    {"path": "include/themeviews.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/themeviews.cpp", "status": "read_full", "note": ""},
+    {"path": "include/uidraw.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/uidraw.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "themes.cpp is the theme loader and catalog: thmLoad reads conf_theme.cfg (folder or thm_<Name>.tar), applies SD/HD and alt-background variants, picks the view, parses the twelve element families through their fallback chains, validates lists and cover-cache splits, loads fonts and every icon texture, then publishes the new theme_t under the GUI lock and frees the old one; ThemeCatalog lists thm_* folders/archives per device, keeps the selected id and the name list the settings dialog shows, all serialised by thmSwitchSema. themeviews.cpp is config-only logic for multi-view themes (which views a theme offers, slot resolution with <view>. prefixes, _sd/_hd/_wsX and alt= key rewriting, synthesis of an undeclared view from a built-in template). uidraw.cpp draws a button glyph with a caption and measures a row of such hints for the GUI and the theme renderer.",
+  "reusable_helpers": [
+    {"name": "thmViewGetInt / thmViewGetColor", "path": "src/gfx/themeviews.cpp", "line": 251, "what": "config lookup with a '<prefix>.<key>' override falling back to '<key>'"},
+    {"name": "thmKeyEndsWith", "path": "src/gfx/themeviews.cpp", "line": 273, "what": "suffix test on a key of known length"},
+    {"name": "thmViewParseList", "path": "src/gfx/themeviews.cpp", "line": 92, "what": "comma/space separated word list to a bit mask"},
+    {"name": "thmHintParse", "path": "src/gfx/themes.cpp", "line": 1312, "what": "comma/space separated name list to de-duplicated token array"},
+    {"name": "thmSynthCopyBlock", "path": "src/gfx/themeviews.cpp", "line": 432, "what": "copies every '<src>_<key>' config entry as '<dst>_<key>' (block rename/copy inside a config set)"},
+    {"name": "guiDrawIconAndText", "path": "src/gfx/uidraw.cpp", "line": 12, "what": "draws a theme glyph scaled to 20 px high followed by a translated caption, returns the next x"},
+    {"name": "guiAlignSubMenuHints", "path": "src/gfx/uidraw.cpp", "line": 59, "what": "start x that centres or right-aligns a row of glyph+caption hints"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "thmLoad decodes and keeps seven boot-logo textures that are never drawn (LOGO_PICTURE, LOGO1..LOGO6) in every loaded theme",
+      "category": 4,
+      "locations": [
+        {"path": "src/gfx/themes.cpp", "start": 1683, "end": 1697},
+        {"path": "src/ui/guisplash.cpp", "start": 70, "end": 73},
+        {"path": "src/gfx/textures.cpp", "start": 291, "end": 301},
+        {"path": "src/gfx/textures.cpp", "start": 120, "end": 124}
+      ],
+      "problem": "Every thmLoad (boot, each theme switch, each hold-L3 view switch, Widescreen/alt/wallpaper/grid/language reloads) runs texLoadInternal for LOGO_PICTURE, TECHWRITESCODE_LOGO and LOGO0..LOGO6, and the textures stay allocated until the theme is freed. The only reader is the boot splash, which since the animation was dropped draws LOGO0 alone (LOGO_PICTURE only when logoFrameCount is 0, i.e. LOGO0 failed). LOGO1..LOGO6 and, normally, LOGO_PICTURE are never drawn; LOGO0 and the credit mark are not drawn after the intro either.",
+      "fix": "Delete the LOGO1..LOGO6 loop and load LOGO0 only (LOGO_PICTURE only if LOGO0 failed, or drop that fallback), keeping the enum ids since texture ids are positional. Point the LOGO1..LOGO6 table entries at NULL and drop logo1..logo3 (and logo, if the fallback goes) from the embedded asset list. Optional second step: skip LOGO0 and TECHWRITESCODE_LOGO for loads after the intro has ended.",
+      "justification": "",
+      "benefit": "~519 KB EE RAM per loaded theme, ~1 MB while old and new theme coexist (INFERRED: logo.png 512x256 T8 = 129 KB, logo1-6 6 x 512x128 T8 = 390 KB); 7 PNG decodes less per load; up to 29,811 B ELF (MEASURED raw/riptopl-per-object.tsv: logo 9954, logo1-3 19,857)",
+      "benefit_rank": 5,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "grep -rn 'LOGO[0-6]\\?_PICTURE|logoFrameCount|logo[0-6]\\?_png' src include: readers are only guisplash.cpp:73 (picks LOGO0 when logoFrameCount>=1, else LOGO_PICTURE) and :90 (credit); loads at themes.cpp:1684-1697; table textures.cpp:291-301 (logo4-6 alias logo3-1 blobs). Splash drawn only at boot: guiRenderGreetingScreen callers opl.cpp:566-595 (gated by gBootInProgress), 1705-1743, guiIntroLoop opl.cpp:2118. thmFree frees them (themes.cpp:974-980); nothing else does. PNG IHDR read from gfx/logo*.png: logo 512x256, logo0-3 512x128, 8-bit palette; textures.cpp:1093-1100 decodes 8-bit palette to GS_PSM_T8 + 1 KB CLUT. RAM figure INFERRED for the default assets (the Korium build embeds its own logo PNGs). ELF sizes from evidence/RiptOPL/raw/riptopl-per-object.tsv lines 170,217,222,235."
+    },
+    {
+      "n": 2,
+      "title": "Hold-L3 view switch runs a full thmLoad (cfg, font files, up to 47 PNG probes, two art drains) synchronously on the GUI thread",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/themes.cpp", "start": 2186, "end": 2208},
+        {"path": "src/ui/menusys.cpp", "start": 2773, "end": 2776},
+        {"path": "src/gfx/themes.cpp", "start": 1412, "end": 1419},
+        {"path": "src/gfx/themes.cpp", "start": 1573, "end": 1576},
+        {"path": "src/gfx/themes.cpp", "start": 1699, "end": 1750},
+        {"path": "src/gfx/themes.cpp", "start": 1817, "end": 1825}
+      ],
+      "problem": "menuHandleInputMain (GUI thread, screen input dispatch) calls thmCycleView on a 500 ms L3 hold; it reloads the whole theme through setGuiValueLocked -> thmLoad between frames, so no frame is drawn until it returns. For a disk theme that re-reads conf_theme.cfg, every font file (thmLoadFonts, whole TTF reads) and probes/decodes up to 47 icon PNGs from the theme device (SMB, USB, MMCE), plus up to 3 x 500 ms art drains (DelayThread(1000) loops, artload.cpp:442-452); the built-in theme decodes about 100 embedded PNGs. Only the element layout differs between views.",
+      "fix": "Run the hold-L3 switch through guiHandleDeferedIO(..., IO_CUSTOM_SIMPLEACTION, worker, 0) like the other blocking actions (menusys.cpp:983, guisettings.cpp:953), so the IO worker does the load while the GUI keeps drawing a busy message; thmLoad already publishes under the GUI lock for IO-thread loads (themes.cpp:1828-1844).",
+      "justification": "Adds a two-line void wrapper and one call. Problem: a frozen frame for the whole reload on every hold-L3 (seconds for a disk theme on a network share, INFERRED). Reusing the existing deferred-IO wait is the smallest change that keeps the UI responsive without restructuring thmLoad.",
+      "benefit": "Removes a frozen frame on each view switch: INFERRED hundreds of ms (built-in theme, ~100 PNG decodes) to seconds (disk theme over SMB: cfg + fonts + up to 47 file probes); not measured on hardware",
+      "benefit_rank": 3,
+      "lines_removed": -4,
+      "effort": "M",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Call path: guiscreens.cpp:19/97 dispatch -> menuHandleInputMain (menusys.cpp:2780) -> menuHandleViewHold -> thmCycleView (menusys.cpp:2776) -> thmSetViewLocked (themes.cpp:2203) -> setGuiValueLocked(..., 1) (2146) -> thmLoad (2035). thmLoad comment themes.cpp:1831-1832 says the view switch runs between frames. Texture loads counted from textures.h enum: LOAD0-7 (8), BDM_ICON..START_ICON (23), INDEX2_0..INDEX4_3 (9), UDPFS (1), L3..FAV_MARK (4), L1/R1 (2) = 47 thmLoadResource calls, each one texDiscoverLoad .png probe (textures.cpp:1411-1437); built-in adds ELF_FORMAT..VMODE_PAL (44) and 9 logos. Drain waits: artload.cpp:426-455 (ticks are 1 ms DelayThread). guiHandleDeferedIO: guiwait.cpp:149-153. Duration not measured."
+    },
+    {
+      "n": 3,
+      "title": "ThemeCatalog::reinit can leave themeId_ pointing at a removed or different theme (failed default load; 64-byte name copy)",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/themes.cpp", "start": 1972, "end": 1977},
+        {"path": "src/gfx/themes.cpp", "start": 2002, "end": 2012},
+        {"path": "src/gfx/themes.cpp", "start": 2020, "end": 2023},
+        {"path": "src/sources/ethsupport.cpp", "start": 601, "end": 611},
+        {"path": "src/sources/udpfssupport.cpp", "start": 323, "end": 324}
+      ],
+      "problem": "When the active theme lives on the device being removed (SMB reconnect, UDPFS re-init) and thmLoad(NULL) returns -1 (MX4SIO art drain timeout at 1415, or OOM at 1361), themeId_ keeps the old index although the swap-remove at 1985-1997 just deleted that entry: the id now names another theme or lies past count_, so thmGetValue reads names_[count_+1] (NULL) or past the array, and picking the theme that moved into that slot is skipped as 'already loaded' (2034). Separately, activeName[64] truncates a theme name of 64+ chars, findGuiID misses, and themeId_ becomes 0 while the disk theme stays on screen.",
+      "fix": "Keep a pointer to the active entry's name instead of the 64-byte copy (only removed entries are freed; moved entries keep their name pointers), and when the active entry was removed set themeId_ to 0 whether or not thmLoad(NULL) succeeded, since the old index no longer exists.",
+      "justification": "",
+      "benefit": "Fixes a wrong theme id (possible out-of-bounds read of names_) after a failed fallback load, and the id loss for long theme names; removes a 64-byte stack copy and its snprintf",
+      "benefit_rank": 2,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "thmReinit callers: ethsupport.cpp:611 (reconnectSmb, IO worker) and udpfssupport.cpp:324 (UdpfsSource::init). thmLoad returns -1 at themes.cpp:1364 (malloc) and 1418 (cacheAbortMmceImageLoadsTimed(500) fails with curT set). names_ holds count_+2 entries with names_[count_+1]=NULL (themes.cpp:1888-1897); currentName returns names_[themeId_] unchecked (2022). thmGetValue readers: settingsio.cpp:2233 (guarded by thmSavedThemePending), guisettings.cpp:2749. setGuiValueLocked skips the load when themeId_ == themeID and reload == 0 (themes.cpp:2034). Theme names come from directory entries (readEntry, themes.cpp:1045-1047), not length-limited. Trigger needs an MX4SIO art read wedged during the reconnect, so it is rare."
+    },
+    {
+      "n": 4,
+      "title": "Theme reloads can run out of font slots: new theme's fonts load before the old theme's are released (15 slots, up to 16 fonts per theme)",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/themes.cpp", "start": 1129, "end": 1174},
+        {"path": "src/gfx/themes.cpp", "start": 1841, "end": 1843},
+        {"path": "include/themes.h", "start": 9, "end": 9},
+        {"path": "include/fontsystem.h", "start": 21, "end": 21},
+        {"path": "src/gfx/fntsys.cpp", "start": 442, "end": 459},
+        {"path": "src/gfx/fntsys.cpp", "start": 469, "end": 486}
+      ],
+      "problem": "fntLoadFile takes the first free slot of 1..15 (slot 0 is the default font) and the language fallback font holds one. thmLoad loads all the new theme's fonts (up to THM_MAX_FONTS = 16) while the old theme still holds its own, and releases those only at publish. A theme with 8 or more font files, or two consecutive themes whose fonts add up to more than 14, gets FNT_ERROR for the rest: those keys silently fall back to fonts[0] after a view switch, Widescreen or language reload, and each such TTF is still read whole from the device and then freed.",
+      "fix": "Lower THM_MAX_FONTS to 7 so old + new + fallback always fit the 15 slots, or, if themes really use more fonts, raise FNT_MAX_COUNT to 2 * THM_MAX_FONTS + 2.",
+      "justification": "",
+      "benefit": "Font choice no longer changes across reloads for font-heavy themes and no wasted TTF reads; lowering the constant also shrinks theme_t by 36 bytes (9 ints)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "FNT_MAX_COUNT = 16 (fontsystem.h:21); FontSystem::loadFile scans i = 1..FNT_MAX_COUNT-1 for !isValid and frees the buffer when none is free (fntsys.cpp:472-484); loadFallback uses loadFile (fntsys.cpp:451) and is called from lang.cpp:438. thmLoadFonts loops fntID < THM_MAX_FONTS = 16 (themes.h:9) and calls fntLoadFile per key (themes.cpp:1159); the old theme's fonts are released by thmFree(curT) at themes.cpp:1843 after the new ones are loaded (1576). No theme cfg in the repo uses font5 or higher (grep '^font([5-9]|1[0-5])='), so the trigger is limited to third-party themes with many fonts."
+    },
+    {
+      "n": 5,
+      "title": "guiAlignSubMenuHints measures a missing glyph as 20+2 px but guiDrawIconAndText draws it as 0 px",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/uidraw.cpp", "start": 67, "end": 73},
+        {"path": "src/gfx/uidraw.cpp", "start": 14, "end": 29}
+      ],
+      "problem": "For a NULL glyph texture (a use_default=0 theme without circle.png/cross.png, the case the comment at :68-69 names) the measure uses w = 20 and subtracts rmWideScale(20)+2, while the drawer uses w = 0 and does not advance x. Right-aligned hint rows (dia.cpp:795, guioverlay.cpp:78, guisettings.cpp:3155) then end about 22 px short of their margin per missing glyph and centred rows (guisettings.cpp:3126, themeelems.cpp:2338) sit about 11 px off.",
+      "fix": "Use 0 width and skip the +2 gap for a NULL texture in guiAlignSubMenuHints, matching guiDrawIconAndText.",
+      "justification": "",
+      "benefit": "Hint rows line up when a theme lacks a glyph; no size change",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "uidraw.cpp:70 'w = iconTex ? ... : 20' then :73 'x -= rmWideScale(w) + 2'; uidraw.cpp:15-29 starts with w = 0 and only advances x by rmWideScale(w) + 2 when iconTex && iconTex->Mem. thmGetTexture returns NULL whenever Mem is NULL (themes.cpp:938-951). Callers pairing the two: dia.cpp:795/815-820, guioverlay.cpp:78-83, guisettings.cpp:3126-3132 and 3155-3160, gui.cpp:413-414, themeelems.cpp:2338-2344."
+    }
+  ]
+}

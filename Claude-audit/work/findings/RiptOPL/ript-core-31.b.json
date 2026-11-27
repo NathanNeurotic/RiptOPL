@@ -1,0 +1,43 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-31.b",
+  "coverage": [
+    {"path": "src/sources/rawatch.cpp", "status": "read_full", "note": ""},
+    {"path": "include/retrogem.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/retrogem.cpp", "status": "read_full", "note": ""},
+    {"path": "include/supportbase.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "rawatch.cpp (RetroAchievements overlay builds only) keeps the per-game RA watch list and its optional pointer-chain tail in one static RaWatch object (gRaWatch, about 17.9 KB of .bss). The list comes either from a <prefix>RA/<startup>.wl file (loadWatchList, called by sbReadWatchList) or from the network buffer ranet.cpp received (setWatchList). Both paths validate the header, entry sizes and chain ordering before publishing, because ee_core copies the list at launch and walks it in an interrupt handler. retrogem.cpp reads PS1 images (POPStarter .VCD at a 1 MiB offset, raw 2352 or cooked 2048 .BIN/.ISO, .CUE followed to its data track), finds SYSTEM.CNF through the ISO9660 PVD and root directory, and normalizes the BOOT serial. vcdsupport (IO worker, row metadata) and the PS1 launch legs (main thread) use it, and displayRetroGemGameID draws the RetroGEM optical barcode for a few frames before handoff. supportbase.h declares the shared device-backend API (list scan, games.bin cache, prepare/launch helpers, cheats, RA watch-list and hash hooks, Neutrino argument helpers) and the base_game_info_t and USBExtreme_game_entry_t records.",
+  "reusable_helpers": [
+    {"name": "retrogemReadLe32", "path": "src/sources/retrogem.cpp", "line": 50, "what": "reads a little-endian 32-bit value from a byte pointer"},
+    {"name": "retrogemReadSector", "path": "src/sources/retrogem.cpp", "line": 177, "what": "reads one 2048-byte user-data sector from a raw 2352 (mode 1 / mode 2 form 1) or cooked image at an LBA"},
+    {"name": "retrogemHasExt", "path": "src/sources/retrogem.cpp", "line": 409, "what": "case-insensitive file extension test"},
+    {"name": "retrogemContainsNoCase", "path": "src/sources/retrogem.cpp", "line": 421, "what": "case-insensitive substring search"},
+    {"name": "retrogemCueResolveDataFile", "path": "src/sources/retrogem.cpp", "line": 476, "what": "parses a .cue sheet and builds the path of its first data-track FILE next to the cue"},
+    {"name": "retrogemNormalizeGameID", "path": "src/sources/retrogem.cpp", "line": 63, "what": "normalizes a PS1 serial token (case, separators, SLUSP alias, LSP layout) into SLUS_123.45 form"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "retrogemGetDiscImageGameID retries a .VCD at offset 0 (raw and cooked) after the 1 MiB-offset read fails; both retries cannot match",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/retrogem.cpp", "start": 558, "end": 579},
+        {"path": "src/sources/vcdsupport.cpp", "start": 436, "end": 450},
+        {"path": "src/sources/vcdsupport.cpp", "start": 467, "end": 470},
+        {"path": "src/sources/vcdsupport.cpp", "start": 3027, "end": 3036}
+      ],
+      "problem": "For isVcd, when the 0x100000-offset layout finds no serial (no SYSTEM.CNF, as on PSX.EXE titles, a non-serial BOOT, or a read error), the function goes on to reopen the file twice and probe offset 0 as raw and as cooked. Offset 0 of a POPStarter VCD is its 1 MiB header, not disc sector 0, so neither probe can reach the disc PVD. The cooked probe reads up to 16 sectors. On the IO worker, resolveRowId repeats a failed resolve up to 4 times per row (VCD_ID_MAX_RETRIES 3, vcdsupport.cpp:264). The launch path repeats it again on the main thread.",
+      "fix": "Delete the offset-0 fallbacks for VCDs: make retrogemGetVcdGameID return retrogemTryImageLayout(path, PS1_VCD_IMAGE_OFFSET, PS1_IMAGE_RAW_2352, ...) directly, and drop the isVcd parameter from retrogemGetDiscImageGameID.",
+      "justification": "",
+      "benefit": "Per failed VCD resolve: 2 fopen/fclose and up to 17 sector reads (1 raw + 16 cooked x 2048 B) avoided, times up to 4 attempts per row per session plus 1 at launch (INFERRED from the code, not measured). About 2 lines removed.",
+      "benefit_rank": 1,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read retrogem.cpp:177-232 (read-sector/PVD scan: raw layout fails on the first sector whose mode byte is not 1/2; cooked scans LBA 16-31), 390-407, 558-604. Callers via grep retrogem: vcdsupport.cpp:449 (resolveRowId, IO worker per its comment at 411-412; retry logic 467-470, VCD_ID_MAX_RETRIES=3 at 264), vcdsupport.cpp:3034 (vcdPrepareRetroGemBarcode, called from the launch legs before deinit: bdmlaunch.cpp:247, ethsupport.cpp:1041, mmcesupport.cpp:1283, hddsupport.cpp:2294, udpfssupport.cpp:823), and retrogem.cpp:589-590 (.VCD extension). Every isVcd caller passes a .VCD path. The claim that the 1 MiB VCD header never holds an ISO9660 PVD at offset 16x2352 or 16x2048 is INFERRED from the POPStarter VCD layout that PS1_VCD_IMAGE_OFFSET encodes. The header contents were not inspected."
+    }
+  ]
+}

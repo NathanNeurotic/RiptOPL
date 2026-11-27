@@ -1,0 +1,186 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-09",
+  "coverage": [
+    {"path": "src/app/settingsio.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "settingsio.cpp is the settings-persistence half split out of opl.cpp: boot-home resolution (resolveBootDirToMass, APA/APA+exFAT hybrid, MMCE, network-deferred, BDM), the config.path Custom Settings Path redirect and its mc mirror, read-only recovery discovery (tryAlternateDevice and helpers), _loadConfig (post-read clamps and legacy migrations for theme, network protocol, POPSTARTER, Neutrino, Ember, RA), _saveConfig with its APA staged-home and custom-path branches, applyConfig and the saveConfig UI wrapper. Load runs once at boot on the IO worker; save runs on the IO worker through guiHandleDeferedIO. autolaunch (opl.cpp miniInit) shares resolveBootDirToMass, tryAlternateDevice, configReadNeutrinoGlobals and configReadRA.",
+  "reusable_helpers": [
+    {"name": "normalizeMcPath", "path": "src/app/settingsio.cpp", "line": 584, "what": "rewrites mcN: / mcN:X to mcN:/ / mcN:/X so file creation on a memory card works"},
+    {"name": "createMcSettingsFolder", "path": "src/app/settingsio.cpp", "line": 601, "what": "mkdir -p for a memory-card folder path, level by level"},
+    {"name": "bootHomeHasFile", "path": "src/app/settingsio.cpp", "line": 1183, "what": "joins a directory and a file name and tests that the file opens"},
+    {"name": "bootPathIsConcreteMass", "path": "src/app/settingsio.cpp", "line": 718, "what": "true for a literal massN: device prefix"},
+    {"name": "sameConcreteMcSlot", "path": "src/app/settingsio.cpp", "line": 690, "what": "true when two paths name the same mc0:/mc1: slot"},
+    {"name": "configWriteChecked", "path": "src/app/settingsio.cpp", "line": 2108, "what": "configWriteMulti that reports failure when any requested set is still marked modified"},
+    {"name": "configFileName", "path": "src/app/settingsio.cpp", "line": 2123, "what": "basename of a config set's file path (after last / or :)"},
+    {"name": "tryReadRecoveryConfigHome", "path": "src/app/settingsio.cpp", "line": 675, "what": "re-homes all config sets to a directory if it exists and reads them"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Concrete mc0:/mc1: boot handling in preferredMcSlot, tryMissingConfigPathRecovery and the tryAlternateDevice legacy fallback is unreachable",
+      "category": 1,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 239, "end": 249},
+        {"path": "src/app/settingsio.cpp", "start": 255, "end": 255},
+        {"path": "src/app/settingsio.cpp", "start": 856, "end": 865},
+        {"path": "src/app/settingsio.cpp", "start": 1045, "end": 1052},
+        {"path": "src/app/settingsio.cpp", "start": 1070, "end": 1075}
+      ],
+      "problem": "tryAlternateDevice returns at 1012-1019 for every concrete MC boot, so tryMissingConfigPathRecovery (only caller 1023) and the legacy block at 1044-1081 never see gBootDir starting mc0:/mc1:; nothing in between rewrites gBootDir. preferredMcSlot's other caller, mcConfigPathRedirect, is only reached under gBootHomeDeferred (311, 360), which is set only for smb/udpfs boots (1398-1400). So preferredMcSlot always returns sysCheckMC(), the mc1-first swap is dead, and the concreteMcHome branch and the sameConcreteMcSlot(gBootDir, concreteMcHome) branch never run.",
+      "fix": "Delete preferredMcSlot and call sysCheckMC() in mcConfigPathRedirect; use the fixed {0,1} slot order in tryMissingConfigPathRecovery and drop its stale comment; in the legacy fallback call configSetMove(NULL) directly and delete the concreteMcHome buffer and the sameConcreteMcSlot else-if (keep the gBootHomeDeferred / configSetMove(gBootDir) pair).",
+      "justification": "",
+      "benefit": "~30 source lines and a few hundred bytes of live code removed (INFERRED: the branches sit inside reachable functions, so the compiler cannot drop them); the remaining recovery logic reads as what it does.",
+      "benefit_rank": 2,
+      "lines_removed": 30,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read settingsio.cpp 239-262, 853-931, 938-1121, 1332-1466. Grep gBootHomeDeferred: set only 1338 (reset) and 1400 (smb/udpfs branch). Grep preferredMcSlot: 242, 255, 857 only. Grep for gBootDir writers in src: opl.cpp:2021,2085 (setBootDir/main), settingsio 1232,1301 (APA paths, return before 1012), 1367 (cdrom: empties it), 1445, 2438 (save path). configInit/configSetMove (config.cpp:630,660) do not touch gBootDir. tryAlternateDevice callers: settingsio 1562, 1918, opl.cpp:1894 (after resolveBootDirToMass at 1878). .github/scripts/test_autolaunch_settings.py:403-404 checks the homeLeftOnCard/configPrepareNotifications tail, which the fix keeps."
+    },
+    {
+      "n": 2,
+      "title": "trySaveAlternateDevice: gBootDir copy and the whole host: fast path are dead (only called when gBootDir is empty)",
+      "category": 1,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 2052, "end": 2055},
+        {"path": "src/app/settingsio.cpp", "start": 2058, "end": 2069},
+        {"path": "src/app/settingsio.cpp", "start": 2452, "end": 2454}
+      ],
+      "problem": "The only caller (2454) is inside if (gBootDir[0] == '\\0'), so the gBootDir branch at 2052-2053 never runs, and oplBootDirIsHostFs() (util.cpp:980-985, returns 0 unless gBootDir starts with host) is always false there, so the 11-line host: write-and-return block never runs. A host: boot never reaches this function at all because its gBootDir is non-empty.",
+      "fix": "Delete the gBootDir branch (use getcwd only) and delete the oplBootDirIsHostFs() branch with its comment, starting the boot-device chain at the hdd/pfs test.",
+      "justification": "",
+      "benefit": "~13 source lines removed; small code-size saving (INFERRED, static function body shrinks).",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep trySaveAlternateDevice over the repo: definition 2047 and the single call 2454 (no test or other reference). gBootDir is only rewritten in _saveConfig at 2438, under gBootDir[0] != '\\0'. oplBootDirIsHostFs read at src/platform/util.cpp:980-985."
+    },
+    {
+      "n": 3,
+      "title": "_loadConfig: lscstatus is always CONFIG_ALL, so the network-only retry is unreachable; dead stores at 1777-1778 and 1976",
+      "category": 1,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 1560, "end": 1560},
+        {"path": "src/app/settingsio.cpp", "start": 1911, "end": 1919},
+        {"path": "src/app/settingsio.cpp", "start": 1777, "end": 1778},
+        {"path": "src/app/settingsio.cpp", "start": 1976, "end": 1976}
+      ],
+      "problem": "_loadConfig has one caller (opl.cpp:1719, once at boot) and lscstatus is static-initialised to CONFIG_ALL (0xFF, config.h:21), so if (lscstatus & CONFIG_OPL) is always true and the tryAlternateDevice retry at 1916-1919 (guarded by !(lscstatus & CONFIG_OPL)) can never run; the comment at 1916 admits no caller asks for network alone. gEnableUDPBD/gNetBootProtocol written at 1777-1778 are not read before being rewritten at 1828-1829. lscret = result at 1976 is never read: saveConfig resets lscret to 0 (2559) before any read.",
+      "fix": "Use CONFIG_ALL directly in _loadConfig instead of lscstatus, drop the always-true CONFIG_OPL test, delete the network-only retry (1912-1919), delete lines 1777-1778 and 1976.",
+      "justification": "",
+      "benefit": "~10 source lines removed; no measurable size change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep _loadConfig: definition settingsio 1546, prototype oplint.h:21, call opl.cpp:1719 only. Grep lscstatus: assigned at 81 (CONFIG_ALL), 1977, 2558 (saveConfig) and zeroed in _saveConfig. Grep lscret: read only in _saveConfig and saveConfig after the reset at 2559. Read 1779-1827: uses gNetworkProtocol, gETHStartMode, gNetProtocolPick, gUdpfsAccessMode, gNetStartMode only; NET_PROTO_IS_ETH (opl.h:369) uses only its argument."
+    },
+    {
+      "n": 4,
+      "title": "Copy-paste slot blocks: checkLoadConfigMMCE and trySaveConfigMMCE repeat the mmce0/mmce1 body; writeConfigPathRedirect repeats its write body",
+      "category": 2,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 88, "end": 118},
+        {"path": "src/app/settingsio.cpp", "start": 1984, "end": 2001},
+        {"path": "src/app/settingsio.cpp", "start": 348, "end": 354},
+        {"path": "src/app/settingsio.cpp", "start": 368, "end": 372}
+      ],
+      "problem": "checkLoadConfigMMCE has two identical 12-line blocks differing only in \"mmce0:\" vs \"mmce1:\", and trySaveConfigMMCE has two identical 6-line blocks the same way. writeConfigPathRedirect writes path plus newline and checks both write counts twice (348-354 and 368-372).",
+      "fix": "Loop over the two MMCE roots in both functions; fold the two redirect writes into one small static write-path-and-newline function used by both the CWD copy and the mc mirror.",
+      "justification": "The small write function replaces two identical 5-line bodies, so it removes code overall.",
+      "benefit": "~18 source lines removed (INFERRED: 31->17 and 18->12 lines for the MMCE pair, ~4 for the redirect write).",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 88-118, 331-385, 1984-2001 side by side; only the device string differs within each MMCE function; the two redirect write bodies are textually identical apart from the variable they assign."
+    },
+    {
+      "n": 5,
+      "title": "About 20 include lines in settingsio.cpp are leftovers of opl.cpp's include list that this file does not use",
+      "category": 7,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 13, "end": 13},
+        {"path": "src/app/settingsio.cpp", "start": 15, "end": 15},
+        {"path": "src/app/settingsio.cpp", "start": 20, "end": 20},
+        {"path": "src/app/settingsio.cpp", "start": 24, "end": 25},
+        {"path": "src/app/settingsio.cpp", "start": 29, "end": 32},
+        {"path": "src/app/settingsio.cpp", "start": 36, "end": 36},
+        {"path": "src/app/settingsio.cpp", "start": 40, "end": 41},
+        {"path": "src/app/settingsio.cpp", "start": 44, "end": 44},
+        {"path": "src/app/settingsio.cpp", "start": 46, "end": 46},
+        {"path": "src/app/settingsio.cpp", "start": 50, "end": 50},
+        {"path": "src/app/settingsio.cpp", "start": 52, "end": 54},
+        {"path": "src/app/settingsio.cpp", "start": 56, "end": 56},
+        {"path": "src/app/settingsio.cpp", "start": 58, "end": 58},
+        {"path": "src/app/settingsio.cpp", "start": 61, "end": 62},
+        {"path": "src/app/settingsio.cpp", "start": 68, "end": 71}
+      ],
+      "problem": "No identifier from launchdiag.h, guigame.h, textures.h, dia.h, dialogs.h, extern_irx.h, ethsupport.h, udpfssupport.h, appsupport.h, folderbrowse.h, cuesupport.h, rabadge.h, cheatman.h, xparam.h, delaythread.h, fileXio_rpc.h or libds34bt/libds34usb.h appears in the file body; fntsys.h is also pulled in unconditionally by opl.h:46, so its __OPLDIAG include is redundant. Several include comments are false here (62: fileXio 'used by BDM autolaunch'; 46 folderDepth; 50 cueIsCueEntry). The same block appears in opl.cpp, autolaunch.cpp, lwnbdctl.cpp, appscan.cpp, menuitems.cpp (dupes lead, INFERRED same cause).",
+      "fix": "Delete these include lines (and the NEWLIB_PORT_AWARE define that only serves fileXio_rpc.h), then build both toolchains to confirm nothing relied on them transitively.",
+      "justification": "",
+      "benefit": "~25 source lines removed, faster compile of this unit; no ELF change (INFERRED: declarations only).",
+      "benefit_rank": 1,
+      "lines_removed": 25,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Script (scratchpad hdrcheck.py) intersected identifiers in each include/*.h (comments stripped) with identifiers in settingsio.cpp's non-include lines: listed headers share only generic words/types (config_set_t from config.h, field names). Grep settingsio.cpp for fileXio|delayThread|cueIs|folderDepth|cheat|xparam|ds34|_irx: only the include lines. fntsys.h included by opl.h:46 (fntValidFontSize at fntsys.h:24). INFERRED part: transitive needs not compile-checked."
+    },
+    {
+      "n": 6,
+      "title": "Stale and misplaced comments in resolveBootDirToMass (MMCE no-op stub NOTE, detached MMCE paragraph, wrong hdd-branch claim)",
+      "category": 7,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 1373, "end": 1376},
+        {"path": "src/app/settingsio.cpp", "start": 1383, "end": 1386},
+        {"path": "src/app/settingsio.cpp", "start": 1405, "end": 1410}
+      ],
+      "problem": "1405-1410 says mmceLoadModules() is still a no-op stub so the poll always times out, but mmceLoadModules calls MmceSupport::loadModules, a real loader (mmcesupport.cpp:733-762). 1373-1376 describes the MMCE branch but sits above the network branch, separated from it. 1383-1386 says the hdd branch blanks gBootDir and re-homes to configInit(NULL); the hdd branch (1348-1361) keeps the launch identity.",
+      "fix": "Delete the NOTE(rebuild) paragraph and the detached MMCE paragraph; trim 1383-1386 to the cdrom case only.",
+      "justification": "",
+      "benefit": "~12 comment lines removed; no binary change.",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read settingsio.cpp 1332-1466 and src/sources/mmcesupport.cpp:733-762 (loadModules body and mmceLoadModules forwarder)."
+    },
+    {
+      "n": 7,
+      "title": "Dotted-quad IP read/write repeated 6x and 5x in _loadConfig/_saveConfig (plus 3x in config.cpp)",
+      "category": 2,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 1930, "end": 1931},
+        {"path": "src/app/settingsio.cpp", "start": 1935, "end": 1936},
+        {"path": "src/app/settingsio.cpp", "start": 1949, "end": 1956},
+        {"path": "src/app/settingsio.cpp", "start": 2276, "end": 2283},
+        {"path": "src/app/settingsio.cpp", "start": 2289, "end": 2293},
+        {"path": "src/core/config.cpp", "start": 760, "end": 765}
+      ],
+      "problem": "Each IP key is read with its own configGetStr + sscanf(\"%d.%d.%d.%d\") pair and written with its own snprintf + configSetStr pair; the same write pair appears three more times in config.cpp's IPCONFIG.DAT import. Only the RA host IP (1531-1540) range-checks the result.",
+      "fix": "Add one configGetIp(set, key, int[4]) and one configSetIp(set, key, const int[4]) next to configGetStr/configSetStr and use them at every site.",
+      "justification": "Eleven two-line pairs in settingsio.cpp and three in config.cpp become one-line calls (~14 lines saved) for ~10 lines of helpers, a small net reduction; the getter can also carry the 0-255 check the RA copy already does, at no extra cost per site.",
+      "benefit": "~4-6 net source lines and a few hundred bytes of repeated call sequences (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read settingsio.cpp 1921-1959 and 2273-2301; grep '%d.%d.%d.%d' over src: settingsio.cpp 14 matches, config.cpp 4 (752 sscanf, 760-765 snprintf); grep configSetIp|configGetIp|parseIp: no existing helper (only vcdParseIpConfig, a different format)."
+    }
+  ]
+}
