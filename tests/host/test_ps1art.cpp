@@ -43,6 +43,7 @@ int favGetArtMode(const char *) { return -1; }
 int hddGetArtArchivePath(item_list_t *, char *, int) { return 0; }
 int bdmModeIsSIO2(int) { return 0; }
 int bgmDiscretionaryIoAllowed(void) { return 1; }
+void bgmFocusGame(const char *) {}
 int getKeyPressed(int) { return 0; }
 void artIndexSetOwnerThread(int) {}
 void rmUnloadTexture(GSTEXTURE *) {}

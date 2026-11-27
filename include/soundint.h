@@ -9,6 +9,8 @@ extern int gAudioInitialized; // audsrv_init() succeeded
 
 void sfxSetCursorChannelsVolume(int volume);
 
+void bgmInitLock(void); // creates the lock that serialises BGM start/stop across threads (bgm.cpp)
+
 extern volatile unsigned char bgmThreadRunning, bgmIoThreadRunning; // set while the BGM threads run (bgm.cpp)
 
 #endif

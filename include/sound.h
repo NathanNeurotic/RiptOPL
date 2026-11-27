@@ -40,6 +40,15 @@ int bgmDiscretionaryIoAllowed(void);
 void bgmMute(void);
 void bgmUnMute(void);
 
+// Per-game background music: <device>ART/<name>_BGM.ogg next to the game's cover art.
+// bgmFocusGame() records the music file for the highlighted game (NULL for none). It only copies the
+// path, no I/O, so it is safe to call on every focus change. bgmFocusTick() runs once per GUI frame:
+// once the focus has rested for a moment (and BGM and art I/O allow it) it queues the existence check and
+// the track switch on the IO worker, which plays that game's music, or the theme music when the game has
+// none. Neither blocks the GUI thread. Both are GUI thread only.
+void bgmFocusGame(const char *path);
+void bgmFocusTick(void);
+
 /* Nonzero while the BGM decoder may be inside a device read. BGM bypasses ioman entirely and shares
  * the one process-wide fileXio channel with art, so it is invisible to ioGetPending() -- which is
  * why the art worst-open latch samples it separately. */

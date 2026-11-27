@@ -16,7 +16,7 @@ public:
     int discretionaryIoAllowed(void);
     void start(void);
     void quiesce(void);
-    void stop(void);
+    int stop(void); // 0 once stopped; -1 when the threads would not stop and were abandoned
     int isPlaying(void);
 
     // Thread bodies (entered through the trampolines in bgm.cpp).

@@ -329,6 +329,9 @@ void Gui::pollPads()
     // that has queued work but nothing running, which closes the lost-wakeup class outright.
     // O(1), never blocks, and every call inside it is GUI-thread-only by design.
     cacheTickArt();
+
+    // Per-game background music: switches track once the highlight has settled on a game.
+    bgmFocusTick();
 }
 
 void Gui::mainLoop()
