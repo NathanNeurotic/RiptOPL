@@ -701,11 +701,36 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     // Remember where the cursor was, so a rebuild does not dump the user back at the top of
     // the list (#589). Keyed on the game's startup id, not its row index: a rescan is exactly
     // the thing that renumbers rows. Folder rows have no startup and are skipped.
+    //
+    // Favourites and All Games are keyed on the row's source device, kind (PS2, PS1, app) and
+    // name instead (#565). A row there reaches its startup through its source's list by the id it
+    // was gathered with, and this rebuild runs right AFTER that source rescanned, so the old id can
+    // name another game by now. All Games also lists one game once per device, all with the same
+    // startup, and the last copy appended used to win. The plain name is used, not the shown text:
+    // the "(device)" tag comes and goes as another device with the same title appears. The startup
+    // is still kept there, only to tell apart two games of one name on one device (an old-style
+    // "SLUS_210.41.Game.iso" next to "SLUS_210.44.Game.iso"): it is right whenever that source did
+    // not rescan, and a stale one simply matches neither copy, so the first copy wins.
     char keepStartup[128] = {0};
+    char keepText[256] = {0};
+    int keepMode = -1, keepKind = -1;
+    const int favPage = (mdl->support->mode == FAV_MODE);
     if (mdl->menuItem.current != NULL && !mdl->menuItem.current->item.isFolder) {
-        const char *s = gsOf(mdl->support)->startup(mdl->support, mdl->menuItem.current->item.id);
-        if (s != NULL)
-            snprintf(keepStartup, sizeof(keepStartup), "%s", s);
+        if (favPage) {
+            const int id = mdl->menuItem.current->item.id;
+            const char *t = gsOf(mdl->support)->name(mdl->support, id);
+            keepMode = favGetItemSourceMode(id);
+            keepKind = favGetItemKind(id);
+            if (t != NULL)
+                snprintf(keepText, sizeof(keepText), "%s", t);
+            const char *s = gsOf(mdl->support)->startup(mdl->support, id);
+            if (keepText[0] && s != NULL)
+                snprintf(keepStartup, sizeof(keepStartup), "%s", s);
+        } else {
+            const char *s = gsOf(mdl->support)->startup(mdl->support, mdl->menuItem.current->item.id);
+            if (s != NULL)
+                snprintf(keepStartup, sizeof(keepStartup), "%s", s);
+        }
     }
 
     cfgTitleForget(mdl->support); // publish no titles before replacing the source rows
@@ -776,6 +801,33 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
         int passes = (gEnableFolderNav && folderMode) ? 2 : 1;
         int pass, i;
 
+        // The one row the cursor goes back to: the first match, never a later copy. On Favourites
+        // and All Games, of the rows with that device, kind and name, the one with the kept
+        // startup, else the first of them.
+        int keepRow = -1, firstRow = -1;
+        for (i = 0; keepRow < 0 && i < count; ++i) {
+            if (!gShowHidden && hiddenRow(mdl->support, i))
+                continue; // not listed, so not where the cursor can go
+            if (favPage) {
+                const char *t = gsOf(mdl->support)->name(mdl->support, i);
+                if (keepText[0] && t != NULL && favGetItemSourceMode(i) == keepMode && favGetItemKind(i) == keepKind &&
+                    strcmp(keepText, t) == 0) {
+                    if (firstRow < 0)
+                        firstRow = i;
+                    const char *st = gsOf(mdl->support)->startup(mdl->support, i);
+                    if (keepStartup[0] && st != NULL && strcmp(keepStartup, st) == 0)
+                        keepRow = i;
+                }
+            } else if (keepStartup[0]) {
+                const char *st = gsOf(mdl->support)->startup(mdl->support, i);
+                if (st != NULL && strcmp(keepStartup, st) == 0)
+                    keepRow = i;
+            }
+        }
+        if (keepRow < 0)
+            keepRow = firstRow;
+        const int keepCursor = keepStartup[0] || keepText[0];
+
         for (pass = 0; pass < passes; ++pass) {
             for (i = 0; i < count; ++i) {
                 // Flag folder rows so the dispatch descends and the renderer marks them. Only the
@@ -830,9 +882,9 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
                 if (!isFolderRow) {
                     const char *st = gsOf(mdl->support)->startup(mdl->support, i);
                     if (st != NULL) {
-                        if (keepStartup[0] && strcmp(keepStartup, st) == 0) {
+                        if (keepCursor && i == keepRow) {
                             gup->submenu.selected = 1;
-                        } else if (!keepStartup[0] && gRememberLastPlayed && temp && strcmp(temp, st) == 0) {
+                        } else if (!keepCursor && gRememberLastPlayed && temp && strcmp(temp, st) == 0) {
                             gup->submenu.selected = 1;
                             gup->submenu.autoStart = 1;
                         }
