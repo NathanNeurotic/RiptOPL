@@ -398,6 +398,10 @@ all, since font loading is skipped for buffer-loaded built-in themes).</p>
 <tr><td><code>use_real_height</code></td><td>0 / 1</td><td>Lay out against the real screen height instead of the virtual 480.</td></tr>
 <tr><td><code>use_settings_bg</code></td><td>0 / 1</td><td>Load the theme's own <code>settings_bg.png</code> behind the settings menus instead of the plasma. Theme-supplied only — there is no embedded default, so the built-in themes leave the plasma in place.</td></tr>
 <tr><td><code>coverflow_cover_offset</code></td><td>int (clamped −1024…1024, default 0)</td><td>Horizontal nudge for the Coverflow carousel (see §9).</td></tr>
+<tr><td><code>cover_ps1_spine</code></td><td>int, 0–40 (default 13)</td><td>Percent of a PS1 cover's width cut off its left logo strip when <b>Cover Shape</b> draws it in a PS2 case.</td></tr>
+<tr><td><code>cover_ps2_band</code></td><td>int, 0–40 (default 11)</td><td>Percent of a PS2 cover's height cut off its top logo band when <b>Cover Shape</b> draws it in a PS1 case, or when <b>Cover Art</b> is Crop.</td></tr>
+<tr><td><code>cover_crop_height</code></td><td>int, 50–100 (default 89)</td><td>With <b>Cover Art</b> set to Crop, the height every cover is drawn at, as a percent of a PS2 case's height.</td></tr>
+<tr><td><code>badge_set</code></td><td><code>ripps2</code></td><td>A disk theme draws RiptOPL's built-in badge pictures (<code>AttributeImage</code>) for any badge it does not ship. Without it a disk theme draws only its own badge files.</td></tr>
 </tbody>
 </table>
 <h3 id="hint-glyphs">Button hints and glyphs</h3>
