@@ -47,7 +47,7 @@ void bgmUnMute(void);
 // the track switch on the IO worker, which plays that game's music, or the theme music when the game has
 // none. Neither blocks the GUI thread. Both are GUI thread only.
 void bgmFocusGame(const char *path);
-void bgmFocusTick(void);
+void bgmFocusTick(int artBusy); // artBusy: cacheHasPendingArt(), passed in because bgm sits below gfx
 
 /* Nonzero while the BGM decoder may be inside a device read. BGM bypasses ioman entirely and shares
  * the one process-wide fileXio channel with art, so it is invisible to ioGetPending() -- which is

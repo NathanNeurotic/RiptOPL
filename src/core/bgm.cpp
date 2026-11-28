@@ -18,7 +18,6 @@
 #include "include/tar.h"
 #include "include/pad.h"
 #include "include/gui.h"
-#include "include/texcache.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -1041,7 +1040,7 @@ void bgmFocusGame(const char *path)
     sWantDirty = 1;
 }
 
-void bgmFocusTick(void)
+void bgmFocusTick(int artBusy)
 {
     if (sReqPending)
         return; // the IO worker has the previous request
@@ -1064,7 +1063,7 @@ void bgmFocusTick(void)
 
     // Stay off the shared fileXio channel while the music is refilling or art is loading, the same gate
     // vcdsupport.cpp uses; the request stays pending and is tried again on a later frame.
-    if (!bgmDiscretionaryIoAllowed() || cacheHasPendingArt())
+    if (!bgmDiscretionaryIoAllowed() || artBusy)
         return;
 
     snprintf(sReqPath, sizeof(sReqPath), "%s", sWantPath);
