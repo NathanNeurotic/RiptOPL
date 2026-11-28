@@ -23,7 +23,7 @@ Two settings change what you read below, so check them first if the tables do no
 | **Circle** | Go up one folder level *(or launch, if Circle is your select button)* |
 | **Triangle** | Per-game settings for the selected title |
 | **Square** | Game info page — cover, screenshots, size, disc type |
-| **L1 / R1** | Back / on a whole page of the list (15 titles in Coverflow and PSBBN Flow); a jump past the first / last title stops on it, and the next press wraps around |
+| **L1 / R1** | Back / on a whole page of the list (15 titles in Coverflow and PSBBN Flow); a jump past the first / last title stops on it, and the next press wraps around. When every game fits in one jump, they move one title, like the D-pad |
 | **L2** | Jump to the first page |
 | **R2** | Jump to the last page |
 | **L3** | **View/Filter**. Tap to cycle this page's library filters. Supported devices offer PS2, PS1 and Mixed. All Games offers All, PS2, PS1, Apps, Favourites and Recent. Hold for half a second to switch to the next [theme view](THEME_ENGINE.md#views-multi-view-themes--this-fork) when the theme offers more than one. In that case, a tap acts on release. The **Hold for Theme** and **Tap for Filter** tips show the L3 icon when the other action is available. |
@@ -41,7 +41,7 @@ and every menu keep the standard layout.
 |---|---|---|---|
 | **Up / Down** | Move through the list | Switch device page; Coverflow uses its left vertical device list | Move one row, keeping the column and wrapping between the first and last rows |
 | **Left / Right** | Switch device page | Move through the covers | Move one cover; Left on the first column opens the device sidebar, when the theme shows one |
-| **L1 / R1** | Back / on a whole page, keeping your row on screen; stops on the first / last title, then wraps | Jump 15 titles; stops on the first / last title, then wraps | Turn a whole page of covers, keeping your place on it (or the last cover, on a short last page); with no page that way, stops on the first / last cover, then wraps |
+| **L1 / R1** | Back / on a whole page, keeping your row on screen; stops on the first / last title, then wraps | Jump 15 titles; stops on the first / last title, then wraps | Turn a whole page of covers, keeping your place on it (or the last cover, on a short last page); with no page that way, stops on the first / last cover, then wraps. When every game fits in one jump (or one page of covers), L1/R1 move one title, like the D-pad |
 | **Right stick** | — | — | Hold to one side: turn the selected case over to its back cover, and back |
 
 Coverflow shows devices in a left vertical list. **Up / Down** switches the active device immediately;

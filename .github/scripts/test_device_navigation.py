@@ -207,6 +207,22 @@ int main() {
     keys = 0; firstPages = lastPages = 0;
     menuGridPage(1);
     CHECK(pages[1].item->current == &covers[2] && firstPages == 0);
+    // All covers on one page: L1/R1 step one cover, as the D-pad does; at an end a fresh press still wraps.
+    themeStore.gridRows = 2; themeStore.gridColumns = 4; keys = 0; firstPages = lastPages = 0;
+    pages[1].item->current = &covers[0];
+    menuGridPage(1);
+    CHECK(pages[1].item->current == &covers[1] && pages[1].item->pagestart == &covers[1]);
+    menuGridPage(1);
+    CHECK(pages[1].item->current == &covers[2]);
+    menuGridPage(-1);
+    CHECK(pages[1].item->current == &covers[1]);
+    pages[1].item->current = &covers[2];
+    menuGridPage(1); // held at the last cover: stays
+    CHECK(pages[1].item->current == &covers[2] && firstPages == 0);
+    keys = KEY_R1;
+    menuGridPage(1);
+    CHECK(firstPages == 1);
+    themeStore.gridRows = themeStore.gridColumns = 0;
     pages[1].item->submenu = nullptr; pages[1].item->current = nullptr;
     return failures ? 1 : 0;
 }
