@@ -34,7 +34,7 @@ A heartfelt thank you to developers who have contributed pull requests directly 
 
 > **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). One pinned **ps2build SDK** supports the current release channels: standard **RiptOPL** on LLVM/Clang (`rolling`), **RetroAchievements** on GCC (`rolling-ra`), and **RiptOPLite / RiptOPLite RA** on GCC (`rolling-lite`). All share the same built-in theme. Korium, IncebtIon, and the separate RiptOPLLVM release are historical channels; both compilers remain CI validation targets. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
 
-**An opinionated [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader) fork — aiming to be the "definitive build."**
+**An [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader) fork — aiming to be the "definitive build."**
 <br>
 Based on Open PS2 Loader · Copyright 2013, [Ifcaro](https://github.com/ifcaro) & [jimmikaelkael](https://github.com/jimmikaelkael)<br>
 Licensed under Academic Free License version 3.0<br>
@@ -69,7 +69,7 @@ Review the LICENSE file for further details.<br><br>
 [![Discord](https://img.shields.io/discord/1275875800318476381?style=flat&logo=Discord)](https://tinyurl.com/PS2SPACE)
 [![Documentation](https://img.shields.io/badge/Documentation-RiptOPL-skyblue?style=flat&logo=githubpages&logoColor=white&labelColor=navy)](https://nathanneurotic.github.io/RiptOPL/)
 
-> **What is RiptOPL?** A downstream fork of Open PS2 Loader with a built-in **PSBBN** theme for List, Grid, Coverflow and PSBBN Flow, a **Favorites** tab, per-game **Neutrino** external-core launching, a reorganized category **settings layout**, DualSense support, and ready-to-use opinionated defaults. Fresh configurations use **`<OPL>`**, **4:3**, and **Auto** menu video; see [Fresh-start defaults](docs/DEFAULTS.md). Its settings live in their own **`settings_riptopl.cfg`** to keep its master settings separate from official OPL and wOPL. Other files, including network and per-game settings, can still be shared. Favorites import from uOPL/wOPL is **one-way**: the next save writes RiptOPL’s own format to `favourites.bin`. See [Where your files live](#where-your-files-live). See **[This Fork's Additions](#this-forks-additions)**. For the canonical project, use [ps2homebrew/Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader).
+> **What is RiptOPL?** A downstream fork of Open PS2 Loader with a built-in **PSBBN** theme for List, Grid, Coverflow and PSBBN Flow, a **Favorites** tab, per-game **Neutrino** external-core launching, a reorganized category **settings layout**, and DualSense support. Fresh configurations use **`<OPL>`**, **4:3**, and **Auto** menu video; see [Fresh-start defaults](docs/DEFAULTS.md). Its settings live in their own **`settings_riptopl.cfg`** to keep its master settings separate from official OPL and wOPL. Other files, including network and per-game settings, can still be shared. Favorites import from uOPL/wOPL is **one-way**: the next save writes RiptOPL’s own format to `favourites.bin`. See [Where your files live](#where-your-files-live). See **[This Fork's Additions](#this-forks-additions)**. For the canonical project, use [ps2homebrew/Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader).
 
 > 📖 **Full documentation & guides:** **<https://nathanneurotic.github.io/RiptOPL/>** — searchable setup and reference guides covering storage backends, the Neutrino core, PS1/VCD, the Theme Engine (with worked examples and an annotated sample theme), a full settings reference, and troubleshooting.
 
@@ -251,7 +251,7 @@ This build layers several features on top of upstream OPL:
   list, so covers, favorites, coverflow and per-game settings all work inside folders. Works on
   USB / MX4SIO / iLink / internal-BDM, MMCE and UDPFS-Files. Left off, a flat library looks and
   behaves exactly as before.
-- **Controller vibration in the menus (on by default):** toggle **Controller Vibration in Menus** in
+- **Controller vibration in the menus (off by default):** toggle **Controller Vibration in Menus** in
   **Settings** for a little haptic tap as you move around — a light tick when the cursor moves,
   a slightly firmer bump on confirm / cancel / notifications, and one when OPL finishes booting
   and the menu is ready. Needs a **DualShock in analog mode** (a digital-only or clone pad simply
@@ -437,8 +437,8 @@ This build layers several features on top of upstream OPL:
   RiptOPL release's `RIPTOPL-VARIANTS-<version>.zip`, or build with
   `python tools/build_edition.py riptopl --configuration ds5`.
 - **1080p GSM video mode:** forced progressive 1080p (1920×1080) GSM mode is built directly into all standard builds (`make GSM1080P=1`). Full GSM documentation: **[docs/GSM.md](docs/GSM.md)**. Selecting 1080p in the per-game GSM picker is guarded by a **three-step confirmation**; if a game loses the picture, disable/change its GSM override before relaunching. **Triangle + Cross** at boot affects only the OPL menu and requires a 480p-capable display/connection; **Triangle + Circle** forces the interlaced Auto mode instead.
-- **Ready-to-use defaults:** a fresh install boots with sensible options already enabled —
-  cover art, notifications and the PS2 logo; widescreen, sound effects and boot sound start
+- **Fresh-start defaults:** a fresh install starts with cover art, notifications and the
+  PS2 logo on; widescreen, sound effects and boot sound start
   off (see [Fresh-start defaults](docs/DEFAULTS.md)). Video mode stays **Auto**. Every storage device ships **off**, so the first boot
   lands on the start menu with no tabs — enable exactly the devices your console has under
   **Game Sources**. Change any of it under Settings.

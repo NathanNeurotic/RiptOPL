@@ -18,7 +18,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Ambient Effects | On (24-second crystal light loop and 0.7-second launch convergence) | Settings → Theme Settings → Ambient Effects |
 | Selection: Colored, Cursor, Highlight | All on (the original selected-row look) | Settings → Theme Settings |
 | Cover and disc artwork | On | Settings → Theme Settings |
-| Per-game background art | Off | Settings → Theme Settings |
+| Per-game background art | On | Settings → Theme Settings |
 | Notifications | On | Settings → Interface |
 | PS2 logo | On | Settings → Game Launching |
 | Sound effects, boot sound, background music | Off; stored volume 90 | Settings → Audio Settings |
