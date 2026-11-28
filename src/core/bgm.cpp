@@ -988,6 +988,7 @@ void bgmQuiesce(void)
 // asks the GUI thread to try the same selection again later.
 static char sReqPath[256];
 static volatile unsigned char sReqPending, sReqFailed;
+static int (*sArtBusy)(void); // set by bgmFocusTick before it queues a switch
 
 // IO worker (IO_CUSTOM_SIMPLEACTION): the existence check and the track switch, off the GUI thread. Running
 // on the shared worker also keeps the open on the same queue as every other device read, and lets the
@@ -995,6 +996,15 @@ static volatile unsigned char sReqPending, sReqFailed;
 static void bgmFocusSwitch(void)
 {
     char next[sizeof(sGamePath)] = "";
+
+    // The GUI checked the gate when it queued this, but the worker may have run other requests since,
+    // and covers load on their own thread. Check again before the open, as vcdsupport.cpp does; if the
+    // channel is busy now, change nothing and let the GUI try again after another settle period.
+    if (!bgmDiscretionaryIoAllowed() || (sArtBusy != NULL && sArtBusy())) {
+        sReqFailed = 1;
+        sReqPending = 0;
+        return;
+    }
 
     if (sReqPath[0] != '\0') {
         int fd = open(sReqPath, O_RDONLY);
@@ -1027,6 +1037,16 @@ static void bgmFocusSwitch(void)
         sBgmStopDeferred = 0;
     }
     bgmUnlock();
+    // A bgmStop() can set the flag after the check above and then find the lock still held, so it
+    // returns without stopping. Take the lock back and do that stop. If bgmStop() got the lock instead,
+    // it stops by itself and the poll here fails.
+    if (sBgmStopDeferred && PollSema(sBgmLock) >= 0) {
+        if (sBgmStopDeferred) {
+            gBgm.stop();
+            sBgmStopDeferred = 0;
+        }
+        bgmUnlock();
+    }
     sReqPending = 0;
 }
 
@@ -1040,7 +1060,7 @@ void bgmFocusGame(const char *path)
     sWantDirty = 1;
 }
 
-void bgmFocusTick(int artBusy)
+void bgmFocusTick(int (*artBusy)(void))
 {
     if (sReqPending)
         return; // the IO worker has the previous request
@@ -1063,8 +1083,9 @@ void bgmFocusTick(int artBusy)
 
     // Stay off the shared fileXio channel while the music is refilling or art is loading, the same gate
     // vcdsupport.cpp uses; the request stays pending and is tried again on a later frame.
-    if (!bgmDiscretionaryIoAllowed() || artBusy)
+    if (!bgmDiscretionaryIoAllowed() || (artBusy != NULL && artBusy()))
         return;
+    sArtBusy = artBusy;
 
     snprintf(sReqPath, sizeof(sReqPath), "%s", sWantPath);
     sReqPending = 1;
