@@ -331,7 +331,7 @@ void Gui::pollPads()
     cacheTickArt();
 
     // Per-game background music: switches track once the highlight has settled on a game.
-    bgmFocusTick();
+    bgmFocusTick(&cacheHasPendingArt);
 }
 
 void Gui::mainLoop()
