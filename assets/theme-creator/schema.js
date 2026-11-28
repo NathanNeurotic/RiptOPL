@@ -2,7 +2,7 @@
  *
  * Every key, element type, family and value below was taken from RiptOPL's own parser
  * (src/core/config.cpp, src/gfx/themes.cpp, themeelems.cpp, themeviews.cpp, grid.cpp, textures.cpp)
- * at rebuild/main fe08c0e, and from docs/THEME_ENGINE.md. check_schema.js, next to this file, re-checks the
+ * at rebuild/main fe08c0e (cover_crop_height added at 18dcfe5), and from docs/THEME_ENGINE.md. check_schema.js, next to this file, re-checks the
  * names against a RiptOPL checkout (node check_schema.js <RiptOPL>). Nothing here talks to a server.
  */
 (function (g) {
@@ -91,9 +91,12 @@
     hints_spacing:       { kind: "int", group: "Button hints", label: "Column line pitch (12 to 96)", min: 12, max: 96 },
     // Cover Shape's logo trims (themes.cpp thmLoad): percent of the art cut away when a PS1 cover is shown in a PS2
     // case (its left spine) or a PS2 cover in a PS1 case (its top band). 0 to 40.
-    cover_ps1_spine:     { kind: "int", group: "Covers", label: "PS1 spine trim in a PS2 case (%)", min: 0, max: 40, def: "13" },
-    cover_ps2_band:      { kind: "int", group: "Covers", label: "PS2 logo band trim in a PS1 case (%)", min: 0, max: 40, def: "11" },
-    badge_set:           { kind: "enum", group: "Button hints", label: "Badge set", values: ["", "ripps2"] }
+    cover_ps1_spine:     { kind: "int", group: "Covers and badges", label: "PS1 spine trim in a PS2 case (%)", min: 0, max: 40, def: "13" },
+    cover_ps2_band:      { kind: "int", group: "Covers and badges", label: "PS2 logo band trim in a PS1 case or with Crop (%)", min: 0, max: 40, def: "11" },
+    // Cover Art Crop's box (themes.cpp thmLoad): percent of a PS2 case's height every cover keeps when the
+    // Theme Settings row Cover Art is Crop. 50 to 100.
+    cover_crop_height:   { kind: "int", group: "Covers and badges", label: "Cover height with Cover Art set to Crop (% of a PS2 case)", min: 50, max: 100, def: "89" },
+    badge_set:           { kind: "enum", group: "Covers and badges", label: "Badge set (ripps2 = use RiptOPL's built-in badges)", values: ["", "ripps2"] }
   };
   for (var f = 1; f <= 15; f++) {
     GLOBALS["font" + f] = { kind: "font", group: "Fonts", label: "Font " + f + " file", extra: true };

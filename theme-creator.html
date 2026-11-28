@@ -163,7 +163,7 @@ nothing you add is uploaded anywhere.</p>
       <summary>Preview settings (the same switches as on the PS2)</summary>
       <div class="tc-checks">
         <label><input type="checkbox" id="pv-wide"> Widescreen (16:9)</label>
-        <label><input type="checkbox" id="pv-alt"> Alternative layout (Select)</label>
+        <label><input type="checkbox" id="pv-alt"> Alternate Background</label>
         <label><input type="checkbox" id="pv-desc"> List Title and Description</label>
         <label><input type="checkbox" id="pv-art" checked> Show artwork</label>
         <label><input type="checkbox" id="pv-disc" checked> Disc icons</label>
@@ -256,7 +256,7 @@ nothing you add is uploaded anywhere.</p>
       PS2 ADPCM (<code>.adp</code>) files; the music is Ogg Vorbis. The preview does not play them.</p>
       <div id="sound-slots"></div>
       <h3>Other files</h3>
-      <p class="tc-small">Anything else to carry in the theme folder, such as sounds. Pick a folder inside the theme first if it needs one (for example <code>sound</code>).</p>
+      <p class="tc-small">Anything else to carry in the theme folder, such as extra pictures your config file names. Pick a folder inside the theme first if it needs one (for example <code>sound</code>).</p>
       <div class="tc-row"><label>Folder <input type="text" id="extra-dir" placeholder="(top of the theme)" size="14"></label>
       <label class="btn tc-file">Add files<input type="file" id="extra-add" multiple></label></div>
       <div id="extra-list"></div>
@@ -283,7 +283,7 @@ nothing you add is uploaded anywhere.</p>
       <h3>Put it on your PS2</h3>
       <ol>
         <li><b>Zip:</b> unzip it. You get a folder named <code>thm_YourName</code>. Copy that folder into the
-        <code>THM</code> folder on your memory card, USB drive, HDD or network share (the same place RiptOPL keeps its other themes).</li>
+        <code>THM</code> folder on your game device: USB drive, MX4SIO, iLink, MMCE, internal HDD, or SMB or UDPFS share (the same place RiptOPL keeps its other themes). RiptOPL does not read themes from a plain memory card.</li>
         <li><b>One-file theme:</b> copy <code>thm_YourName.tar</code> straight into that <code>THM</code> folder. No unzipping.</li>
         <li>In RiptOPL open <b>Settings → Theme Settings</b>, pick it under <b>Theme</b>, then save.</li>
       </ol>
