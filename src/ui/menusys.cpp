@@ -2120,6 +2120,8 @@ static constexpr int listPageMinRows = 3; // a shorter list pages as the flow vi
 // A jump that would pass the first or last title stops on it; the next press wraps to the other end. A page never
 // moves past the last title, so a short list keeps all its rows (#48). Only a fresh press wraps: the key repeats
 // about every 0.1 s, so a held L1/R1 used to stop on the end and wrap round on the very next repeat.
+// A library no bigger than one jump steps one title, as the D-pad does: a jump there only ever landed on an end,
+// which is what L2/R2 are for (zackcage6, Beta-4238 Coverflow stepped one title).
 static void menuPageJump(int dir, int step, int rows)
 {
     menu_item_t *page = selected_item->item;
@@ -2127,6 +2129,11 @@ static void menuPageJump(int dir, int step, int rows)
     if (cur == NULL)
         return;
     int i = 0;
+    for (bottom = page->submenu; bottom != NULL && i <= step; bottom = bottom->next)
+        i++;
+    if (i <= step)
+        step = 1;
+    i = 0;
     for (bottom = top; bottom != NULL && bottom != cur && i < rows; bottom = bottom->next)
         i++;
     if (bottom != cur || i >= rows) // the page does not hold the cursor (one title shows, or Info kept a page start)
@@ -2769,6 +2776,8 @@ static void menuGridPage(int dir)
         count++;
     }
     int target = cur != NULL ? gridPageStep(count, index, gTheme->gridRows, gTheme->gridColumns, dir) : -1;
+    if (cur != NULL && count <= gTheme->gridRows * gTheme->gridColumns) // one page: a cover at a time (menuPageJump)
+        target = index + dir >= 0 && index + dir < count ? index + dir : -1;
     if (target < 0 && !gTheme->gridDevices && (count == 0 || cur == NULL)) {
         if (dir < 0)
             menuPrevH();

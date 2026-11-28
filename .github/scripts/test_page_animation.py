@@ -67,8 +67,9 @@ int main(void) {
     for (int carousel=0;carousel<=1;carousel++) {
         theme.coverflow=carousel;
         for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
-            int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1))
-                             : (s==0 ? n-1 : (s>15 ? s-15 : 0));
+            int k=n<=15 ? 1 : 15; /* a library no bigger than a jump steps one title, like the D-pad */
+            int target=dir>0 ? (s==n-1 ? 0 : (s+k<n ? s+k : n-1))
+                             : (s==0 ? n-1 : (s>k ? s-k : 0));
             // Entering Info from a multi-row main list can retain an earlier page start.
             for (int first=0;first<=s;first++) {
                 checkPage(n,s,first,dir,target,target);
@@ -86,8 +87,9 @@ int main(void) {
     list.displayedItems=18;
     for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
         setup(n,s);
-        int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1))
-                         : (s==0 ? n-1 : (s>15 ? s-15 : 0));
+        int k=n<=15 ? 1 : 15;
+        int target=dir>0 ? (s==n-1 ? 0 : (s+k<n ? s+k : n-1))
+                         : (s==0 ? n-1 : (s>k ? s-k : 0));
         menuCarouselPage(dir);
         assert(item.current==&nodes[target] && item.pagestart==&nodes[target]);
         assert(sounds==(target!=s) && animations==(target!=s));
@@ -113,12 +115,13 @@ int main(void) {
             for (int n=1;n<=40;n++) for (int first=0;first<n;first++)
                 for (int s=first;s<n && s<first+rows;s++) {
                     int bottom=first+rows-1<n-1 ? first+rows-1 : n-1, lastTop=n>rows ? n-rows : 0;
-                    int next=s==n-1 ? 0 : (s+rows<n ? s+rows : n-1);
+                    int r=n<=rows ? 1 : rows; /* all titles on screen: one title, like the D-pad */
+                    int next=s==n-1 ? 0 : (s+r<n ? s+r : n-1);
                     int k=next-s, room=n-1-bottom;
                     int top=s==n-1 ? 0 : first+(k<room ? k : room);
                     checkPage(n,s,first,1,next,top);
                     assert(next>=top && next<top+rows);
-                    int prev=s==0 ? n-1 : (s>rows ? s-rows : 0);
+                    int prev=s==0 ? n-1 : (s>r ? s-r : 0);
                     k=s-prev;
                     top=s==0 ? lastTop : first-(k<first ? k : first);
                     checkPage(n,s,first,-1,prev,top);
@@ -184,7 +187,7 @@ int main(void) {
         setup(1,0);menuNextPage();menuPrevPage();
         assert(item.current==&nodes[0] && !animations && !sounds);
     }
-    puts("PASS: 15-title jumps, whole-page list jumps, stops then wraps at both ends, D-pad, home/end, animation, empty/single libraries, full page after a layout switch");
+    puts("PASS: 15-title jumps, whole-page list jumps, one title when the library fits in a jump, stops then wraps at both ends, D-pad, home/end, animation, empty/single libraries, full page after a layout switch");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:

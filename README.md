@@ -486,7 +486,7 @@ MMCE Settings*) sends a switch-to-bootcard command as the reset happens.
 | Circle | Go up one folder level |
 | Triangle | Per-game settings |
 | Square | Game info page |
-| L1 / R1 | Back / on a whole page (15 titles in Coverflow and PSBBN Flow); stops on the first / last title, then wraps |
+| L1 / R1 | Back / on a whole page (15 titles in Coverflow and PSBBN Flow); stops on the first / last title, then wraps; when every game fits in one jump, one title, like the D-pad |
 | L2 / R2 | First / last page |
 | L3 | Cycle the page's library view |
 | R3 | Star or un-star as a Favorite |
