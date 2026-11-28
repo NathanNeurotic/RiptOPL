@@ -17,6 +17,11 @@
 #include "include/themes.h"
 #include "include/tar.h"
 #include "include/pad.h"
+#include "include/gui.h"
+#include "include/texcache.h"
+
+#include <fcntl.h>
+#include <unistd.h>
 
 /*--    Theme Sound Effects    ----------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------*/
@@ -603,6 +608,17 @@ int BgmPlayer::tryLoadPath(const char *bgmPath, const char *source)
     return 0;
 }
 
+// Per-game music (see bgmFocusGame in sound.h). sGamePath is the game file the player plays instead of
+// the theme music, "" for none; it changes only under the BGM lock, once the old player has stopped.
+// sWantPath/sWantFrame/sWantDirty are the highlighted game's candidate file, GUI thread only.
+static char sGamePath[256];
+static char sWantPath[256];
+static int sWantFrame;
+static unsigned char sWantDirty;
+// How long the highlight must rest on a game before its music starts (~0.75 s at 60 Hz), so scrolling
+// through a list does not restart the player on every row.
+constexpr int BGM_FOCUS_SETTLE_FRAMES = 45;
+
 int BgmPlayer::load(void)
 {
     char bgmPath[256];
@@ -613,6 +629,12 @@ int BgmPlayer::load(void)
         return -ENOMEM;
 
     memset(vorbisFile_, 0, sizeof(OggVorbis_File));
+
+    if (sGamePath[0] != '\0') {
+        if (tryLoadPath(sGamePath, "game"))
+            return 0;
+        sGamePath[0] = '\0'; // unreadable: fall back to the theme music below
+    }
 
     themeID = thmGetGuiValue();
     char *thmPath = thmGetFilePath(themeID);
@@ -841,13 +863,13 @@ void BgmPlayer::quiesce(void)
     WakeupThread(threadId_);
 }
 
-void BgmPlayer::stop(void)
+int BgmPlayer::stop(void)
 {
     int threadId;
 
     if (!gAudioInitialized) {
         LOG("BGM: %s: ERROR: not initialized!\n", __FUNCTION__);
-        return;
+        return 0;
     }
 
     LOG("BGM: terminating threads...\n");
@@ -872,12 +894,13 @@ void BgmPlayer::stop(void)
     if (bgmIoThreadRunning || bgmThreadRunning) {
         LOG("BGM: threads did not stop (io=%d play=%d) -- abandoning\n",
             (int)bgmIoThreadRunning, (int)bgmThreadRunning);
-        return;
+        return -1;
     }
 
     teardown();
 
     LOG("BGM: stopped.\n");
+    return 0;
 }
 
 int BgmPlayer::isPlaying(void)
@@ -907,19 +930,177 @@ int bgmDiscretionaryIoAllowed(void)
     return gBgm.discretionaryIoAllowed();
 }
 
+// Serialises gBgm.start()/stop() between the GUI thread (bgmStart/bgmStop) and the IO worker
+// (bgmFocusSwitch). A per-game switch holds it for as long as one stop + start takes, so a GUI-thread
+// bgmStart/bgmStop that collides with one waits that long, once. bgmQuiesce never takes it: the launch
+// path must not wait, and it only signals.
+static int sBgmLock = -1;
+
+void bgmInitLock(void)
+{
+    if (sBgmLock >= 0)
+        return;
+    ee_sema_t sema;
+    memset(&sema, 0, sizeof(sema));
+    sema.init_count = 1;
+    sema.max_count = 1;
+    sema.option = (u32) "bgm-lock";
+    sBgmLock = CreateSema(&sema);
+}
+
+constexpr int BGM_STOP_LOCK_WAITS = 300; // x 10 ms: how long bgmStop waits for a running switch
+
+static void bgmLock(void)
+{
+    if (sBgmLock >= 0)
+        WaitSema(sBgmLock);
+}
+
+static void bgmUnlock(void)
+{
+    if (sBgmLock >= 0)
+        SignalSema(sBgmLock);
+}
+
+// Set by bgmQuiesce (a launch is on its way), cleared by bgmStart. A per-game switch that is still queued
+// when the launch drains the IO worker must not start the music again behind the quiesce.
+static volatile unsigned char sBgmQuiesced;
+// Set by a bgmStop() that gave up waiting for a running switch: the switch holds the lock and may be inside
+// start()/load(), so the stop is left to it rather than tearing the player down underneath it.
+static volatile unsigned char sBgmStopDeferred;
+
 void bgmStart(void)
 {
+    bgmLock();
+    sBgmQuiesced = 0;
+    sBgmStopDeferred = 0;
     gBgm.start();
+    bgmUnlock();
 }
 
 void bgmQuiesce(void)
 {
+    sBgmQuiesced = 1;
     gBgm.quiesce();
+}
+
+// The switch request handed from the GUI thread to the IO worker. The GUI thread writes sReqPath and then
+// sets sReqPending; it does not touch either again until the worker has cleared sReqPending. sReqFailed
+// asks the GUI thread to try the same selection again later.
+static char sReqPath[256];
+static volatile unsigned char sReqPending, sReqFailed;
+
+// IO worker (IO_CUSTOM_SIMPLEACTION): the existence check and the track switch, off the GUI thread. Running
+// on the shared worker also keeps the open on the same queue as every other device read, and lets the
+// launch path's ioBlockOps drain it.
+static void bgmFocusSwitch(void)
+{
+    char next[sizeof(sGamePath)] = "";
+
+    if (sReqPath[0] != '\0') {
+        int fd = open(sReqPath, O_RDONLY);
+        if (fd >= 0) {
+            close(fd);
+            snprintf(next, sizeof(next), "%s", sReqPath);
+        }
+    }
+
+    bgmLock();
+    if (gEnableBGM && gAudioInitialized && !sBgmQuiesced && !sBgmStopDeferred &&
+        !(strcmp(next, sGamePath) == 0 && gBgm.isPlaying())) { // same track as now: leave it playing
+        LOG("BGM: switching to %s\n", next[0] != '\0' ? next : "theme music");
+        bgmMute();
+        if (gBgm.stop() == 0) {
+            snprintf(sGamePath, sizeof(sGamePath), "%s", next);
+            gBgm.start(); // start() sets the volume again
+            if (sBgmQuiesced) // a launch began while this was starting
+                gBgm.quiesce();
+        } else {
+            // The old threads are still alive: keep the selection, and the GUI thread tries again later.
+            // Stay muted if a launch has quiesced the music meanwhile.
+            if (!sBgmQuiesced)
+                bgmUnMute();
+            sReqFailed = 1;
+        }
+    }
+    if (sBgmStopDeferred) { // a bgmStop() timed out while this held the lock: do its stop now
+        gBgm.stop();
+        sBgmStopDeferred = 0;
+    }
+    bgmUnlock();
+    sReqPending = 0;
+}
+
+void bgmFocusGame(const char *path)
+{
+    const char *p = path != NULL ? path : "";
+    if (strcmp(p, sWantPath) == 0)
+        return;
+    snprintf(sWantPath, sizeof(sWantPath), "%s", p);
+    sWantFrame = guiFrameId;
+    sWantDirty = 1;
+}
+
+void bgmFocusTick(void)
+{
+    if (sReqPending)
+        return; // the IO worker has the previous request
+    if (sReqFailed) {
+        // The last switch could not stop the old player: wait another settle period, then try again.
+        sReqFailed = 0;
+        sWantDirty = 1;
+        sWantFrame = guiFrameId;
+    }
+    if (!sWantDirty || !gEnableBGM || !gAudioInitialized)
+        return;
+    if (guiFrameId - sWantFrame < BGM_FOCUS_SETTLE_FRAMES)
+        return;
+
+    // Theme music wanted and theme music playing: nothing to check, nothing to switch.
+    if (sWantPath[0] == '\0' && sGamePath[0] == '\0' && isBgmPlaying()) {
+        sWantDirty = 0;
+        return;
+    }
+
+    // Stay off the shared fileXio channel while the music is refilling or art is loading, the same gate
+    // vcdsupport.cpp uses; the request stays pending and is tried again on a later frame.
+    if (!bgmDiscretionaryIoAllowed() || cacheHasPendingArt())
+        return;
+
+    snprintf(sReqPath, sizeof(sReqPath), "%s", sWantPath);
+    sReqPending = 1;
+    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bgmFocusSwitch)) != IO_OK) {
+        sReqPending = 0; // IO blocked (a launch or a device reset): keep the selection pending
+        return;
+    }
+    sWantDirty = 0;
 }
 
 void bgmStop(void)
 {
+    // Bounded: audioEnd() calls this on the way out, after a launch drain that may have given up on an IO
+    // worker stuck inside a switch's device read. Never hang the exit on that. Never stop without the lock
+    // either: the switch may be inside start()/load(), and teardown() would free the decoder under it.
+    // Leave the stop to the switch instead, which does it before it lets the lock go.
+    int locked = 0;
+    for (int waits = 0; sBgmLock >= 0 && waits < BGM_STOP_LOCK_WAITS; waits++) {
+        if (PollSema(sBgmLock) >= 0) {
+            locked = 1;
+            break;
+        }
+        DelayThread(10 * 1000);
+    }
+    if (sBgmLock >= 0 && !locked) {
+        LOG("BGM: stop: per-game switch still busy -- leaving the stop to it\n");
+        sBgmStopDeferred = 1;
+        if (PollSema(sBgmLock) < 0)
+            return; // still held: the switch sees the flag before it unlocks
+        locked = 1; // it let go between the last poll and the flag: stop here after all
+    }
+    sBgmStopDeferred = 0;
     gBgm.stop();
+    if (locked)
+        bgmUnlock();
 }
 
 int isBgmPlaying(void)

@@ -26,6 +26,7 @@ int gAudioInitialized = 0;
 
 void audioInit(void)
 {
+    bgmInitLock();
     if (!gAudioInitialized) {
         if (audsrv_init() != 0) {
             LOG("AUDIO: Failed to initialize audsrv\n");
